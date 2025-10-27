@@ -561,6 +561,7 @@
         const formattedDates=(renderInfo.formattedDates && renderInfo.formattedDates.length?renderInfo.formattedDates:lastModel.dayHeaders.map(formatFullDayLabel));
         const totalPages=renderInfo.totalPages || lastModel.dayHeaders.length;
         const dateRangeLabel=renderInfo.dateRangeLabel || buildDateRangeLabel(lastModel);
+        const renderedSections=Array.from(document.querySelectorAll('#sheets .sheet'));
         const headerImageInfo=await loadHeaderImagePng();
         const headerImage=await pdfDoc.embedPng(headerImageInfo.bytes);
         const rawHeaderWidth=headerImage.width || headerImageInfo.width || 1;
@@ -570,14 +571,44 @@
         const headerImageHeight=rawHeaderHeight*(headerImageWidth/rawHeaderWidth);
         for(let i=0;i<lastModel.dayHeaders.length;i++){
           const label=lastModel.dayHeaders[i];
-          const tmp=document.createElement('div');
-          const {svg}=drawDayCard(tmp,label,lastPerDay[i],{
-            dateRangeLabel,
-            pageNumber:i+1,
-            totalPages,
-            formattedDate:formattedDates[i],
-            staticCode:STATIC_CODE,
-          });
+          const section=renderedSections[i] || null;
+          let svg=null;
+          if(section){
+            svg=section.querySelector('svg');
+          }
+          let rangeText='';
+          let codeText='';
+          let dateTextFromDom='';
+          let footerText='';
+          if(section){
+            const rangeEl=section.querySelector('.sheet-range');
+            const codeEl=section.querySelector('.sheet-code');
+            const dateEl=section.querySelector('.sheet-date');
+            const footerEl=section.querySelector('.sheet-footer');
+            if(rangeEl) rangeText=rangeEl.textContent.trim();
+            if(codeEl) codeText=codeEl.textContent.trim();
+            if(dateEl) dateTextFromDom=dateEl.textContent.trim();
+            if(footerEl) footerText=footerEl.textContent.trim();
+          }
+          if(!svg){
+            const tmp=document.createElement('div');
+            const result=drawDayCard(tmp,label,lastPerDay[i],{
+              dateRangeLabel,
+              pageNumber:i+1,
+              totalPages,
+              formattedDate:formattedDates[i],
+              staticCode:STATIC_CODE,
+            });
+            svg=result.svg;
+            const fallbackRange=result.section.querySelector('.sheet-range');
+            const fallbackCode=result.section.querySelector('.sheet-code');
+            const fallbackDate=result.section.querySelector('.sheet-date');
+            const fallbackFooter=result.section.querySelector('.sheet-footer');
+            if(fallbackRange && !rangeText) rangeText=fallbackRange.textContent.trim();
+            if(fallbackCode && !codeText) codeText=fallbackCode.textContent.trim();
+            if(fallbackDate && !dateTextFromDom) dateTextFromDom=fallbackDate.textContent.trim();
+            if(fallbackFooter && !footerText) footerText=fallbackFooter.textContent.trim();
+          }
           const pngDataUrl=await svgToPngDataUrl(svg,{scale:2});
           const pngImage=await pdfDoc.embedPng(pngDataUrl);
           const page=pdfDoc.addPage(pageSize);
@@ -588,7 +619,7 @@
           const imageY=headerTop-headerImageHeight;
           page.drawImage(headerImage,{x:imageX,y:imageY,width:headerImageWidth,height:headerImageHeight});
 
-          const dateText=formattedDates[i] || formatFullDayLabel(label);
+          const dateText=dateTextFromDom || formattedDates[i] || formatFullDayLabel(label);
           const infoX=imageX+headerImageWidth+24;
           const dateY=headerTop-12;
           page.drawText(dateText,{x:infoX,y:dateY,size:dateSize,font,color:rgb(0.1,0.12,0.16)});
@@ -598,11 +629,14 @@
           page.drawText(shiftText,{x:infoX,y:shiftY,size:smallSize,font,color:rgb(0.35,0.4,0.45)});
 
           let metaBaseline=imageY-12;
-          if(dateRangeLabel){
-            page.drawText(dateRangeLabel,{x:imageX,y:metaBaseline,size:smallSize,font,color:rgb(0.35,0.4,0.45)});
+          if(rangeText){
+            page.drawText(rangeText,{x:imageX,y:metaBaseline,size:smallSize,font,color:rgb(0.35,0.4,0.45)});
             metaBaseline-=18;
           }
-          page.drawText(STATIC_CODE,{x:imageX,y:metaBaseline,size:codeSize,font,color:rgb(0.1,0.12,0.16)});
+          if(codeText){
+            page.drawText(codeText,{x:imageX,y:metaBaseline,size:codeSize,font,color:rgb(0.1,0.12,0.16)});
+            metaBaseline-=22;
+          }
 
           const chartTop=Math.min(imageY, metaBaseline, shiftY)-24;
           const availableWidth=pageWidth-margin*2;
@@ -617,11 +651,12 @@
           const chartY=Math.max(margin, chartTop-targetHeight);
           page.drawImage(pngImage,{x:chartX,y:chartY,width:targetWidth,height:targetHeight});
 
-          const pageText=`Page ${i+1} of ${totalPages}`;
-          const footerSize=smallSize;
-          const textWidth=font.widthOfTextAtSize(pageText,footerSize);
-          const footerY=Math.max(10, margin-12);
-          page.drawText(pageText,{x:pageWidth-margin-textWidth,y:footerY,size:footerSize,font,color:rgb(0.35,0.4,0.45)});
+          if(footerText){
+            const footerSize=smallSize;
+            const textWidth=font.widthOfTextAtSize(footerText,footerSize);
+            const footerY=Math.max(10, margin-12);
+            page.drawText(footerText,{x:pageWidth-margin-textWidth,y:footerY,size:footerSize,font,color:rgb(0.35,0.4,0.45)});
+          }
         }
         const pdfBytes=await pdfDoc.save();
         const blob=new Blob([pdfBytes],{type:'application/pdf'});
