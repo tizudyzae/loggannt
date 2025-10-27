@@ -164,23 +164,27 @@
     }
 
     const SVG_STYLE_BLOCK = `
-      .axislabel{fill:#000;font-size:11px;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
-      .colheader{fill:#000;font-size:12px;font-weight:700;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif;text-transform:uppercase}
-      .rowlabel{fill:#000;font-size:12px;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
-      .gridline{stroke:#d0d0d0;stroke-width:1}
-      .gridline-minor{stroke:#ededed;stroke-width:.6}
+      .axislabel{fill:#111;font-size:11px;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
+      .colheader{fill:#111;font-size:12px;font-weight:700;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif;text-transform:uppercase}
+      .rowlabel{fill:#111;font-size:12px;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
+      .gridline{stroke:#bfbfbf;stroke-width:1}
+      .gridline-minor{stroke:#e5e5e5;stroke-width:.6}
       .divider{stroke:#000;stroke-width:1.2}
-      .bar{fill:#7b7b7b}
+      .headerband{fill:#efefef}
+      .tick-major{stroke:#000;stroke-width:1}
+      .tick-minor{stroke:#555;stroke-width:.4}
+      .bar{fill:#4b4b4b}
       .barlabel{fill:#fff;font-size:11px;font-weight:700;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
     `;
 
     // ---------- Layout & Draw ----------
     function drawDayCard(container,label,rows){
-      const P=24,W=1120,rowH=26,leftAxis=220,innerW=W-leftAxis-P*2;
-      const headerGap=38;
+      const P=14,W=1150,rowH=28,leftAxis=240,innerW=W-leftAxis-P*2;
+      const headerHeight=36;
       const visibleRows=rows.filter(r=>r.range);
       const bodyRows=visibleRows.length?visibleRows:[{name:'No scheduled colleagues',range:null,segments:[]}];
-      const H=P+headerGap+rowH*bodyRows.length+P;
+      const bodyHeight=rowH*bodyRows.length;
+      const H=P+headerHeight+bodyHeight+P;
       const svgNS='http://www.w3.org/2000/svg';
       const svg=document.createElementNS(svgNS,'svg');
       svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
@@ -201,9 +205,9 @@
       svg.appendChild(border);
 
       const headerBand=document.createElementNS(svgNS,'rect');
-      headerBand.setAttribute('x',P);headerBand.setAttribute('y',P+12);
-      headerBand.setAttribute('width',W-P*2);headerBand.setAttribute('height',20);
-      headerBand.setAttribute('fill','#f5f5f5');
+      headerBand.setAttribute('x',P);headerBand.setAttribute('y',P);
+      headerBand.setAttribute('width',W-P*2);headerBand.setAttribute('height',headerHeight);
+      headerBand.setAttribute('class','headerband');
       svg.appendChild(headerBand);
 
       const columnDivider=document.createElementNS(svgNS,'line');
@@ -215,33 +219,47 @@
       svg.appendChild(columnDivider);
 
       const headerLine=document.createElementNS(svgNS,'line');
-      headerLine.setAttribute('x1',P);headerLine.setAttribute('y1',P+headerGap);
-      headerLine.setAttribute('x2',W-P);headerLine.setAttribute('y2',P+headerGap);
+      headerLine.setAttribute('x1',P);headerLine.setAttribute('y1',P+headerHeight);
+      headerLine.setAttribute('x2',W-P);headerLine.setAttribute('y2',P+headerHeight);
       headerLine.setAttribute('class','divider');
       svg.appendChild(headerLine);
 
+      const headerTop=P;
+      const headerBottom=P+headerHeight;
+      const headerTextBaseline=headerTop+18;
+      const axisY=headerBottom-8;
+      const minorTickBottom=headerTop+headerHeight*0.6;
+
       const nameHeader=document.createElementNS(svgNS,'text');
-      nameHeader.setAttribute('x',P+4);nameHeader.setAttribute('y',P+24);
+      nameHeader.setAttribute('x',P+6);nameHeader.setAttribute('y',headerTextBaseline);
       nameHeader.setAttribute('class','colheader');
       nameHeader.textContent='Colleague Names';
       svg.appendChild(nameHeader);
 
       const timeHeader=document.createElementNS(svgNS,'text');
-      timeHeader.setAttribute('x',P+leftAxis+4);
-      timeHeader.setAttribute('y',P+24);
+      timeHeader.setAttribute('x',P+leftAxis+6);
+      timeHeader.setAttribute('y',headerTextBaseline);
       timeHeader.setAttribute('class','colheader');
       timeHeader.textContent='Time';
       svg.appendChild(timeHeader);
 
       const toX=m=>P+leftAxis+(m/1440)*innerW;
-      const axisY=P+26;
       for(let minute=0;minute<=1440;minute+=15){
         const x=toX(minute);
         const isHour=minute%60===0;
+        if(minute<1440){
+          const tick=document.createElementNS(svgNS,'line');
+          tick.setAttribute('x1',x);
+          tick.setAttribute('y1',headerTop+4);
+          tick.setAttribute('x2',x);
+          tick.setAttribute('y2',isHour?headerBottom:minorTickBottom);
+          tick.setAttribute('class',isHour?'tick-major':'tick-minor');
+          svg.appendChild(tick);
+        }
         if(isHour && minute<1440){
           const axisText=document.createElementNS(svgNS,'text');
           axisText.setAttribute('x',x);
-          axisText.setAttribute('y',axisY+12);
+          axisText.setAttribute('y',axisY);
           axisText.setAttribute('text-anchor','middle');
           axisText.setAttribute('class','axislabel');
           axisText.textContent=fmtHMDisplay(minute);
@@ -251,7 +269,7 @@
         if(minute>0 && minute<1440){
           const vline=document.createElementNS(svgNS,'line');
           vline.setAttribute('x1',x);
-          vline.setAttribute('y1',P+headerGap);
+          vline.setAttribute('y1',headerBottom);
           vline.setAttribute('x2',x);
           vline.setAttribute('y2',H-P);
           vline.setAttribute('class',isHour?'gridline':'gridline-minor');
@@ -259,7 +277,7 @@
         }
       }
 
-      const bodyTop=P+headerGap;
+      const bodyTop=headerBottom;
       bodyRows.forEach((row,idx)=>{
         const y=bodyTop+idx*rowH;
         if(idx>0){
