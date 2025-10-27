@@ -32,24 +32,15 @@
     }
     .sheet-header{
       display:flex;
-      justify-content:space-between;
+      flex-direction:column;
       align-items:flex-start;
-      gap:20px;
-      border-bottom:1px solid #bfbfbf;
-      padding-bottom:10px;
-      flex-wrap:wrap;
+      gap:10px;
+      padding-bottom:4px;
     }
-    .sheet-brand{
-      display:flex;
-      align-items:flex-start;
-      gap:18px;
-    }
-    .sheet-logo{height:54px;width:auto;display:block}
-    .sheet-brand-meta{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
-    .sheet-brand-meta .sheet-code{font-size:20px;font-weight:700;color:var(--ink)}
-    .sheet-info{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right;margin-left:auto}
-    .sheet-date{font-size:20px;font-weight:700;letter-spacing:.3px}
-    .sheet-shifts{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+    .sheet-title{font-size:26px;font-weight:600;color:var(--ink)}
+    .sheet-range{font-size:14px;color:var(--muted)}
+    .sheet-code{font-size:26px;font-weight:700;color:var(--ink);margin-top:6px}
+    .sheet-date{font-size:16px;font-weight:600;color:var(--ink)}
     .sheet svg{width:100%;height:auto;display:block}
     .sheet-footer{margin-top:auto;font-size:12px;color:var(--muted);text-align:right}
     .axislabel{fill:#000;font-size:11px;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
@@ -441,43 +432,28 @@
       const header=document.createElement('header');
       header.className='sheet-header';
 
-      const brand=document.createElement('div');
-      brand.className='sheet-brand';
-      const logo=document.createElement('img');
-      logo.src='header.svg';
-      logo.alt='Daily Colleague Summary';
-      logo.className='sheet-logo';
-      brand.appendChild(logo);
+      const titleEl=document.createElement('div');
+      titleEl.className='sheet-title';
+      titleEl.textContent='Daily Colleague Summary';
+      header.appendChild(titleEl);
 
-      const brandMeta=document.createElement('div');
-      brandMeta.className='sheet-brand-meta';
       const rangeLabel=ctx.dateRangeLabel || '';
       if(rangeLabel){
         const rangeEl=document.createElement('div');
         rangeEl.className='sheet-range';
         rangeEl.textContent=rangeLabel;
-        brandMeta.appendChild(rangeEl);
+        header.appendChild(rangeEl);
       }
+
       const codeEl=document.createElement('div');
       codeEl.className='sheet-code';
       codeEl.textContent=ctx.staticCode || STATIC_CODE;
-      brandMeta.appendChild(codeEl);
-      brand.appendChild(brandMeta);
+      header.appendChild(codeEl);
 
-      header.appendChild(brand);
-
-      const info=document.createElement('div');
-      info.className='sheet-info';
       const dateEl=document.createElement('div');
       dateEl.className='sheet-date';
       dateEl.textContent=ctx.formattedDate || formatFullDayLabel(label);
-      info.appendChild(dateEl);
-      const activeCount=visibleRows.length;
-      const sub=document.createElement('div');
-      sub.className='sheet-shifts';
-      sub.textContent=`${activeCount} shift${activeCount===1?'':'s'}`;
-      info.appendChild(sub);
-      header.appendChild(info);
+      header.appendChild(dateEl);
 
       section.appendChild(header);
       section.appendChild(svg);
