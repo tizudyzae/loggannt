@@ -102,6 +102,16 @@
       return `${hour12}${minutePart}${suffix}`;
     };
 
+    function cleanColleagueName(raw){
+      if(typeof raw!=='string') return '';
+      const trimmed=raw.trim();
+      if(!trimmed) return '';
+      const noId=trimmed.replace(/\s*\([^)]*\)\s*/g,' ').trim();
+      if(!noId) return trimmed;
+      const parts=noId.split(/\s+/);
+      return parts.length?parts[parts.length-1]:trimmed;
+    }
+
     const STATIC_CODE='7774';
     const DAY_NAME_MAP={sun:'Sunday',mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday'};
     const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -181,7 +191,7 @@
       for(let i=headerIdx+1;i<lines.length;i++){
         const parts=lines[i].split(',');
         if(parts.length<8) continue;
-        const name=parts[0].trim();
+        const name=cleanColleagueName(parts[0]);
         const days=parts.slice(1,8);
         rows.push({name,days});
       }
