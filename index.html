@@ -390,17 +390,33 @@
       return layout;
     }
 
+    function applyLayoutCssVariables(style,layout){
+      if(!style || typeof style.setProperty!=='function') return;
+      style.setProperty('--page-bg',layout.pageBackground);
+      style.setProperty('--sheet-bg',layout.sheetBackground);
+      style.setProperty('--sheet-border',layout.sheetBorder);
+      style.setProperty('--sheet-header-band',layout.headerBandColor);
+      style.setProperty('--sheet-title-size',`${layout.titleSize}px`);
+      style.setProperty('--sheet-range-size',`${layout.subtitleSize}px`);
+      style.setProperty('--sheet-code-size',`${layout.codeSize}px`);
+      style.setProperty('--sheet-date-size',`${layout.dateSize}px`);
+      style.setProperty('--sheet-footer-size',`${layout.footerSize}px`);
+      style.setProperty('--bar-color',layout.barColor);
+      style.setProperty('--bar-label-color',layout.barLabelColor);
+      style.setProperty('--header-band-color',layout.headerBandColor);
+      style.setProperty('--grid-color',layout.gridColor);
+      style.setProperty('--minor-grid-color',layout.minorGridColor);
+      style.setProperty('--axis-color',layout.axisColor);
+      style.setProperty('--row-label-color',layout.rowLabelColor);
+    }
+
+    function applyLayoutToElement(element,layout){
+      if(!element) return;
+      applyLayoutCssVariables(element.style,layout);
+    }
+
     function applyLayoutToDocument(layout){
-      const root=document.documentElement.style;
-      root.setProperty('--page-bg',layout.pageBackground);
-      root.setProperty('--sheet-bg',layout.sheetBackground);
-      root.setProperty('--sheet-border',layout.sheetBorder);
-      root.setProperty('--sheet-header-band',layout.headerBandColor);
-      root.setProperty('--sheet-title-size',`${layout.titleSize}px`);
-      root.setProperty('--sheet-range-size',`${layout.subtitleSize}px`);
-      root.setProperty('--sheet-code-size',`${layout.codeSize}px`);
-      root.setProperty('--sheet-date-size',`${layout.dateSize}px`);
-      root.setProperty('--sheet-footer-size',`${layout.footerSize}px`);
+      applyLayoutCssVariables(document.documentElement.style,layout);
     }
 
     function buildSvgStyleBlock(theme){
@@ -831,6 +847,103 @@
       return name.replace(/[^\w\d\-_]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'') || 'gantt';
     }
 
+    let cachedSheetStyles=null;
+    function getSheetStylesText(){
+      if(cachedSheetStyles!==null) return cachedSheetStyles;
+      const styles=Array.from(document.querySelectorAll('head style'));
+      cachedSheetStyles=styles.map(el=>el.textContent||'').join('\n');
+      return cachedSheetStyles;
+    }
+
+    function copyDocumentCssVariables(target){
+      if(!target || !target.style) return;
+      const computed=getComputedStyle(document.documentElement);
+      for(let i=0;i<computed.length;i++){
+        const prop=computed[i];
+        if(prop.startsWith('--')){
+          const val=computed.getPropertyValue(prop);
+          if(val) target.style.setProperty(prop,val);
+        }
+      }
+    }
+
+    function cloneSheetForExport(section,layout,width,height){
+      const clone=section.cloneNode(true);
+      clone.style.margin='0';
+      clone.style.width=`${width}px`;
+      clone.style.boxSizing='border-box';
+      copyDocumentCssVariables(clone);
+      applyLayoutToElement(clone,layout);
+      return clone;
+    }
+
+    async function sheetToPngDataUrl(section,layout,{scale=2}={}){
+      if(!section) throw new Error('Missing sheet section for export');
+      let rect=section.getBoundingClientRect();
+      let width=Math.ceil(rect.width);
+      let height=Math.ceil(rect.height);
+      if(width<=0 || height<=0){
+        const hiddenHost=document.createElement('div');
+        hiddenHost.style.cssText='position:absolute;left:-99999px;top:-99999px;pointer-events:none;opacity:0;';
+        document.body.appendChild(hiddenHost);
+        const temp=section.cloneNode(true);
+        hiddenHost.appendChild(temp);
+        copyDocumentCssVariables(temp);
+        applyLayoutToElement(temp,layout);
+        rect=temp.getBoundingClientRect();
+        width=Math.ceil(rect.width||layout.chartWidth||800);
+        height=Math.ceil(rect.height||600);
+        hiddenHost.remove();
+      }
+      if(width<=0) width=Math.max(400,layout.chartWidth||800);
+      if(height<=0) height=Math.max(400,layout.rowHeight||400);
+
+      const svgNS='http://www.w3.org/2000/svg';
+      const svg=document.createElementNS(svgNS,'svg');
+      svg.setAttribute('xmlns',svgNS);
+      svg.setAttribute('width',width);
+      svg.setAttribute('height',height);
+      svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+
+      const foreign=document.createElementNS(svgNS,'foreignObject');
+      foreign.setAttribute('width','100%');
+      foreign.setAttribute('height','100%');
+
+      const wrapper=document.createElement('div');
+      wrapper.setAttribute('xmlns','http://www.w3.org/1999/xhtml');
+      wrapper.style.width=`${width}px`;
+      wrapper.style.height=`${height}px`;
+      applyLayoutToElement(wrapper,layout);
+      copyDocumentCssVariables(wrapper);
+
+      const styleEl=document.createElement('style');
+      styleEl.textContent=getSheetStylesText();
+      wrapper.appendChild(styleEl);
+
+      const clone=cloneSheetForExport(section,layout,width,height);
+      wrapper.appendChild(clone);
+
+      foreign.appendChild(wrapper);
+      svg.appendChild(foreign);
+      return await svgToPngDataUrl(svg,{scale});
+    }
+
+    function parseHexColor(color){
+      if(!color || typeof color!=='string') return null;
+      const hex=color.trim();
+      const match=hex.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+      if(!match) return null;
+      let value=match[1];
+      if(value.length===3){
+        value=value.split('').map(ch=>ch+ch).join('');
+      }
+      const int=parseInt(value,16);
+      const r=(int>>16)&255;
+      const g=(int>>8)&255;
+      const b=int&255;
+      return {r:r/255,g:g/255,b:b/255};
+    }
+
     async function exportPDF(){
       const btn=document.getElementById('btnExport');
       if(btn.disabled) return;
@@ -848,18 +961,13 @@
       btn.disabled=true;
       btn.textContent='Exporting…';
       try{
-        const {PDFDocument, StandardFonts, rgb}=window.PDFLib;
+        const {PDFDocument, rgb}=window.PDFLib;
         const pdfDoc=await PDFDocument.create();
-        const font=await pdfDoc.embedFont(StandardFonts.Helvetica);
         const margin=24;
         const pageSize=[842,595];
         const renderInfo=lastRenderDetails || {};
         const layout=renderInfo.layout || currentLayout || DEFAULT_LAYOUT;
-        const titleSize=layout.titleSize;
-        const rangeSize=layout.subtitleSize;
-        const codeSize=layout.codeSize;
-        const dateSize=layout.dateSize;
-        const smallSize=layout.footerSize;
+        const pageBg=parseHexColor(layout.pageBackground);
         const formattedDates=(renderInfo.formattedDates && renderInfo.formattedDates.length?renderInfo.formattedDates:lastModel.dayHeaders.map(formatFullDayLabel));
         const totalPages=renderInfo.totalPages || lastModel.dayHeaders.length;
         const dateRangeLabel=renderInfo.dateRangeLabel || layout.subtitleOverride || buildDateRangeLabel(lastModel);
@@ -867,30 +975,13 @@
         for(let i=0;i<lastModel.dayHeaders.length;i++){
           const label=lastModel.dayHeaders[i];
           const section=renderedSections[i] || null;
-          let svg=null;
-          if(section){
-            svg=section.querySelector('svg');
-          }
-          let rangeText='';
-          let codeText='';
-          let dateTextFromDom='';
-          let footerText='';
-          let footnoteText='';
-          if(section){
-            const rangeEl=section.querySelector('.sheet-range');
-            const codeEl=section.querySelector('.sheet-code');
-            const dateEl=section.querySelector('.sheet-date');
-            const footerEl=section.querySelector('.sheet-footer');
-            const noteEl=section.querySelector('.sheet-footnote');
-            if(rangeEl) rangeText=rangeEl.textContent.trim();
-            if(codeEl) codeText=codeEl.textContent.trim();
-            if(dateEl) dateTextFromDom=dateEl.textContent.trim();
-            if(footerEl) footerText=footerEl.textContent.trim();
-            if(noteEl) footnoteText=noteEl.textContent.trim();
-          }
-          if(!svg){
-            const tmp=document.createElement('div');
-            const result=drawDayCard(tmp,label,lastPerDay[i],{
+          let activeSection=section;
+          let cleanup=null;
+          if(!activeSection){
+            const hiddenHost=document.createElement('div');
+            hiddenHost.style.cssText='position:absolute;left:-99999px;top:-99999px;pointer-events:none;opacity:0;';
+            document.body.appendChild(hiddenHost);
+            const result=drawDayCard(hiddenHost,label,lastPerDay[i],{
               dateRangeLabel,
               pageNumber:i+1,
               totalPages,
@@ -898,67 +989,34 @@
               staticCode:layout.staticCode,
               layout,
             });
-            svg=result.svg;
-            const fallbackRange=result.section.querySelector('.sheet-range');
-            const fallbackCode=result.section.querySelector('.sheet-code');
-            const fallbackDate=result.section.querySelector('.sheet-date');
-            const fallbackFooter=result.section.querySelector('.sheet-footer');
-            const fallbackNote=result.section.querySelector('.sheet-footnote');
-            if(fallbackRange && !rangeText) rangeText=fallbackRange.textContent.trim();
-            if(fallbackCode && !codeText) codeText=fallbackCode.textContent.trim();
-            if(fallbackDate && !dateTextFromDom) dateTextFromDom=fallbackDate.textContent.trim();
-            if(fallbackFooter && !footerText) footerText=fallbackFooter.textContent.trim();
-            if(fallbackNote && !footnoteText) footnoteText=fallbackNote.textContent.trim();
+            activeSection=result.section;
+            cleanup=()=>hiddenHost.remove();
           }
-          const pngDataUrl=await svgToPngDataUrl(svg,{scale:2});
+          let pngDataUrl;
+          try{
+            pngDataUrl=await sheetToPngDataUrl(activeSection,layout,{scale:2});
+          }finally{
+            if(cleanup) cleanup();
+          }
           const pngImage=await pdfDoc.embedPng(pngDataUrl);
           const page=pdfDoc.addPage(pageSize);
           const pageWidth=page.getWidth();
           const pageHeight=page.getHeight();
-          const headerTop=pageHeight-margin;
-          const textX=margin;
-          let cursorY=headerTop;
-          cursorY-=titleSize;
-          page.drawText(layout.title || 'Daily Colleague Summary',{x:textX,y:cursorY,size:titleSize,font,color:rgb(0.07,0.08,0.1)});
-          if(rangeText){
-            cursorY-=6;
-            cursorY-=rangeSize;
-            page.drawText(rangeText,{x:textX,y:cursorY,size:rangeSize,font,color:rgb(0.35,0.4,0.45)});
+          if(pageBg){
+            page.drawRectangle({x:0,y:0,width:pageWidth,height:pageHeight,color:rgb(pageBg.r,pageBg.g,pageBg.b)});
           }
-          const codeToDraw=codeText || layout.staticCode || STATIC_CODE;
-          cursorY-=10;
-          cursorY-=codeSize;
-          page.drawText(codeToDraw,{x:textX,y:cursorY,size:codeSize,font,color:rgb(0.07,0.08,0.1)});
-          const dateText=dateTextFromDom || formattedDates[i] || formatFullDayLabel(label);
-          cursorY-=8;
-          cursorY-=dateSize;
-          page.drawText(dateText,{x:textX,y:cursorY,size:dateSize,font,color:rgb(0.07,0.08,0.1)});
-
-          const chartTop=cursorY-24;
           const availableWidth=pageWidth-margin*2;
-          const availableHeight=Math.max(chartTop-margin, 100);
-          let targetWidth=availableWidth;
-          let targetHeight=pngImage.height*(targetWidth/pngImage.width);
-          if(targetHeight>availableHeight){
-            targetHeight=availableHeight;
-            targetWidth=pngImage.width*(targetHeight/pngImage.height);
-          }
-          const chartX=margin+(availableWidth-targetWidth)/2;
-          const chartY=Math.max(margin, chartTop-targetHeight);
-          page.drawImage(pngImage,{x:chartX,y:chartY,width:targetWidth,height:targetHeight});
-
-          const footerBaseY=Math.max(10, margin-12);
-          if(footnoteText){
-            const noteSize=smallSize;
-            const noteWidth=font.widthOfTextAtSize(footnoteText,noteSize);
-            const noteY=footerBaseY+smallSize+6;
-            page.drawText(footnoteText,{x:pageWidth-margin-noteWidth,y:noteY,size:noteSize,font,color:rgb(0.35,0.4,0.45)});
-          }
-          if(footerText){
-            const footerSize=smallSize;
-            const textWidth=font.widthOfTextAtSize(footerText,footerSize);
-            page.drawText(footerText,{x:pageWidth-margin-textWidth,y:footerBaseY,size:footerSize,font,color:rgb(0.35,0.4,0.45)});
-          }
+          const availableHeight=pageHeight-margin*2;
+          let targetWidth=pngImage.width;
+          let targetHeight=pngImage.height;
+          const widthScale=availableWidth/targetWidth;
+          const heightScale=availableHeight/targetHeight;
+          const scale=Math.min(1,widthScale,heightScale);
+          targetWidth*=scale;
+          targetHeight*=scale;
+          const drawX=margin+(availableWidth-targetWidth)/2;
+          const drawY=pageHeight-margin-targetHeight;
+          page.drawImage(pngImage,{x:drawX,y:drawY,width:targetWidth,height:targetHeight});
         }
         const pdfBytes=await pdfDoc.save();
         const blob=new Blob([pdfBytes],{type:'application/pdf'});
