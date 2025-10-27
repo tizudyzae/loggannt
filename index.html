@@ -19,6 +19,7 @@
     .controls{display:grid;gap:10px;grid-template-columns:1fr auto;align-items:start;background:var(--panel);border:1px solid #223;border-radius:14px;padding:14px;box-shadow:var(--shadow)}
     textarea{width:100%;height:200px;resize:vertical;color:var(--ink);background:#0f1219;border:1px solid #223;border-radius:10px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
     .btn{appearance:none;border:0;border-radius:10px;padding:10px 14px;background:linear-gradient(180deg,#2b5cff,#1b47d8);color:#fff;font-weight:650;cursor:pointer;box-shadow:var(--shadow)}
+    .btn[disabled]{opacity:.6;cursor:not-allowed;box-shadow:none}
     .btn:active{transform:translateY(1px)}
     .side{display:flex;flex-direction:column;gap:10px;min-width:220px}
     .row{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px}
@@ -40,17 +41,6 @@
     input:checked + .slider{background:#29b475}
     input:checked + .slider:before{transform:translateX(22px)}
 
-    /* PRINT */
-    @media print{
-      @page{size:A4 landscape;margin:10mm}
-      body{background:white!important}
-      .controls,.footer,#tooltip,#meta{display:none!important}
-      .charts{display:block}
-      .print-page{page-break-after:always;break-after:page}
-      .print-title{font-size:16px;color:#000;margin:0 0 8px}
-      .print-sub{font-size:12px;color:#333;margin:0 0 6px}
-      .chartbox{border:0;border-radius:0}
-    }
   </style>
 </head>
 <body>
@@ -76,12 +66,12 @@
 
     <div id="meta" class="row" style="margin-top:8px"></div>
     <div class="charts" id="charts"></div>
-    <div class="footer">Client‑side only. No libraries. SVG output; print to get one PDF page per day.</div>
+      <div class="footer">Client‑side only. Uses pdf-lib to turn the SVG output into shareable landscape PDFs.</div>
   </div>
 
   <div id="tooltip" class="tooltip"></div>
-  <div id="printArea" style="display:none"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-bxQvUbdpBeIj5UfP0Wu6qlufc1PkJCB2sonMSKcwkKF8AW630xOuL0GHLoO3Nd4b" crossorigin="anonymous"></script>
   <script>
     // ---------- Utilities ----------
     const DAY_COLORS=["var(--bar1)","var(--bar2)","var(--bar3)","var(--bar4)","var(--bar5)","var(--bar6)","var(--bar7)"];
@@ -217,19 +207,108 @@
       });
     }
 
-    function exportPDF(){
-      if(!lastModel){ const t=document.getElementById('input').value.trim(); if(!t) return; render(t); }
-      const printArea=document.getElementById('printArea'); printArea.innerHTML=''; printArea.style.display='block';
-      lastModel.dayHeaders.forEach((label,i)=>{
-        const page=document.createElement('div'); page.className='print-page';
-        const tt=document.createElement('div'); tt.className='print-title'; tt.textContent=`${lastModel.title} — ${label}`; page.appendChild(tt);
-        const ss=document.createElement('div'); ss.className='print-sub'; ss.textContent=`${lastPerDay[i].length} shifts`; page.appendChild(ss);
-        const tmp=document.createElement('div');
-        const {svg}=drawDayCard(tmp,label,lastPerDay[i],DAY_COLORS[i%DAY_COLORS.length],lastOpts);
-        page.appendChild(svg);
-        printArea.appendChild(page);
-      });
-      window.print(); setTimeout(()=>{printArea.innerHTML=''; printArea.style.display='none';},100);
+    async function svgToPngDataUrl(svg,{scale=2}={}){
+      const clone=svg.cloneNode(true);
+      const vb=(clone.getAttribute('viewBox')||'').trim().split(/\s+/).map(Number);
+      let width,height;
+      if(vb.length===4 && vb.every(v=>!Number.isNaN(v))){
+        width=vb[2]; height=vb[3];
+      }else{
+        width=svg.clientWidth||900;
+        height=svg.clientHeight||600;
+      }
+      const serializer=new XMLSerializer();
+      const svgString=serializer.serializeToString(clone);
+      const blob=new Blob([svgString],{type:'image/svg+xml'});
+      const url=URL.createObjectURL(blob);
+      try{
+        const img=new Image();
+        img.src=url;
+        await new Promise((resolve,reject)=>{
+          img.onload=()=>resolve();
+          img.onerror=()=>reject(new Error('Unable to rasterize SVG.'));
+        });
+        const canvas=document.createElement('canvas');
+        canvas.width=width*scale;
+        canvas.height=height*scale;
+        const ctx=canvas.getContext('2d');
+        ctx.setTransform(scale,0,0,scale,0,0);
+        ctx.drawImage(img,0,0,width,height);
+        return canvas.toDataURL('image/png');
+      }finally{
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    function sanitizeFileName(name){
+      return name.replace(/[^\w\d\-_]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'') || 'gantt';
+    }
+
+    async function exportPDF(){
+      const btn=document.getElementById('btnExport');
+      if(btn.disabled) return;
+      if(!lastModel){
+        const t=document.getElementById('input').value.trim();
+        if(!t) return;
+        render(t);
+        if(!lastModel) return;
+      }
+      if(!window.PDFLib){
+        alert('PDF generator failed to load. Please refresh and try again.');
+        return;
+      }
+      const originalLabel=btn.textContent;
+      btn.disabled=true;
+      btn.textContent='Exporting…';
+      try{
+        const {PDFDocument, StandardFonts, rgb}=window.PDFLib;
+        const pdfDoc=await PDFDocument.create();
+        const font=await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const margin=36;
+        const titleSize=18;
+        const subSize=12;
+        const titleGap=12;
+        const pageSize=[842,595];
+        const titleText=lastModel.title || 'Schedule';
+        for(let i=0;i<lastModel.dayHeaders.length;i++){
+          const label=lastModel.dayHeaders[i];
+          const tmp=document.createElement('div');
+          const {svg}=drawDayCard(tmp,label,lastPerDay[i],DAY_COLORS[i%DAY_COLORS.length],lastOpts);
+          const pngDataUrl=await svgToPngDataUrl(svg,{scale:2});
+          const pngImage=await pdfDoc.embedPng(pngDataUrl);
+          const page=pdfDoc.addPage(pageSize);
+          const pageWidth=page.getWidth();
+          const pageHeight=page.getHeight();
+          const titleBaseline=pageHeight-margin-titleSize;
+          page.drawText(`${titleText} — ${label}`,{x:margin,y:titleBaseline,size:titleSize,font,color:rgb(0.1,0.12,0.16)});
+          const subBaseline=titleBaseline-subSize-6;
+          const shiftCount=lastPerDay[i].length;
+          const subText=`${shiftCount} shift${shiftCount===1?'':'s'}`;
+          page.drawText(subText,{x:margin,y:subBaseline,size:subSize,font,color:rgb(0.35,0.4,0.45)});
+          const availableWidth=pageWidth-margin*2;
+          const availableHeight=subBaseline-titleGap-margin;
+          const scaled=pngImage.scaleToFit(availableWidth,availableHeight);
+          const imageX=margin+(availableWidth-scaled.width)/2;
+          const imageY=margin;
+          page.drawImage(pngImage,{x:imageX,y:imageY,width:scaled.width,height:scaled.height});
+        }
+        const pdfBytes=await pdfDoc.save();
+        const blob=new Blob([pdfBytes],{type:'application/pdf'});
+        const url=URL.createObjectURL(blob);
+        const link=document.createElement('a');
+        link.href=url;
+        link.download=`${sanitizeFileName(titleText)}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),5000);
+      }catch(err){
+        console.error(err);
+        alert(`Failed to export PDF: ${err.message}`);
+      }finally{
+        btn.disabled=false;
+        btn.textContent=originalLabel;
+      }
     }
 
     // ---------- Sample & Wire-up ----------
@@ -238,7 +317,7 @@
       if(!text){ alert('Paste an export into the text area before rendering.'); return; }
       render(text);
     });
-    document.getElementById('btnExport').addEventListener('click',exportPDF);
+    document.getElementById('btnExport').addEventListener('click',()=>{ exportPDF(); });
     document.getElementById('chkFallback').addEventListener('change',()=>{
       const text=document.getElementById('input').value.trim();
       if(text) render(text);
