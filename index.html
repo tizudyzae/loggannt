@@ -227,8 +227,8 @@
       const headerTop=P;
       const headerBottom=P+headerHeight;
       const headerTextBaseline=headerTop+18;
-      const axisY=headerBottom-8;
-      const minorTickBottom=headerTop+headerHeight*0.6;
+      const axisY=headerTop+headerHeight*0.75;
+      const minorTickBottom=headerTop+headerHeight*(2/3);
 
       const nameHeader=document.createElementNS(svgNS,'text');
       nameHeader.setAttribute('x',P+6);nameHeader.setAttribute('y',headerTextBaseline);
@@ -250,7 +250,7 @@
         if(minute<1440){
           const tick=document.createElementNS(svgNS,'line');
           tick.setAttribute('x1',x);
-          tick.setAttribute('y1',headerTop+4);
+          tick.setAttribute('y1',headerTop);
           tick.setAttribute('x2',x);
           tick.setAttribute('y2',isHour?headerBottom:minorTickBottom);
           tick.setAttribute('class',isHour?'tick-major':'tick-minor');
@@ -258,7 +258,8 @@
         }
         if(isHour && minute<1440){
           const axisText=document.createElementNS(svgNS,'text');
-          axisText.setAttribute('x',x);
+          const labelMinute=Math.min(minute+30,1440);
+          axisText.setAttribute('x',toX(labelMinute));
           axisText.setAttribute('y',axisY);
           axisText.setAttribute('text-anchor','middle');
           axisText.setAttribute('class','axislabel');
@@ -269,7 +270,7 @@
         if(minute>0 && minute<1440){
           const vline=document.createElementNS(svgNS,'line');
           vline.setAttribute('x1',x);
-          vline.setAttribute('y1',headerBottom);
+          vline.setAttribute('y1',headerTop);
           vline.setAttribute('x2',x);
           vline.setAttribute('y2',H-P);
           vline.setAttribute('class',isHour?'gridline':'gridline-minor');
