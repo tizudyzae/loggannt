@@ -20,23 +20,38 @@
     .btn:active{transform:translateY(1px)}
     .side{display:flex;flex-direction:column;gap:10px;min-width:220px}
     .row{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px}
-    .meta{
-      margin:24px 0 18px;
+    .sheets{display:flex;flex-direction:column;gap:28px}
+    .sheet{
+      padding:18px;
+      background:#fff;
+      border:1px solid #000;
+      box-shadow:0 4px 10px rgba(0,0,0,.08);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .sheet-header{
       display:flex;
       justify-content:space-between;
-      gap:16px;
-      border-bottom:3px solid #000;
+      align-items:flex-start;
+      gap:20px;
+      border-bottom:1px solid #bfbfbf;
       padding-bottom:10px;
-      font-family:"Arial","Helvetica Neue",Helvetica,sans-serif;
+      flex-wrap:wrap;
     }
-    .meta-primary{font-size:22px;font-weight:700;letter-spacing:.3px}
-    .meta-secondary{font-size:14px;color:var(--muted)}
-    .sheets{display:flex;flex-direction:column;gap:28px}
-    .sheet{padding:18px;background:#fff;border:1px solid #000;box-shadow:0 4px 10px rgba(0,0,0,.08)}
-    .sheet-heading{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;border-bottom:1px solid #bfbfbf;padding-bottom:6px}
-    .sheet-heading h2{margin:0;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
-    .sheet-heading .subline{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+    .sheet-brand{
+      display:flex;
+      align-items:flex-start;
+      gap:18px;
+    }
+    .sheet-logo{height:54px;width:auto;display:block}
+    .sheet-brand-meta{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+    .sheet-brand-meta .sheet-code{font-size:20px;font-weight:700;color:var(--ink)}
+    .sheet-info{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right;margin-left:auto}
+    .sheet-date{font-size:20px;font-weight:700;letter-spacing:.3px}
+    .sheet-shifts{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
     .sheet svg{width:100%;height:auto;display:block}
+    .sheet-footer{margin-top:auto;font-size:12px;color:var(--muted);text-align:right}
     .axislabel{fill:#000;font-size:11px;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
     .colheader{fill:#000;font-size:12px;font-weight:700;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif;text-transform:uppercase}
     .rowlabel{fill:#000;font-size:12px;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
@@ -75,10 +90,6 @@
       </div>
     </div>
 
-    <div class="meta">
-      <div id="metaTitle" class="meta-primary"></div>
-      <div id="metaSub" class="meta-secondary"></div>
-    </div>
     <div class="sheets" id="sheets"></div>
       <div class="footer">Client‑side only. Uses pdf-lib to turn the SVG output into shareable landscape PDFs.</div>
   </div>
@@ -99,6 +110,99 @@
       const minutePart=minutes===0?'':`:${pad2(minutes)}`;
       return `${hour12}${minutePart}${suffix}`;
     };
+
+    const STATIC_CODE='7774';
+    const DAY_NAME_MAP={sun:'Sunday',mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday'};
+    const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    function ordinal(n){
+      const rem10=n%10;
+      const rem100=n%100;
+      if(rem10===1 && rem100!==11) return `${n}st`;
+      if(rem10===2 && rem100!==12) return `${n}nd`;
+      if(rem10===3 && rem100!==13) return `${n}rd`;
+      return `${n}th`;
+    }
+
+    function parseDayHeader(label){
+      if(!label) return null;
+      const match=label.match(/([A-Za-z]{3,})\s*\(?\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s*\)?/);
+      if(!match) return null;
+      const [,dayPart,dayStr,monthStr,yearStr]=match;
+      const dayNum=parseInt(dayStr,10);
+      const monthNum=parseInt(monthStr,10);
+      if(Number.isNaN(dayNum) || Number.isNaN(monthNum)) return null;
+      const key=dayPart.slice(0,3).toLowerCase();
+      const dayName=DAY_NAME_MAP[key] || dayPart;
+      let year=undefined;
+      if(yearStr){
+        const yr=parseInt(yearStr,10);
+        if(!Number.isNaN(yr)){
+          year=yearStr.length===2?2000+yr:yr;
+        }
+      }
+      return {dayName,day:dayNum,month:monthNum,year};
+    }
+
+    function formatFullDayLabel(label){
+      const parsed=parseDayHeader(label);
+      if(!parsed) return label;
+      const monthName=MONTH_NAMES[parsed.month-1] || '';
+      const pieces=[parsed.dayName || '', ordinal(parsed.day), monthName];
+      if(parsed.year) pieces.push(parsed.year);
+      return pieces.filter(Boolean).join(' ');
+    }
+
+    function formatRangeDate(part){
+      if(!part) return '';
+      const day=pad2(part.day);
+      const month=pad2(part.month);
+      return `${day}/${month}${part.year?`/${part.year}`:''}`;
+    }
+
+    function buildDateRangeLabel(model){
+      if(model && typeof model.sub==='string'){
+        const match=model.sub.match(/Date\s*range\s*:\s*(.+)/i);
+        if(match) return `Date range: ${match[1].trim()}`;
+      }
+      if(!model || !Array.isArray(model.dayHeaders) || !model.dayHeaders.length) return '';
+      const parsed=model.dayHeaders.map(parseDayHeader).filter(Boolean);
+      if(!parsed.length) return '';
+      const start=parsed[0];
+      const end=parsed[parsed.length-1];
+      const startStr=formatRangeDate(start);
+      const endStr=formatRangeDate(end);
+      if(!startStr && !endStr) return '';
+      if(startStr && endStr) return `Date range: ${startStr} - ${endStr}`;
+      return `Date range: ${startStr || endStr}`;
+    }
+
+    let headerImageCache=null;
+    async function loadHeaderImagePng(){
+      if(headerImageCache) return headerImageCache;
+      headerImageCache=(async()=>{
+        const img=new Image();
+        img.src='header.svg';
+        await new Promise((resolve,reject)=>{
+          img.onload=()=>resolve();
+          img.onerror=()=>reject(new Error('Unable to load header image.'));
+        });
+        const width=img.naturalWidth || img.width;
+        const height=img.naturalHeight || img.height;
+        const canvas=document.createElement('canvas');
+        canvas.width=width;
+        canvas.height=height;
+        const ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0,width,height);
+        const dataUrl=canvas.toDataURL('image/png');
+        const base64=dataUrl.split(',')[1];
+        const binary=atob(base64);
+        const bytes=new Uint8Array(binary.length);
+        for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+        return {bytes,width,height};
+      })();
+      return headerImageCache;
+    }
 
     // ---------- Parsing ----------
     function parseExport(text){
@@ -178,7 +282,7 @@
     `;
 
     // ---------- Layout & Draw ----------
-    function drawDayCard(container,label,rows){
+    function drawDayCard(container,label,rows,ctx={}){
       const P=14,W=1150,rowH=28,leftAxis=240,innerW=W-leftAxis-P*2;
       const headerHeight=36;
       const visibleRows=rows.filter(r=>r.range);
@@ -333,19 +437,64 @@
 
       const section=document.createElement('section');
       section.className='sheet';
-      const heading=document.createElement('div');
-      heading.className='sheet-heading';
-      const h2=document.createElement('h2'); h2.textContent=label; heading.appendChild(h2);
+
+      const header=document.createElement('header');
+      header.className='sheet-header';
+
+      const brand=document.createElement('div');
+      brand.className='sheet-brand';
+      const logo=document.createElement('img');
+      logo.src='header.svg';
+      logo.alt='Daily Colleague Summary';
+      logo.className='sheet-logo';
+      brand.appendChild(logo);
+
+      const brandMeta=document.createElement('div');
+      brandMeta.className='sheet-brand-meta';
+      const rangeLabel=ctx.dateRangeLabel || '';
+      if(rangeLabel){
+        const rangeEl=document.createElement('div');
+        rangeEl.className='sheet-range';
+        rangeEl.textContent=rangeLabel;
+        brandMeta.appendChild(rangeEl);
+      }
+      const codeEl=document.createElement('div');
+      codeEl.className='sheet-code';
+      codeEl.textContent=ctx.staticCode || STATIC_CODE;
+      brandMeta.appendChild(codeEl);
+      brand.appendChild(brandMeta);
+
+      header.appendChild(brand);
+
+      const info=document.createElement('div');
+      info.className='sheet-info';
+      const dateEl=document.createElement('div');
+      dateEl.className='sheet-date';
+      dateEl.textContent=ctx.formattedDate || formatFullDayLabel(label);
+      info.appendChild(dateEl);
       const activeCount=visibleRows.length;
-      const sub=document.createElement('div'); sub.className='subline'; sub.textContent=`${activeCount} shift${activeCount===1?'':'s'}`; heading.appendChild(sub);
-      section.appendChild(heading);
+      const sub=document.createElement('div');
+      sub.className='sheet-shifts';
+      sub.textContent=`${activeCount} shift${activeCount===1?'':'s'}`;
+      info.appendChild(sub);
+      header.appendChild(info);
+
+      section.appendChild(header);
       section.appendChild(svg);
+
+      const footer=document.createElement('div');
+      footer.className='sheet-footer';
+      const pageNumber=ctx.pageNumber || 1;
+      const totalPages=ctx.totalPages || 1;
+      footer.textContent=`Page ${pageNumber} of ${totalPages}`;
+      section.appendChild(footer);
+
       container.appendChild(section);
-      return {svg};
+      return {section, svg};
     }
 
     // ---------- Render / Export ----------
-    let lastModel=null,lastPerDay=null;
+    let lastModel=null,lastPerDay=null,lastRenderDetails=null;
 
     function render(text){
       const opts={fallbackSCH:document.getElementById('chkFallback').checked, splitMidnight:document.getElementById('chkSplit').checked};
@@ -353,11 +502,20 @@
       const perDay=buildPerDay(model,opts);
       lastModel=model; lastPerDay=perDay;
 
-      document.getElementById('metaTitle').textContent=model.title || '';
-      document.getElementById('metaSub').textContent=model.sub || '';
+      const dateRangeLabel=buildDateRangeLabel(model);
+      const totalPages=model.dayHeaders.length;
+      const formattedDates=model.dayHeaders.map(formatFullDayLabel);
+      lastRenderDetails={dateRangeLabel,formattedDates,totalPages};
+
       const sheets=document.getElementById('sheets'); sheets.innerHTML='';
       model.dayHeaders.forEach((label,i)=>{
-        drawDayCard(sheets,label,perDay[i]);
+        drawDayCard(sheets,label,perDay[i],{
+          dateRangeLabel,
+          pageNumber:i+1,
+          totalPages,
+          formattedDate:formattedDates[i],
+          staticCode:STATIC_CODE,
+        });
       });
     }
 
@@ -419,45 +577,82 @@
         const pdfDoc=await PDFDocument.create();
         const font=await pdfDoc.embedFont(StandardFonts.Helvetica);
         const margin=24;
-        const titleSize=20;
-        const subSize=11;
-        const titleGap=10;
+        const dateSize=18;
+        const smallSize=11;
+        const codeSize=16;
         const pageSize=[842,595];
-        const titleText=lastModel.title || 'Schedule';
+        const renderInfo=lastRenderDetails || {};
+        const formattedDates=(renderInfo.formattedDates && renderInfo.formattedDates.length?renderInfo.formattedDates:lastModel.dayHeaders.map(formatFullDayLabel));
+        const totalPages=renderInfo.totalPages || lastModel.dayHeaders.length;
+        const dateRangeLabel=renderInfo.dateRangeLabel || buildDateRangeLabel(lastModel);
+        const headerImageInfo=await loadHeaderImagePng();
+        const headerImage=await pdfDoc.embedPng(headerImageInfo.bytes);
+        const rawHeaderWidth=headerImage.width || headerImageInfo.width || 1;
+        const rawHeaderHeight=headerImage.height || headerImageInfo.height || 1;
+        const headerMaxWidth=320;
+        const headerImageWidth=Math.min(headerMaxWidth, rawHeaderWidth);
+        const headerImageHeight=rawHeaderHeight*(headerImageWidth/rawHeaderWidth);
         for(let i=0;i<lastModel.dayHeaders.length;i++){
           const label=lastModel.dayHeaders[i];
           const tmp=document.createElement('div');
-          const {svg}=drawDayCard(tmp,label,lastPerDay[i]);
+          const {svg}=drawDayCard(tmp,label,lastPerDay[i],{
+            dateRangeLabel,
+            pageNumber:i+1,
+            totalPages,
+            formattedDate:formattedDates[i],
+            staticCode:STATIC_CODE,
+          });
           const pngDataUrl=await svgToPngDataUrl(svg,{scale:2});
           const pngImage=await pdfDoc.embedPng(pngDataUrl);
           const page=pdfDoc.addPage(pageSize);
           const pageWidth=page.getWidth();
           const pageHeight=page.getHeight();
-          const titleBaseline=pageHeight-margin-titleSize;
-          page.drawText(`${titleText} — ${label}`,{x:margin,y:titleBaseline,size:titleSize,font,color:rgb(0.1,0.12,0.16)});
-          const subBaseline=titleBaseline-subSize-6;
+          const headerTop=pageHeight-margin;
+          const imageX=margin;
+          const imageY=headerTop-headerImageHeight;
+          page.drawImage(headerImage,{x:imageX,y:imageY,width:headerImageWidth,height:headerImageHeight});
+
+          const dateText=formattedDates[i] || formatFullDayLabel(label);
+          const infoX=imageX+headerImageWidth+24;
+          const dateY=headerTop-12;
+          page.drawText(dateText,{x:infoX,y:dateY,size:dateSize,font,color:rgb(0.1,0.12,0.16)});
           const shiftCount=lastPerDay[i].filter(r=>r.range).length;
-          const subText=`${shiftCount} shift${shiftCount===1?'':'s'}`;
-          page.drawText(subText,{x:margin,y:subBaseline,size:subSize,font,color:rgb(0.35,0.4,0.45)});
+          const shiftText=`${shiftCount} shift${shiftCount===1?'':'s'}`;
+          const shiftY=dateY-18;
+          page.drawText(shiftText,{x:infoX,y:shiftY,size:smallSize,font,color:rgb(0.35,0.4,0.45)});
+
+          let metaBaseline=imageY-12;
+          if(dateRangeLabel){
+            page.drawText(dateRangeLabel,{x:imageX,y:metaBaseline,size:smallSize,font,color:rgb(0.35,0.4,0.45)});
+            metaBaseline-=18;
+          }
+          page.drawText(STATIC_CODE,{x:imageX,y:metaBaseline,size:codeSize,font,color:rgb(0.1,0.12,0.16)});
+
+          const chartTop=Math.min(imageY, metaBaseline, shiftY)-24;
           const availableWidth=pageWidth-margin*2;
-          const availableHeight=subBaseline-titleGap-margin;
+          const availableHeight=Math.max(chartTop-margin, 100);
           let targetWidth=availableWidth;
           let targetHeight=pngImage.height*(targetWidth/pngImage.width);
           if(targetHeight>availableHeight){
             targetHeight=availableHeight;
             targetWidth=pngImage.width*(targetHeight/pngImage.height);
           }
-          const imageX=margin+(availableWidth-targetWidth)/2;
-          const imageTop=subBaseline-titleGap;
-          const imageY=Math.max(margin,imageTop-targetHeight);
-          page.drawImage(pngImage,{x:imageX,y:imageY,width:targetWidth,height:targetHeight});
+          const chartX=margin+(availableWidth-targetWidth)/2;
+          const chartY=Math.max(margin, chartTop-targetHeight);
+          page.drawImage(pngImage,{x:chartX,y:chartY,width:targetWidth,height:targetHeight});
+
+          const pageText=`Page ${i+1} of ${totalPages}`;
+          const footerSize=smallSize;
+          const textWidth=font.widthOfTextAtSize(pageText,footerSize);
+          const footerY=Math.max(10, margin-12);
+          page.drawText(pageText,{x:pageWidth-margin-textWidth,y:footerY,size:footerSize,font,color:rgb(0.35,0.4,0.45)});
         }
         const pdfBytes=await pdfDoc.save();
         const blob=new Blob([pdfBytes],{type:'application/pdf'});
         const url=URL.createObjectURL(blob);
         const link=document.createElement('a');
         link.href=url;
-        link.download=`${sanitizeFileName(titleText)}.pdf`;
+        link.download=`${sanitizeFileName(dateRangeLabel || 'schedule')}.pdf`;
         document.body.appendChild(link);
         link.click();
         link.remove();
