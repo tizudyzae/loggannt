@@ -41,6 +41,7 @@
     .colheader{fill:#000;font-size:12px;font-weight:700;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif;text-transform:uppercase}
     .rowlabel{fill:#000;font-size:12px;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
     .gridline{stroke:#d0d0d0;stroke-width:1}
+    .gridline-minor{stroke:#ededed;stroke-width:.6}
     .divider{stroke:#000;stroke-width:1.2}
     .bar{fill:#7b7b7b}
     .barlabel{fill:#fff;font-size:11px;font-weight:700;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
@@ -88,7 +89,16 @@
     const pad2=n=>String(n).padStart(2,'0');
     const toMin=(h,m)=>parseInt(h,10)*60+parseInt(m,10);
     const fmtHM=mins=>{const m=((mins%1440)+1440)%1440;const h=Math.floor(m/60), mm=m%60;return `${pad2(h)}:${pad2(mm)}`};
-    const fmtHMDisplay=mins=>mins>0 && mins%1440===0 ? '24:00' : fmtHM(mins);
+    const fmtHMDisplay=mins=>{
+      if(Number.isNaN(mins)) return '';
+      const total=((mins%1440)+1440)%1440;
+      const hours=Math.floor(total/60);
+      const minutes=total%60;
+      const suffix=hours>=12?'pm':'am';
+      const hour12=(hours%12)||12;
+      const minutePart=minutes===0?'':`:${pad2(minutes)}`;
+      return `${hour12}${minutePart}${suffix}`;
+    };
 
     // ---------- Parsing ----------
     function parseExport(text){
@@ -158,6 +168,7 @@
       .colheader{fill:#000;font-size:12px;font-weight:700;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif;text-transform:uppercase}
       .rowlabel{fill:#000;font-size:12px;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
       .gridline{stroke:#d0d0d0;stroke-width:1}
+      .gridline-minor{stroke:#ededed;stroke-width:.6}
       .divider{stroke:#000;stroke-width:1.2}
       .bar{fill:#7b7b7b}
       .barlabel{fill:#fff;font-size:11px;font-weight:700;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
@@ -224,23 +235,26 @@
 
       const toX=m=>P+leftAxis+(m/1440)*innerW;
       const axisY=P+26;
-      for(let h=0;h<=24;h++){
-        const x=toX(h*60);
-        const axisText=document.createElementNS(svgNS,'text');
-        axisText.setAttribute('x',x);
-        axisText.setAttribute('y',axisY+12);
-        axisText.setAttribute('text-anchor','middle');
-        axisText.setAttribute('class','axislabel');
-        axisText.textContent=fmtHMDisplay(h*60);
-        svg.appendChild(axisText);
+      for(let minute=0;minute<=1440;minute+=15){
+        const x=toX(minute);
+        const isHour=minute%60===0;
+        if(isHour && minute<1440){
+          const axisText=document.createElementNS(svgNS,'text');
+          axisText.setAttribute('x',x);
+          axisText.setAttribute('y',axisY+12);
+          axisText.setAttribute('text-anchor','middle');
+          axisText.setAttribute('class','axislabel');
+          axisText.textContent=fmtHMDisplay(minute);
+          svg.appendChild(axisText);
+        }
 
-        if(h>0 && h<24){
+        if(minute>0 && minute<1440){
           const vline=document.createElementNS(svgNS,'line');
           vline.setAttribute('x1',x);
           vline.setAttribute('y1',P+headerGap);
           vline.setAttribute('x2',x);
           vline.setAttribute('y2',H-P);
-          vline.setAttribute('class','gridline');
+          vline.setAttribute('class',isHour?'gridline':'gridline-minor');
           svg.appendChild(vline);
         }
       }
@@ -415,7 +429,8 @@
             targetWidth=pngImage.width*(targetHeight/pngImage.height);
           }
           const imageX=margin+(availableWidth-targetWidth)/2;
-          const imageY=margin;
+          const imageTop=subBaseline-titleGap;
+          const imageY=Math.max(margin,imageTop-targetHeight);
           page.drawImage(pngImage,{x:imageX,y:imageY,width:targetWidth,height:targetHeight});
         }
         const pdfBytes=await pdfDoc.save();
