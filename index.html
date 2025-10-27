@@ -62,7 +62,6 @@
       <textarea id="input"></textarea>
       <div class="side">
         <button class="btn" id="btnRender">Render</button>
-        <button class="btn" id="btnLoadSample" style="background:linear-gradient(180deg,#29b475,#1a8d59)">Load Sample</button>
         <button class="btn" id="btnExport" style="background:linear-gradient(180deg,#f59e0b,#d97706)">Export PDF</button>
         <div class="row">
           <label class="switch"><input type="checkbox" id="chkFallback" checked><span class="slider"></span></label>
@@ -234,23 +233,24 @@
     }
 
     // ---------- Sample & Wire-up ----------
-    const SAMPLE=`Wall Schedule Classic Review \n5 departments  (Week 26/10/2025) \n\nEmployee,Sun(26/10),Mon(27/10),Tue(28/10),Wed(29/10),Thu(30/10),Fri(31/10),Sat(01/11),Total Hours,\nBonds  Jacqueline,,SCH:6:0 - 14:30 Daily Total: 8 Hrs ,SCH:6:0 - 14:30 Daily Total: 8 Hrs ,SCH:6:0 - 14:30 Daily Total: 8 Hrs ,SCH:6:0 - 14:0 Daily Total: 7 Hrs 30 Mins,SCH:6:0 - 14:0 Daily Total: 7 Hrs 30 Mins,,39.00,\nCrowter  George (59\`7078),SCH:14:30 - 23:0 Daily Total: 8 Hrs ,,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,,SCH:15:0 - 23:0 Daily Total: 7 Hrs 30 Mins,SCH:15:0 - 23:0 Daily Total: 7 Hrs 30 Mins,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,39.00,\nCurd  Debbie,,,SCH:8:0 - 16:0 Daily Total: 7 Hrs 30 Mins,SCH:8:0 - 16:0 Daily Total: 7 Hrs 30 Mins,SCH:8:0 - 16:0 Daily Total: 7 Hrs 30 Mins,SCH:8:0 - 16:0 Daily Total: 7 Hrs 30 Mins,,30.00,\nGambardella  Pauline,,,SCH:5:0 - 13:30 Daily Total: 8 Hrs ,,SCH:5:0 - 13:30 Daily Total: 8 Hrs ,SCH:5:0 - 13:30 Daily Total: 8 Hrs ,,24.00,\nGardhouse  Wendi,Daily Total: 0 Hrs,,,Daily Total: 0 Hrs,Daily Total: 0 Hrs,,,,\nGhaderi  Alireza,,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,,SCH:16:0 - 23:0 Daily Total: 7 Hrs ,,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,31.00,\nMarum  Harvey,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,,,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,32.00,\nMason  Samantha,SCH:5:0 - 14:30 Daily Total: 9 Hrs ,SCH:5:0 - 14:30 Daily Total: 9 Hrs ,SCH:5:0 - 14:30 Daily Total: 9 Hrs ,SCH:5:0 - 14:30 Daily Total: 9 Hrs ,SCH:5:0 - 14:30 Daily Total: 9 Hrs ,,,45.00,\nNorris  Elizabeth,Daily Total: 0 Hrs,,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,SCH:10:0 - 18:0 Daily Total: 7 Hrs 30 Mins,,SCH:5:0 - 14:30 Daily Total: 9 Hrs ,SCH:5:0 - 13:30 Daily Total: 8 Hrs ,32.50,\nStirling  Joshua,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,,,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,,SCH:5:0 - 14:30 Daily Total: 9 Hrs ,33.00,\nThapa  Kiran,SCH:5:0 - 13:30 Daily Total: 8 Hrs ,SCH:5:0 - 13:30 Daily Total: 8 Hrs ,Daily Total: 0 Hrs,Daily Total: 0 Hrs,,Daily Total: 0 Hrs,SCH:5:0 - 13:30 Daily Total: 8 Hrs ,24.00,\nUdohaya  Nathan,SCH:9:0 - 17:0 Daily Total: 7 Hrs 30 Mins,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,,,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,SCH:10:0 - 23:0 Daily Total: 12 Hrs 30 Mins,44.00,\nWaters  Diane,Daily Total: 0 Hrs,Daily Total: 0 Hrs,Daily Total: 0 Hrs,SCH:5:0 - 13:30 Daily Total: 8 Hrs ,,,Daily Total: 0 Hrs,8.00,\nWaters  Reigan,,,,,,,,,\nWilliams  Laura,SCH:5:0 - 14:30 Daily Total: 9 Hrs ,Daily Total: 0 Hrs,,SCH:14:30 - 23:0 Daily Total: 8 Hrs ,,Daily Total: 0 Hrs,Daily Total: 0 Hrs,17.00,`;
-
-    document.getElementById('btnLoadSample').addEventListener('click',()=>{document.getElementById('input').value=SAMPLE});
     document.getElementById('btnRender').addEventListener('click',()=>{
-      const text=document.getElementById('input').value.trim()||SAMPLE; render(text);
+      const text=document.getElementById('input').value.trim();
+      if(!text){ alert('Paste an export into the text area before rendering.'); return; }
+      render(text);
     });
     document.getElementById('btnExport').addEventListener('click',exportPDF);
     document.getElementById('chkFallback').addEventListener('change',()=>{
-      const text=document.getElementById('input').value.trim()||SAMPLE; render(text);
+      const text=document.getElementById('input').value.trim();
+      if(text) render(text);
     });
     document.getElementById('chkSplit').addEventListener('change',()=>{
-      const text=document.getElementById('input').value.trim()||SAMPLE; render(text);
+      const text=document.getElementById('input').value.trim();
+      if(text) render(text);
     });
 
     // First paint
     document.addEventListener('DOMContentLoaded',()=>{
-      document.getElementById('input').value=SAMPLE; render(SAMPLE);
+      document.getElementById('input').value='';
     });
   </script>
 </body>
