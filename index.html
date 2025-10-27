@@ -3,49 +3,58 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Weekly Shift Gantt — HTML Demo</title>
+  <title>Daily Colleague Summary — HTML Demo</title>
   <style>
     :root {
-      --bg: #0b0c0f; --panel: #141821; --ink: #e8eef8; --muted: #a9b3c7;
-      --grid: #2a3242; --shadow: 0 10px 24px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.25);
-      --bar1:#79d2a6; --bar2:#f8c36a; --bar3:#e393ff; --bar4:#ff8f8f; --bar5:#8fd0ff; --bar6:#a3f59b; --bar7:#ffd27f;
+      --page-bg:#fff; --ink:#111; --muted:#555; --grid:#d4d4d4; --axis:#888; --accent:#4a4a4a;
     }
     *{box-sizing:border-box}
-    body{margin:0;padding:24px;font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Arial;color:var(--ink);background:radial-gradient(1200px 800px at 10% -10%,#142033 0%,#0b0c0f 55%)}
-    h1{font-size:20px;margin:0 0 10px;font-weight:700}
-    h2{font-size:16px;margin:0 0 8px;font-weight:700;color:var(--ink)}
-    p{color:var(--muted);margin:6px 0 14px}
-    .wrap{max-width:1200px;margin:0 auto}
-    .controls{display:grid;gap:10px;grid-template-columns:1fr auto;align-items:start;background:var(--panel);border:1px solid #223;border-radius:14px;padding:14px;box-shadow:var(--shadow)}
-    textarea{width:100%;height:200px;resize:vertical;color:var(--ink);background:#0f1219;border:1px solid #223;border-radius:10px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
-    .btn{appearance:none;border:0;border-radius:10px;padding:10px 14px;background:linear-gradient(180deg,#2b5cff,#1b47d8);color:#fff;font-weight:650;cursor:pointer;box-shadow:var(--shadow)}
-    .btn[disabled]{opacity:.6;cursor:not-allowed;box-shadow:none}
+    body{margin:0;padding:32px;font:13px/1.4 "Helvetica Neue",Arial,sans-serif;color:var(--ink);background:var(--page-bg)}
+    h1{font-size:22px;margin:0;font-weight:600;color:var(--ink)}
+    p{color:var(--muted);margin:4px 0 16px}
+    .wrap{max-width:1180px;margin:0 auto}
+    .controls{display:grid;gap:12px;grid-template-columns:2fr minmax(220px,1fr);align-items:start;border:1px solid #cfcfcf;padding:16px 18px;border-radius:6px;background:#fafafa}
+    textarea{width:100%;height:200px;resize:vertical;color:var(--ink);background:#fff;border:1px solid #cfcfcf;border-radius:4px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+    .btn{appearance:none;border:1px solid #2d4a83;border-radius:4px;padding:9px 14px;background:linear-gradient(180deg,#4867a9,#324a7a);color:#fff;font-weight:600;cursor:pointer}
+    .btn[disabled]{opacity:.65;cursor:not-allowed}
     .btn:active{transform:translateY(1px)}
     .side{display:flex;flex-direction:column;gap:10px;min-width:220px}
     .row{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px}
-    .charts{margin-top:16px;display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
-    .daycard{background:var(--panel);border:1px solid #223;border-radius:14px;padding:12px;box-shadow:var(--shadow);overflow:hidden}
-    .subline{color:var(--muted);font-size:12px}
-    .chartbox{width:100%;aspect-ratio:16/10;background:#0f1219;border:1px solid #223;border-radius:12px;overflow:hidden;position:relative}
-    svg{width:100%;height:100%;display:block}
+    .meta{
+      margin:22px 0 16px;
+      display:flex;
+      justify-content:space-between;
+      gap:16px;
+      border-bottom:2px solid #000;
+      padding-bottom:8px;
+    }
+    .meta-primary{font-size:20px;font-weight:600}
+    .meta-secondary{font-size:14px;color:var(--muted)}
+    .sheets{display:flex;flex-direction:column;gap:26px}
+    .sheet{border:1px solid #000;padding:16px 16px 14px;background:#fff}
+    .sheet-heading{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px}
+    .sheet-heading h2{margin:0;font-size:18px;font-weight:600}
+    .sheet-heading .subline{font-size:12px;color:var(--muted)}
+    .sheet svg{width:100%;height:auto;display:block}
+    .axislabel{fill:var(--axis);font-size:11px}
+    .colheader{fill:var(--ink);font-size:12px;font-weight:600}
+    .rowlabel{fill:var(--ink);font-size:12px;dominant-baseline:middle}
     .gridline{stroke:var(--grid);stroke-width:1}
-    .axislabel{fill:var(--muted);font-size:11px}
-    .emplabel{fill:var(--ink);font-size:12px;dominant-baseline:middle}
-    .bar{rx:6;ry:6}
-    .tooltip{position:absolute;pointer-events:none;background:#000;color:#fff;padding:6px 8px;border-radius:8px;font-size:12px;opacity:0;transform:translate(-50%,-120%);white-space:nowrap;border:1px solid #333}
-    .footer{margin-top:18px;color:var(--muted);font-size:12px;text-align:center}
+    .divider{stroke:#000;stroke-width:1}
+    .bar{fill:var(--accent)}
+    .barlabel{fill:#fff;font-size:11px;font-weight:600;dominant-baseline:middle}
+    .footer{margin-top:24px;color:var(--muted);font-size:12px;text-align:center}
     .switch{position:relative;display:inline-block;width:46px;height:24px}
     .switch input{opacity:0;width:0;height:0}
-    .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#334;border-radius:999px}
-    .slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s}
-    input:checked + .slider{background:#29b475}
-    input:checked + .slider:before{transform:translateX(22px)}
-
-  </style>
+    .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#cfd5e2;border-radius:999px;border:1px solid #a3afc5}
+    .slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;top:2px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+    input:checked + .slider{background:#6aa871;border-color:#4e8d58}
+    input:checked + .slider:before{transform:translateX(20px)}
+</style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Weekly Shift Gantt — HTML Demo</h1>
+    <h1>Daily Colleague Summary</h1>
     <p>Paste your raw export and hit <b>Render</b>. By default we show <b>Whole Shift</b> ranges; if a day has none, we can <i>fallback</i> to the first <code>SCH:</code> range so you still see coverage.</p>
 
     <div class="controls">
@@ -64,20 +73,21 @@
       </div>
     </div>
 
-    <div id="meta" class="row" style="margin-top:8px"></div>
-    <div class="charts" id="charts"></div>
+    <div class="meta">
+      <div id="metaTitle" class="meta-primary"></div>
+      <div id="metaSub" class="meta-secondary"></div>
+    </div>
+    <div class="sheets" id="sheets"></div>
       <div class="footer">Client‑side only. Uses pdf-lib to turn the SVG output into shareable landscape PDFs.</div>
   </div>
-
-  <div id="tooltip" class="tooltip"></div>
 
   <script src="pdf-lib.min.js"></script>
   <script>
     // ---------- Utilities ----------
-    const DAY_COLORS=["var(--bar1)","var(--bar2)","var(--bar3)","var(--bar4)","var(--bar5)","var(--bar6)","var(--bar7)"];
     const pad2=n=>String(n).padStart(2,'0');
     const toMin=(h,m)=>parseInt(h,10)*60+parseInt(m,10);
     const fmtHM=mins=>{const m=((mins%1440)+1440)%1440;const h=Math.floor(m/60), mm=m%60;return `${pad2(h)}:${pad2(mm)}`};
+    const fmtHMDisplay=mins=>mins>0 && mins%1440===0 ? '24:00' : fmtHM(mins);
 
     // ---------- Parsing ----------
     function parseExport(text){
@@ -112,98 +122,190 @@
       return {start:s,end:e};
     }
 
+    function segmentsForRange(range,splitMidnight){
+      if(!range) return [];
+      const segments=[];
+      let start=Math.max(0,Math.min(1440,range.start));
+      let end=Math.max(0,range.end);
+      if(splitMidnight && end>1440){
+        segments.push({start,end:1440});
+        let remaining=end-1440;
+        while(remaining>0){
+          const segEnd=Math.min(remaining,1440);
+          if(segEnd>0) segments.push({start:0,end:segEnd});
+          remaining-=1440;
+        }
+        return segments;
+      }
+      end=Math.min(end,1440);
+      if(end<=start) return [];
+      return [{start,end}];
+    }
+
     function buildPerDay(model,opts){
-      const perDay=model.dayHeaders.map(()=>[]);
-      model.rows.forEach(r=>{
-        r.days.forEach((cell,idx)=>{
+      return model.dayHeaders.map((_,dayIdx)=>{
+        return model.rows.map(row=>{
+          const cell=row.days[dayIdx];
           const rng=pickRange(cell,opts);
-          if(rng) perDay[idx].push({name:r.name, ...rng});
+          return {name:row.name, range:rng, segments:segmentsForRange(rng,opts.splitMidnight)};
         });
       });
-      return perDay;
     }
 
     // ---------- Layout & Draw ----------
-    function layout(items){
-      const sorted=items.slice().sort((a,b)=>a.start-b.start);
-      const lanes=[]; const placed=[];
-      for(const it of sorted){
-        let lane=lanes.findIndex(end=>it.start>=end);
-        if(lane===-1){lane=lanes.length;lanes.push(-1)}
-        lanes[lane]=it.end; placed.push({...it,lane});
-      }
-      return placed;
-    }
-
-    function splitAtMidnight(it){
-      // returns one or two segments within [0,1440)
-      const start=it.start%1440; const end=it.end%1440; const segments=[];
-      if(it.end<=1440 && end>=start){ segments.push([start,end]); }
-      else { segments.push([start,1440]); segments.push([0,end]); }
-      return segments;
-    }
-
-    function drawDayCard(container,label,items,color,{splitMidnight}){
-      const placed=layout(items);
-      const P=14,W=900,rowH=24,leftAxis=130,innerW=W-leftAxis-P*2-10;
-      const H=Math.max(140, 40+placed.length*28);
+    function drawDayCard(container,label,rows){
+      const P=24,W=1120,rowH=26,leftAxis=220,innerW=W-leftAxis-P*2;
+      const headerGap=38;
+      const H=P+headerGap+rowH*rows.length+P;
       const svgNS='http://www.w3.org/2000/svg';
       const svg=document.createElementNS(svgNS,'svg');
       svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
 
-      // grid
+      const bg=document.createElementNS(svgNS,'rect');
+      bg.setAttribute('x',0);bg.setAttribute('y',0);bg.setAttribute('width',W);bg.setAttribute('height',H);bg.setAttribute('fill','#fff');
+      svg.appendChild(bg);
+
+      const border=document.createElementNS(svgNS,'rect');
+      border.setAttribute('x',0);border.setAttribute('y',0);border.setAttribute('width',W);border.setAttribute('height',H);
+      border.setAttribute('fill','none');border.setAttribute('stroke','#000');border.setAttribute('stroke-width','1');
+      svg.appendChild(border);
+
+      const headerBand=document.createElementNS(svgNS,'rect');
+      headerBand.setAttribute('x',P);headerBand.setAttribute('y',P+12);
+      headerBand.setAttribute('width',W-P*2);headerBand.setAttribute('height',20);
+      headerBand.setAttribute('fill','#f5f5f5');
+      svg.appendChild(headerBand);
+
+      const columnDivider=document.createElementNS(svgNS,'line');
+      columnDivider.setAttribute('x1',P+leftAxis);
+      columnDivider.setAttribute('y1',P);
+      columnDivider.setAttribute('x2',P+leftAxis);
+      columnDivider.setAttribute('y2',H-P);
+      columnDivider.setAttribute('class','divider');
+      svg.appendChild(columnDivider);
+
+      const headerLine=document.createElementNS(svgNS,'line');
+      headerLine.setAttribute('x1',P);headerLine.setAttribute('y1',P+headerGap);
+      headerLine.setAttribute('x2',W-P);headerLine.setAttribute('y2',P+headerGap);
+      headerLine.setAttribute('class','divider');
+      svg.appendChild(headerLine);
+
+      const nameHeader=document.createElementNS(svgNS,'text');
+      nameHeader.setAttribute('x',P+4);nameHeader.setAttribute('y',P+24);
+      nameHeader.setAttribute('class','colheader');
+      nameHeader.textContent='Colleague Names';
+      svg.appendChild(nameHeader);
+
+      const timeHeader=document.createElementNS(svgNS,'text');
+      timeHeader.setAttribute('x',P+leftAxis+4);
+      timeHeader.setAttribute('y',P+24);
+      timeHeader.setAttribute('class','colheader');
+      timeHeader.textContent='Time';
+      svg.appendChild(timeHeader);
+
+      const toX=m=>P+leftAxis+(m/1440)*innerW;
+      const axisY=P+26;
       for(let h=0;h<=24;h++){
-        const x=P+leftAxis+(h/24)*innerW;
-        const line=document.createElementNS(svgNS,'line');
-        line.setAttribute('x1',x);line.setAttribute('y1',10);line.setAttribute('x2',x);line.setAttribute('y2',H-10);line.setAttribute('class','gridline');
-        svg.appendChild(line);
-        const t=document.createElementNS(svgNS,'text');
-        t.setAttribute('x',x);t.setAttribute('y',20);t.setAttribute('text-anchor','middle');t.setAttribute('class','axislabel');t.textContent=pad2(h);
-        svg.appendChild(t);
+        const x=toX(h*60);
+        const axisText=document.createElementNS(svgNS,'text');
+        axisText.setAttribute('x',x);
+        axisText.setAttribute('y',axisY+12);
+        axisText.setAttribute('text-anchor','middle');
+        axisText.setAttribute('class','axislabel');
+        axisText.textContent=fmtHMDisplay(h*60);
+        svg.appendChild(axisText);
+
+        if(h>0 && h<24){
+          const vline=document.createElementNS(svgNS,'line');
+          vline.setAttribute('x1',x);
+          vline.setAttribute('y1',P+headerGap);
+          vline.setAttribute('x2',x);
+          vline.setAttribute('y2',H-P);
+          vline.setAttribute('class','gridline');
+          svg.appendChild(vline);
+        }
       }
 
-      const tooltip=document.getElementById('tooltip');
-      const toX=m=>P+leftAxis+(m/1440)*innerW;
-      const y0=34;
-      placed.forEach((it,i)=>{
-        const y=y0+i*rowH;
+      const bodyTop=P+headerGap;
+      rows.forEach((row,idx)=>{
+        const y=bodyTop+idx*rowH;
+        if(idx>0){
+          const baseline=document.createElementNS(svgNS,'line');
+          baseline.setAttribute('x1',P);
+          baseline.setAttribute('y1',y);
+          baseline.setAttribute('x2',W-P);
+          baseline.setAttribute('y2',y);
+          baseline.setAttribute('class','gridline');
+          svg.appendChild(baseline);
+        }
+
         const name=document.createElementNS(svgNS,'text');
-        name.setAttribute('x',P+4);name.setAttribute('y',y+rowH/2);name.setAttribute('class','emplabel');name.textContent=it.name;svg.appendChild(name);
-        const durMins=it.end-it.start; const hours=(durMins/60).toFixed(2);
-        const segs=splitMidnight && (it.end%1440 < it.start%1440 || it.end>1440) ? splitAtMidnight(it): [[it.start%1440,it.end%1440]];
-        segs.forEach(([s,e])=>{
-          const r=document.createElementNS(svgNS,'rect');
-          r.setAttribute('x',toX(s)); r.setAttribute('y',y+3);
-          r.setAttribute('width',Math.max(4,toX(e)-toX(s))); r.setAttribute('height',rowH-6);
-          r.setAttribute('fill',color); r.setAttribute('class','bar');
-          r.addEventListener('mouseenter',ev=>{tooltip.textContent=`${it.name} — ${fmtHM(it.start)}–${fmtHM(it.end)} (${hours} h)`;const b=ev.currentTarget.getBoundingClientRect();tooltip.style.left=(b.left+b.width/2)+'px';tooltip.style.top=b.top+'px';tooltip.style.opacity=1});
-          r.addEventListener('mouseleave',()=>tooltip.style.opacity=0);
-          svg.appendChild(r);
-        });
+        name.setAttribute('x',P+6);
+        name.setAttribute('y',y+rowH/2);
+        name.setAttribute('class','rowlabel');
+        name.textContent=row.name;
+        svg.appendChild(name);
+
+        if(row.range){
+          const labelText=`${fmtHMDisplay(row.range.start)} - ${fmtHMDisplay(row.range.end)}`;
+          row.segments.forEach((seg,segIdx)=>{
+            const segY=y+4;
+            const segHeight=rowH-8;
+            const rect=document.createElementNS(svgNS,'rect');
+            rect.setAttribute('x',toX(seg.start));
+            rect.setAttribute('y',segY);
+            rect.setAttribute('width',Math.max(2,toX(seg.end)-toX(seg.start)));
+            rect.setAttribute('height',segHeight);
+            rect.setAttribute('class','bar');
+            svg.appendChild(rect);
+
+            if(segIdx===0){
+              const label=document.createElementNS(svgNS,'text');
+              label.setAttribute('x',toX(seg.start)+4);
+              label.setAttribute('y',segY+segHeight/2+1);
+              label.setAttribute('class','barlabel');
+              label.textContent=labelText;
+              svg.appendChild(label);
+            }
+          });
+        }
       });
 
-      const card=document.createElement('div'); card.className='daycard';
-      const h2=document.createElement('h2'); h2.textContent=label; card.appendChild(h2);
-      const sub=document.createElement('div'); sub.className='subline'; sub.textContent=`${items.length} shift${items.length===1?'':'s'}`; card.appendChild(sub);
-      const box=document.createElement('div'); box.className='chartbox'; box.appendChild(svg); card.appendChild(box);
-      container.appendChild(card);
+      const finalLine=document.createElementNS(svgNS,'line');
+      finalLine.setAttribute('x1',P);
+      finalLine.setAttribute('y1',bodyTop+rows.length*rowH);
+      finalLine.setAttribute('x2',W-P);
+      finalLine.setAttribute('y2',bodyTop+rows.length*rowH);
+      finalLine.setAttribute('class','divider');
+      svg.appendChild(finalLine);
+
+      const section=document.createElement('section');
+      section.className='sheet';
+      const heading=document.createElement('div');
+      heading.className='sheet-heading';
+      const h2=document.createElement('h2'); h2.textContent=label; heading.appendChild(h2);
+      const activeCount=rows.filter(r=>r.range).length;
+      const sub=document.createElement('div'); sub.className='subline'; sub.textContent=`${activeCount} shift${activeCount===1?'':'s'}`; heading.appendChild(sub);
+      section.appendChild(heading);
+      section.appendChild(svg);
+      container.appendChild(section);
       return {svg};
     }
 
     // ---------- Render / Export ----------
-    let lastModel=null,lastPerDay=null,lastOpts={fallbackSCH:true,splitMidnight:true};
+    let lastModel=null,lastPerDay=null;
 
     function render(text){
       const opts={fallbackSCH:document.getElementById('chkFallback').checked, splitMidnight:document.getElementById('chkSplit').checked};
       let model; try{ model=parseExport(text);}catch(e){ alert(e.message); return; }
       const perDay=buildPerDay(model,opts);
-      lastModel=model; lastPerDay=perDay; lastOpts=opts;
+      lastModel=model; lastPerDay=perDay;
 
-      document.getElementById('meta').textContent=`${model.title} — ${model.sub}`;
-      const charts=document.getElementById('charts'); charts.innerHTML='';
+      document.getElementById('metaTitle').textContent=model.title || '';
+      document.getElementById('metaSub').textContent=model.sub || '';
+      const sheets=document.getElementById('sheets'); sheets.innerHTML='';
       model.dayHeaders.forEach((label,i)=>{
-        const color=DAY_COLORS[i%DAY_COLORS.length];
-        drawDayCard(charts,label,perDay[i],color,opts);
+        drawDayCard(sheets,label,perDay[i]);
       });
     }
 
@@ -273,7 +375,7 @@
         for(let i=0;i<lastModel.dayHeaders.length;i++){
           const label=lastModel.dayHeaders[i];
           const tmp=document.createElement('div');
-          const {svg}=drawDayCard(tmp,label,lastPerDay[i],DAY_COLORS[i%DAY_COLORS.length],lastOpts);
+          const {svg}=drawDayCard(tmp,label,lastPerDay[i]);
           const pngDataUrl=await svgToPngDataUrl(svg,{scale:2});
           const pngImage=await pdfDoc.embedPng(pngDataUrl);
           const page=pdfDoc.addPage(pageSize);
@@ -282,7 +384,7 @@
           const titleBaseline=pageHeight-margin-titleSize;
           page.drawText(`${titleText} — ${label}`,{x:margin,y:titleBaseline,size:titleSize,font,color:rgb(0.1,0.12,0.16)});
           const subBaseline=titleBaseline-subSize-6;
-          const shiftCount=lastPerDay[i].length;
+          const shiftCount=lastPerDay[i].filter(r=>r.range).length;
           const subText=`${shiftCount} shift${shiftCount===1?'':'s'}`;
           page.drawText(subText,{x:margin,y:subBaseline,size:subSize,font,color:rgb(0.35,0.4,0.45)});
           const availableWidth=pageWidth-margin*2;
