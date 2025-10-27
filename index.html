@@ -16,10 +16,11 @@
       --sheet-border:#000;
       --sheet-header-band:#efefef;
       --sheet-title-size:26px;
-      --sheet-range-size:14px;
-      --sheet-code-size:26px;
+      --sheet-range-size:22px;
+      --sheet-code-size:21px;
       --sheet-date-size:16px;
       --sheet-footer-size:12px;
+      --time-label-size:11px;
     }
     *{box-sizing:border-box}
     body{margin:0;padding:32px;font:12px/1.35 "Arial","Helvetica Neue",Helvetica,sans-serif;color:var(--ink);background:var(--page-bg)}
@@ -69,7 +70,7 @@
     .sheet svg{width:100%;height:auto;display:block}
     .sheet-footer{margin-top:auto;font-size:var(--sheet-footer-size);color:var(--muted);text-align:right}
     .sheet-footnote{font-size:var(--sheet-footer-size);color:var(--muted);text-align:right;white-space:pre-wrap}
-    .axislabel{fill:#000;font-size:11px;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
+    .axislabel{fill:#000;font-size:var(--time-label-size,11px);font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
     .colheader{fill:#000;font-size:12px;font-weight:700;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif;text-transform:uppercase}
     .rowlabel{fill:#000;font-size:12px;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
     .gridline{stroke:#d0d0d0;stroke-width:1}
@@ -141,7 +142,7 @@
               </label>
               <label class="ctrl">
                 <span>Name column width</span>
-                <input type="number" id="inpNameWidth" value="240" min="140" max="400">
+                <input type="number" id="inpNameWidth" value="140" min="140" max="400" disabled>
               </label>
               <label class="ctrl">
                 <span>Header height</span>
@@ -159,15 +160,19 @@
               </label>
               <label class="ctrl">
                 <span>Subtitle size</span>
-                <input type="number" id="inpRangeSize" value="14" min="10" max="28">
+                <input type="number" id="inpRangeSize" value="22" min="10" max="28" disabled>
               </label>
               <label class="ctrl">
                 <span>Code size</span>
-                <input type="number" id="inpCodeSize" value="26" min="12" max="48">
+                <input type="number" id="inpCodeSize" value="21" min="12" max="48" disabled>
               </label>
               <label class="ctrl">
                 <span>Date size</span>
                 <input type="number" id="inpDateSize" value="16" min="12" max="36">
+              </label>
+              <label class="ctrl">
+                <span>Time label size</span>
+                <input type="number" id="inpTimeLabelSize" value="11" min="8" max="32">
               </label>
               <label class="ctrl">
                 <span>Footer size</span>
@@ -326,14 +331,15 @@
       footerNote:'',
       rowHeight:28,
       chartWidth:1150,
-      nameColumnWidth:240,
+      nameColumnWidth:140,
       headerHeight:36,
       padding:14,
       titleSize:26,
-      subtitleSize:14,
-      codeSize:26,
+      subtitleSize:22,
+      codeSize:21,
       dateSize:16,
       footerSize:12,
+      timeLabelSize:11,
       barColor:'#4b4b4b',
       barLabelColor:'#ffffff',
       headerBandColor:'#efefef',
@@ -369,14 +375,15 @@
       layout.footerNote=readControlValue('inpFooterNote').trim();
       layout.rowHeight=readNumberValue('inpRowHeight',DEFAULT_LAYOUT.rowHeight);
       layout.chartWidth=readNumberValue('inpChartWidth',DEFAULT_LAYOUT.chartWidth);
-      layout.nameColumnWidth=readNumberValue('inpNameWidth',DEFAULT_LAYOUT.nameColumnWidth);
+      layout.nameColumnWidth=DEFAULT_LAYOUT.nameColumnWidth;
       layout.headerHeight=readNumberValue('inpHeaderHeight',DEFAULT_LAYOUT.headerHeight);
       layout.padding=readNumberValue('inpPadding',DEFAULT_LAYOUT.padding);
       layout.titleSize=readNumberValue('inpTitleSize',DEFAULT_LAYOUT.titleSize);
-      layout.subtitleSize=readNumberValue('inpRangeSize',DEFAULT_LAYOUT.subtitleSize);
-      layout.codeSize=readNumberValue('inpCodeSize',DEFAULT_LAYOUT.codeSize);
+      layout.subtitleSize=DEFAULT_LAYOUT.subtitleSize;
+      layout.codeSize=DEFAULT_LAYOUT.codeSize;
       layout.dateSize=readNumberValue('inpDateSize',DEFAULT_LAYOUT.dateSize);
       layout.footerSize=readNumberValue('inpFooterSize',DEFAULT_LAYOUT.footerSize);
+      layout.timeLabelSize=readNumberValue('inpTimeLabelSize',DEFAULT_LAYOUT.timeLabelSize);
       layout.barColor=readControlValue('inpBarColor')||DEFAULT_LAYOUT.barColor;
       layout.barLabelColor=readControlValue('inpBarLabelColor')||DEFAULT_LAYOUT.barLabelColor;
       layout.headerBandColor=readControlValue('inpHeaderBandColor')||DEFAULT_LAYOUT.headerBandColor;
@@ -401,6 +408,7 @@
       style.setProperty('--sheet-code-size',`${layout.codeSize}px`);
       style.setProperty('--sheet-date-size',`${layout.dateSize}px`);
       style.setProperty('--sheet-footer-size',`${layout.footerSize}px`);
+      style.setProperty('--time-label-size',`${layout.timeLabelSize}px`);
       style.setProperty('--bar-color',layout.barColor);
       style.setProperty('--bar-label-color',layout.barLabelColor);
       style.setProperty('--header-band-color',layout.headerBandColor);
@@ -422,8 +430,9 @@
     function buildSvgStyleBlock(theme){
       const axis=theme.axisColor;
       const rowLabel=theme.rowLabelColor;
+      const timeLabelSize=theme.timeLabelSize || DEFAULT_LAYOUT.timeLabelSize;
       return `
-      .axislabel{fill:${axis};font-size:11px;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
+      .axislabel{fill:${axis};font-size:${timeLabelSize}px;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
       .colheader{fill:${axis};font-size:12px;font-weight:700;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif;text-transform:uppercase}
       .rowlabel{fill:${rowLabel};font-size:12px;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
       .gridline{stroke:${theme.gridColor};stroke-width:1}
@@ -621,6 +630,7 @@
 
       const headerTop=P;
       const headerBottom=P+headerHeight;
+      const bodyTop=headerBottom;
       const headerTextBaseline=headerTop+18;
       const axisY=headerTop+headerHeight*0.75;
       const minorTickBottom=headerTop+headerHeight*(2/3);
@@ -665,7 +675,7 @@
         if(minute>0 && minute<1440){
           const vline=document.createElementNS(svgNS,'line');
           vline.setAttribute('x1',x);
-          vline.setAttribute('y1',headerTop);
+          vline.setAttribute('y1',bodyTop);
           vline.setAttribute('x2',x);
           vline.setAttribute('y2',H-P);
           vline.setAttribute('class',isHour?'gridline':'gridline-minor');
@@ -673,7 +683,6 @@
         }
       }
 
-      const bodyTop=headerBottom;
       bodyRows.forEach((row,idx)=>{
         const y=bodyTop+idx*rowH;
         if(idx>0){
@@ -853,26 +862,23 @@
       if(headerLines.length) cursorY+=blockGap;
       const chartTop=cursorY;
       cursorY+=chartHeight;
-      const footerItems=[];
+      const footerNotes=[];
       if(footerNote){
-        footerItems.push({text:footerNote,size:layout.footerSize||DEFAULT_LAYOUT.footerSize,color:palette.muted});
-      }
-      if(footerText){
-        footerItems.push({text:footerText,size:layout.footerSize||DEFAULT_LAYOUT.footerSize,color:palette.muted});
-      }
-      const footerPlacements=footerItems.map((item,idx)=>{
-        cursorY+=idx===0?blockGap:lineGap;
+        cursorY+=blockGap;
+        const size=layout.footerSize||DEFAULT_LAYOUT.footerSize;
         const top=cursorY;
-        cursorY+=item.size*lineHeightFactor;
-        return {...item,top};
-      });
+        cursorY+=size*lineHeightFactor;
+        footerNotes.push({text:footerNote,size,color:palette.muted,top});
+      }
+      const pageFooter=footerText?{text:footerText,size:layout.footerSize||DEFAULT_LAYOUT.footerSize,color:palette.muted}:null;
       const sheetHeight=cursorY+paddingOuter;
       return {
         sheetWidth,
         sheetHeight,
         paddingOuter,
         header:headerPlacements,
-        footer:footerPlacements,
+        footerNotes,
+        pageFooter,
         chart:{
           left:paddingOuter,
           top:chartTop,
@@ -884,6 +890,7 @@
           innerWidth:innerW,
           rowHeight:rowH,
           bodyRows,
+          timeLabelSize:layout.timeLabelSize||DEFAULT_LAYOUT.timeLabelSize,
         },
       };
     }
@@ -895,7 +902,7 @@
       const availableHeight=pageHeight-margin*2;
       const scale=Math.min(scaleLimit,availableWidth/plan.sheetWidth,availableHeight/plan.sheetHeight,1);
       const offsetX=margin+(availableWidth-plan.sheetWidth*scale)/2;
-      const offsetY=margin+(availableHeight-plan.sheetHeight*scale)/2;
+      const offsetY=margin+Math.max(0,availableHeight-plan.sheetHeight*scale);
 
       const toPageX=x=>offsetX+x*scale;
       const toPageYTop=y=>offsetY+(plan.sheetHeight-y)*scale;
@@ -950,7 +957,7 @@
 
       const sheetBg=palette.sheetBackground;
       const sheetBorder=palette.sheetBorder;
-      drawRect(0,0,plan.sheetWidth,plan.sheetHeight,{fill:sheetBg,stroke:sheetBorder,strokeWidth:1});
+      drawRect(0,0,plan.sheetWidth,plan.sheetHeight,{fill:sheetBg});
 
       plan.header.forEach(line=>{
         drawText(line.text,{
@@ -999,6 +1006,7 @@
       });
 
       const toX=minute=>chartLeft+innerPadding+leftAxis+(minute/1440)*innerW;
+      const timeLabelSize=plan.chart.timeLabelSize || DEFAULT_LAYOUT.timeLabelSize;
       for(let minute=0;minute<=1440;minute+=15){
         const x=toX(minute);
         const isHour=minute%60===0;
@@ -1010,13 +1018,13 @@
           drawText(fmtHMDisplay(minute),{
             x:toX(labelMinute),
             y:headerTop+headerHeight*0.75,
-            size:11,
+            size:timeLabelSize,
             color:palette.axis,
             align:'center',
           });
         }
         if(minute>0 && minute<1440){
-          drawLine(x,headerTop,x,chartTop+chartHeight-innerPadding,isHour?palette.grid:palette.minorGrid,isHour?1:0.6);
+          drawLine(x,headerBottom,x,chartTop+chartHeight-innerPadding,isHour?palette.grid:palette.minorGrid,isHour?1:0.6);
         }
       }
 
@@ -1056,16 +1064,34 @@
 
       drawLine(chartLeft+innerPadding,bodyTop+chart.bodyRows.length*rowH,chartLeft+chartWidth-innerPadding,bodyTop+chart.bodyRows.length*rowH,palette.sheetBorder,1.2);
 
-      plan.footer.forEach(item=>{
-        drawText(item.text,{
-          x:plan.sheetWidth-plan.paddingOuter,
-          y:item.top,
-          size:item.size,
-          color:item.color||palette.muted,
-          align:'right',
-          baseline:'top',
+      if(Array.isArray(plan.footerNotes)){
+        plan.footerNotes.forEach(item=>{
+          drawText(item.text,{
+            x:plan.sheetWidth-plan.paddingOuter,
+            y:item.top,
+            size:item.size,
+            color:item.color||palette.muted,
+            align:'right',
+            baseline:'top',
+          });
         });
-      });
+      }
+
+      if(plan.pageFooter && plan.pageFooter.text){
+        const footer=plan.pageFooter;
+        const font=footer.fontWeight>=600?fonts.bold:fonts.regular;
+        const footerSize=Math.max(0.1,footer.size*scale);
+        const textWidth=font.widthOfTextAtSize(footer.text,footerSize);
+        const x=pageWidth-margin-textWidth;
+        const y=Math.max(4,margin/2);
+        page.drawText(footer.text,{
+          x,
+          y,
+          size:footerSize,
+          font,
+          color:rgb((footer.color||palette.muted).r,(footer.color||palette.muted).g,(footer.color||palette.muted).b),
+        });
+      }
     }
 
     function parseHexColor(color){
@@ -1234,7 +1260,7 @@
     });
 
     const layoutControlIds=[
-      'inpTitle','inpSubtitle','inpStaticCode','inpFooter','inpFooterNote','inpRowHeight','inpChartWidth','inpNameWidth','inpHeaderHeight','inpPadding','inpTitleSize','inpRangeSize','inpCodeSize','inpDateSize','inpFooterSize','inpBarColor','inpBarLabelColor','inpHeaderBandColor','inpGridColor','inpMinorGridColor','inpAxisColor','inpRowLabelColor','inpSheetBgColor','inpSheetBorderColor','inpPageBgColor'
+      'inpTitle','inpSubtitle','inpStaticCode','inpFooter','inpFooterNote','inpRowHeight','inpChartWidth','inpNameWidth','inpHeaderHeight','inpPadding','inpTitleSize','inpRangeSize','inpCodeSize','inpDateSize','inpFooterSize','inpTimeLabelSize','inpBarColor','inpBarLabelColor','inpHeaderBandColor','inpGridColor','inpMinorGridColor','inpAxisColor','inpRowLabelColor','inpSheetBgColor','inpSheetBorderColor','inpPageBgColor'
     ];
     layoutControlIds.forEach(id=>{
       const el=document.getElementById(id);
