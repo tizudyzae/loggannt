@@ -13,5 +13,8 @@ Once published, your site will be available at:
 ## Local usage
 Open `index.html` directly in your browser.
 
+> ℹ️ The bundled `pdf-lib.min.js` copy ships with the page so the PDF export
+> button works even when external CDNs are blocked.
+
 ## Deploy to GitHub Pages
 1. Create a new repo and add the files:
