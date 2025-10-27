@@ -168,33 +168,6 @@
       return `Date range: ${startStr || endStr}`;
     }
 
-    let headerImageCache=null;
-    async function loadHeaderImagePng(){
-      if(headerImageCache) return headerImageCache;
-      headerImageCache=(async()=>{
-        const img=new Image();
-        img.src='header.svg';
-        await new Promise((resolve,reject)=>{
-          img.onload=()=>resolve();
-          img.onerror=()=>reject(new Error('Unable to load header image.'));
-        });
-        const width=img.naturalWidth || img.width;
-        const height=img.naturalHeight || img.height;
-        const canvas=document.createElement('canvas');
-        canvas.width=width;
-        canvas.height=height;
-        const ctx=canvas.getContext('2d');
-        ctx.drawImage(img,0,0,width,height);
-        const dataUrl=canvas.toDataURL('image/png');
-        const base64=dataUrl.split(',')[1];
-        const binary=atob(base64);
-        const bytes=new Uint8Array(binary.length);
-        for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
-        return {bytes,width,height};
-      })();
-      return headerImageCache;
-    }
-
     // ---------- Parsing ----------
     function parseExport(text){
       text=text.replace(/^\"|\"$/g,'').replace(/\r/g,'');
@@ -553,22 +526,17 @@
         const pdfDoc=await PDFDocument.create();
         const font=await pdfDoc.embedFont(StandardFonts.Helvetica);
         const margin=24;
-        const dateSize=18;
+        const titleSize=26;
+        const rangeSize=14;
+        const codeSize=26;
+        const dateSize=16;
         const smallSize=11;
-        const codeSize=16;
         const pageSize=[842,595];
         const renderInfo=lastRenderDetails || {};
         const formattedDates=(renderInfo.formattedDates && renderInfo.formattedDates.length?renderInfo.formattedDates:lastModel.dayHeaders.map(formatFullDayLabel));
         const totalPages=renderInfo.totalPages || lastModel.dayHeaders.length;
         const dateRangeLabel=renderInfo.dateRangeLabel || buildDateRangeLabel(lastModel);
         const renderedSections=Array.from(document.querySelectorAll('#sheets .sheet'));
-        const headerImageInfo=await loadHeaderImagePng();
-        const headerImage=await pdfDoc.embedPng(headerImageInfo.bytes);
-        const rawHeaderWidth=headerImage.width || headerImageInfo.width || 1;
-        const rawHeaderHeight=headerImage.height || headerImageInfo.height || 1;
-        const headerMaxWidth=320;
-        const headerImageWidth=Math.min(headerMaxWidth, rawHeaderWidth);
-        const headerImageHeight=rawHeaderHeight*(headerImageWidth/rawHeaderWidth);
         for(let i=0;i<lastModel.dayHeaders.length;i++){
           const label=lastModel.dayHeaders[i];
           const section=renderedSections[i] || null;
@@ -615,30 +583,25 @@
           const pageWidth=page.getWidth();
           const pageHeight=page.getHeight();
           const headerTop=pageHeight-margin;
-          const imageX=margin;
-          const imageY=headerTop-headerImageHeight;
-          page.drawImage(headerImage,{x:imageX,y:imageY,width:headerImageWidth,height:headerImageHeight});
-
-          const dateText=dateTextFromDom || formattedDates[i] || formatFullDayLabel(label);
-          const infoX=imageX+headerImageWidth+24;
-          const dateY=headerTop-12;
-          page.drawText(dateText,{x:infoX,y:dateY,size:dateSize,font,color:rgb(0.1,0.12,0.16)});
-          const shiftCount=lastPerDay[i].filter(r=>r.range).length;
-          const shiftText=`${shiftCount} shift${shiftCount===1?'':'s'}`;
-          const shiftY=dateY-18;
-          page.drawText(shiftText,{x:infoX,y:shiftY,size:smallSize,font,color:rgb(0.35,0.4,0.45)});
-
-          let metaBaseline=imageY-12;
+          const textX=margin;
+          let cursorY=headerTop;
+          cursorY-=titleSize;
+          page.drawText('Daily Colleague Summary',{x:textX,y:cursorY,size:titleSize,font,color:rgb(0.07,0.08,0.1)});
           if(rangeText){
-            page.drawText(rangeText,{x:imageX,y:metaBaseline,size:smallSize,font,color:rgb(0.35,0.4,0.45)});
-            metaBaseline-=18;
+            cursorY-=6;
+            cursorY-=rangeSize;
+            page.drawText(rangeText,{x:textX,y:cursorY,size:rangeSize,font,color:rgb(0.35,0.4,0.45)});
           }
-          if(codeText){
-            page.drawText(codeText,{x:imageX,y:metaBaseline,size:codeSize,font,color:rgb(0.1,0.12,0.16)});
-            metaBaseline-=22;
-          }
+          const codeToDraw=codeText || STATIC_CODE;
+          cursorY-=10;
+          cursorY-=codeSize;
+          page.drawText(codeToDraw,{x:textX,y:cursorY,size:codeSize,font,color:rgb(0.07,0.08,0.1)});
+          const dateText=dateTextFromDom || formattedDates[i] || formatFullDayLabel(label);
+          cursorY-=8;
+          cursorY-=dateSize;
+          page.drawText(dateText,{x:textX,y:cursorY,size:dateSize,font,color:rgb(0.07,0.08,0.1)});
 
-          const chartTop=Math.min(imageY, metaBaseline, shiftY)-24;
+          const chartTop=cursorY-24;
           const availableWidth=pageWidth-margin*2;
           const availableHeight=Math.max(chartTop-margin, 100);
           let targetWidth=availableWidth;
