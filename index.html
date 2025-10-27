@@ -810,176 +810,262 @@
       });
     }
 
-    async function svgToPngDataUrl(svg,{scale=2}={}){
-      if(!svg) throw new Error('Missing SVG element for export');
-      const clone=svg.cloneNode(true);
-      const vb=(clone.getAttribute('viewBox')||'').trim().split(/\s+/).map(Number);
-      let width,height;
-      if(vb.length===4 && vb.every(v=>Number.isFinite(v))){
-        width=vb[2];
-        height=vb[3];
-      }else{
-        width=parseFloat(clone.getAttribute('width'))||svg.clientWidth||900;
-        height=parseFloat(clone.getAttribute('height'))||svg.clientHeight||600;
-        clone.setAttribute('viewBox',`0 0 ${width} ${height}`);
-      }
-      clone.setAttribute('width',width);
-      clone.setAttribute('height',height);
-      let svgString=new XMLSerializer().serializeToString(clone);
-      if(!svgString.includes('xmlns="http://www.w3.org/2000/svg"')){
-        svgString=svgString.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');
-      }
-      const blob=new Blob([svgString],{type:'image/svg+xml'});
-      const url=URL.createObjectURL(blob);
-      try{
-        const img=new Image();
-        img.src=url;
-        await new Promise((resolve,reject)=>{
-          img.onload=()=>resolve();
-          img.onerror=()=>reject(new Error('Unable to rasterize SVG.'));
-        });
-        const canvas=document.createElement('canvas');
-        const ratio=Math.max(1,scale);
-        canvas.width=Math.ceil(width*ratio);
-        canvas.height=Math.ceil(height*ratio);
-        const ctx=canvas.getContext('2d');
-        ctx.setTransform(ratio,0,0,ratio,0,0);
-        ctx.drawImage(img,0,0,width,height);
-        return {dataUrl:canvas.toDataURL('image/png'),width,height};
-      }finally{
-        URL.revokeObjectURL(url);
-      }
-    }
-
     function sanitizeFileName(name){
       return name.replace(/[^\w\d\-_]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'') || 'gantt';
     }
 
-    function svgElementToDataUrl(svg){
-      if(!svg) throw new Error('Missing SVG element');
-      let svgString=new XMLSerializer().serializeToString(svg);
-      if(!svgString.includes('xmlns="http://www.w3.org/2000/svg"')){
-        svgString=svgString.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');
-      }
-      const bytes=new TextEncoder().encode(svgString);
-      let binary='';
-      for(let i=0;i<bytes.length;i++){
-        binary+=String.fromCharCode(bytes[i]);
-      }
-      const encoded=window.btoa(binary);
-      return `data:image/svg+xml;base64,${encoded}`;
-    }
-
-    function buildExportSvg(chartSvg,{layout,title,rangeLabel,code,date,footerText,footerNote}){
-      if(!chartSvg) throw new Error('Missing chart SVG for export');
-      const svgNS='http://www.w3.org/2000/svg';
-      const padding=18;
+    function buildPdfSheetPlan(rows,layout,{title,rangeLabel,code,date,footerText,footerNote},palette){
+      const paddingOuter=18;
       const blockGap=12;
       const lineGap=6;
       const lineHeightFactor=1.2;
-      const computed=getComputedStyle(document.documentElement);
-      const ink=(computed.getPropertyValue('--ink')||'#111111').trim()||'#111111';
-      const muted=(computed.getPropertyValue('--muted')||'#555555').trim()||'#555555';
-      const sheetBg=(layout.sheetBackground||'#ffffff').trim()||'#ffffff';
-      const sheetBorder=(layout.sheetBorder||'#000000').trim()||'#000000';
-
-      const viewBox=(chartSvg.getAttribute('viewBox')||'').trim().split(/\s+/).map(Number);
-      let chartWidth,chartHeight;
-      if(viewBox.length===4 && viewBox.every(v=>Number.isFinite(v))){
-        [, , chartWidth, chartHeight]=viewBox;
-      }else{
-        chartWidth=parseFloat(chartSvg.getAttribute('width'))||layout.chartWidth||900;
-        chartHeight=parseFloat(chartSvg.getAttribute('height'))||600;
-      }
-
-      const exportSvg=document.createElementNS(svgNS,'svg');
-      exportSvg.setAttribute('xmlns',svgNS);
-      exportSvg.setAttribute('xmlns:xlink','http://www.w3.org/1999/xlink');
-      const totalWidth=chartWidth+padding*2;
-      exportSvg.setAttribute('width',totalWidth);
-
-      const background=document.createElementNS(svgNS,'rect');
-      background.setAttribute('x','0');
-      background.setAttribute('y','0');
-      background.setAttribute('width',totalWidth);
-      background.setAttribute('fill',sheetBg);
-      background.setAttribute('stroke',sheetBorder);
-      background.setAttribute('stroke-width','1');
-      exportSvg.appendChild(background);
-
+      const P=Math.max(0,layout.padding);
+      const W=Math.max(400,layout.chartWidth);
+      const rowH=Math.max(18,layout.rowHeight);
+      const leftAxis=Math.max(120,layout.nameColumnWidth);
+      const innerW=Math.max(100,W-leftAxis-P*2);
+      const headerHeight=Math.max(24,layout.headerHeight);
+      const visibleRows=rows.filter(r=>r.range);
+      const bodyRows=visibleRows.length?visibleRows:[{name:'No scheduled colleagues',range:null,segments:[]}];
+      const bodyHeight=rowH*bodyRows.length;
+      const chartHeight=P+headerHeight+bodyHeight+P;
+      const sheetWidth=W+paddingOuter*2;
       const headerLines=[];
       if(title){
-        headerLines.push({text:title,size:layout.titleSize||DEFAULT_LAYOUT.titleSize,color:ink,weight:600});
+        headerLines.push({text:title,size:layout.titleSize||DEFAULT_LAYOUT.titleSize,color:palette.ink,weight:600});
       }
       if(rangeLabel){
-        headerLines.push({text:rangeLabel,size:layout.subtitleSize||DEFAULT_LAYOUT.subtitleSize,color:muted,weight:400});
+        headerLines.push({text:rangeLabel,size:layout.subtitleSize||DEFAULT_LAYOUT.subtitleSize,color:palette.muted,weight:400});
       }
       if(code){
-        headerLines.push({text:code,size:layout.codeSize||DEFAULT_LAYOUT.codeSize,color:ink,weight:700});
+        headerLines.push({text:code,size:layout.codeSize||DEFAULT_LAYOUT.codeSize,color:palette.ink,weight:700});
       }
       if(date){
-        headerLines.push({text:date,size:layout.dateSize||DEFAULT_LAYOUT.dateSize,color:ink,weight:600});
+        headerLines.push({text:date,size:layout.dateSize||DEFAULT_LAYOUT.dateSize,color:palette.ink,weight:600});
       }
-
-      let cursorY=padding;
-      headerLines.forEach((line,idx)=>{
-        const textEl=document.createElementNS(svgNS,'text');
-        textEl.setAttribute('x',padding);
-        textEl.setAttribute('y',cursorY);
-        textEl.setAttribute('fill',line.color);
-        textEl.setAttribute('font-size',line.size);
-        textEl.setAttribute('font-family','Arial,"Helvetica Neue",Helvetica,sans-serif');
-        textEl.setAttribute('dominant-baseline','hanging');
-        if(line.weight>=600) textEl.setAttribute('font-weight',line.weight);
-        textEl.textContent=line.text;
-        exportSvg.appendChild(textEl);
+      let cursorY=paddingOuter;
+      const headerPlacements=headerLines.map((line,idx)=>{
+        const top=cursorY;
         cursorY+=line.size*lineHeightFactor;
         if(idx<headerLines.length-1) cursorY+=lineGap;
+        return {...line,top};
       });
-
       if(headerLines.length) cursorY+=blockGap;
-
-      const chartImage=document.createElementNS(svgNS,'image');
-      const chartDataUrl=svgElementToDataUrl(chartSvg);
-      chartImage.setAttribute('x',padding);
-      chartImage.setAttribute('y',cursorY);
-      chartImage.setAttribute('width',chartWidth);
-      chartImage.setAttribute('height',chartHeight);
-      chartImage.setAttributeNS('http://www.w3.org/1999/xlink','href',chartDataUrl);
-      chartImage.setAttribute('href',chartDataUrl);
-      exportSvg.appendChild(chartImage);
+      const chartTop=cursorY;
       cursorY+=chartHeight;
-
       const footerItems=[];
       if(footerNote){
-        footerItems.push({text:footerNote,size:layout.footerSize||DEFAULT_LAYOUT.footerSize,color:muted});
+        footerItems.push({text:footerNote,size:layout.footerSize||DEFAULT_LAYOUT.footerSize,color:palette.muted});
       }
       if(footerText){
-        footerItems.push({text:footerText,size:layout.footerSize||DEFAULT_LAYOUT.footerSize,color:muted});
+        footerItems.push({text:footerText,size:layout.footerSize||DEFAULT_LAYOUT.footerSize,color:palette.muted});
       }
-
-      let firstFooter=true;
-      footerItems.forEach(item=>{
-        cursorY+=firstFooter?blockGap:lineGap;
-        const textEl=document.createElementNS(svgNS,'text');
-        textEl.setAttribute('x',totalWidth-padding);
-        textEl.setAttribute('y',cursorY);
-        textEl.setAttribute('fill',item.color);
-        textEl.setAttribute('font-size',item.size);
-        textEl.setAttribute('font-family','Arial,"Helvetica Neue",Helvetica,sans-serif');
-        textEl.setAttribute('text-anchor','end');
-        textEl.setAttribute('dominant-baseline','hanging');
-        textEl.textContent=item.text;
-        exportSvg.appendChild(textEl);
+      const footerPlacements=footerItems.map((item,idx)=>{
+        cursorY+=idx===0?blockGap:lineGap;
+        const top=cursorY;
         cursorY+=item.size*lineHeightFactor;
-        firstFooter=false;
+        return {...item,top};
+      });
+      const sheetHeight=cursorY+paddingOuter;
+      return {
+        sheetWidth,
+        sheetHeight,
+        paddingOuter,
+        header:headerPlacements,
+        footer:footerPlacements,
+        chart:{
+          left:paddingOuter,
+          top:chartTop,
+          width:W,
+          height:chartHeight,
+          padding:P,
+          headerHeight,
+          leftAxis,
+          innerWidth:innerW,
+          rowHeight:rowH,
+          bodyRows,
+        },
+      };
+    }
+
+    function drawPdfSheet(page,plan,{fonts,palette,rgb,scaleLimit=1,margin=24}){
+      const pageWidth=page.getWidth();
+      const pageHeight=page.getHeight();
+      const availableWidth=pageWidth-margin*2;
+      const availableHeight=pageHeight-margin*2;
+      const scale=Math.min(scaleLimit,availableWidth/plan.sheetWidth,availableHeight/plan.sheetHeight,1);
+      const offsetX=margin+(availableWidth-plan.sheetWidth*scale)/2;
+      const offsetY=margin+(availableHeight-plan.sheetHeight*scale)/2;
+
+      const toPageX=x=>offsetX+x*scale;
+      const toPageYTop=y=>offsetY+(plan.sheetHeight-y)*scale;
+      const rectCoords=(x,y,width,height)=>({
+        x:toPageX(x),
+        y:offsetY+(plan.sheetHeight-(y+height))*scale,
+        width:width*scale,
+        height:height*scale,
+      });
+      const lineCoords=(x1,y1,x2,y2)=>({
+        start:{x:toPageX(x1),y:toPageYTop(y1)},
+        end:{x:toPageX(x2),y:toPageYTop(y2)},
+      });
+      const drawLine=(x1,y1,x2,y2,color,width,extra={})=>{
+        page.drawLine({
+          ...lineCoords(x1,y1,x2,y2),
+          thickness:Math.max(width*scale,0.25),
+          color:rgb(color.r,color.g,color.b),
+          opacity:extra.opacity,
+        });
+      };
+      const drawRect=(x,y,width,height,options={})=>{
+        page.drawRectangle({
+          ...rectCoords(x,y,width,height),
+          color:options.fill?rgb(options.fill.r,options.fill.g,options.fill.b):undefined,
+          borderColor:options.stroke?rgb(options.stroke.r,options.stroke.g,options.stroke.b):undefined,
+          borderWidth:options.strokeWidth?Math.max(options.strokeWidth*scale,0.25):undefined,
+        });
+      };
+      const drawText=(text,{x,y,size,color,fontWeight=400,align='left',baseline='alphabetic'})=>{
+        if(!text) return;
+        const font=fontWeight>=600?fonts.bold:fonts.regular;
+        const fontSize=Math.max(0.1,size*scale);
+        const width=font.widthOfTextAtSize(text,fontSize);
+        let pageX=toPageX(x);
+        if(align==='center') pageX-=width/2;
+        if(align==='right') pageX-=width;
+        let pageY=toPageYTop(y);
+        if(baseline==='top'){
+          pageY-=font.heightAtSize(fontSize);
+        }else if(baseline==='middle'){
+          pageY-=font.heightAtSize(fontSize)/2;
+        }
+        page.drawText(text,{
+          x:pageX,
+          y:pageY,
+          size:fontSize,
+          font,
+          color:rgb(color.r,color.g,color.b),
+        });
+      };
+
+      const sheetBg=palette.sheetBackground;
+      const sheetBorder=palette.sheetBorder;
+      drawRect(0,0,plan.sheetWidth,plan.sheetHeight,{fill:sheetBg,stroke:sheetBorder,strokeWidth:1});
+
+      plan.header.forEach(line=>{
+        drawText(line.text,{
+          x:plan.paddingOuter||18,
+          y:line.top,
+          size:line.size,
+          color:line.color||palette.ink,
+          fontWeight:line.weight||400,
+          baseline:'top',
+        });
       });
 
-      const totalHeight=cursorY+padding;
-      background.setAttribute('height',totalHeight);
-      exportSvg.setAttribute('height',totalHeight);
-      exportSvg.setAttribute('viewBox',`0 0 ${totalWidth} ${totalHeight}`);
-      return exportSvg;
+      const chart=plan.chart;
+      const chartLeft=chart.left;
+      const chartTop=chart.top;
+      const chartWidth=chart.width;
+      const chartHeight=chart.height;
+      const innerPadding=chart.padding;
+      const headerHeight=chart.headerHeight;
+      const leftAxis=chart.leftAxis;
+      const innerW=chart.innerWidth;
+      const rowH=chart.rowHeight;
+      const headerTop=chartTop+innerPadding;
+      const headerBottom=headerTop+headerHeight;
+      const bodyTop=headerBottom;
+      drawRect(chartLeft,chartTop,chartWidth,chartHeight,{fill:sheetBg,stroke:sheetBorder,strokeWidth:1});
+      drawRect(chartLeft+innerPadding,chartTop+innerPadding,chartWidth-innerPadding*2,headerHeight,{fill:palette.headerBand});
+
+      drawLine(chartLeft+innerPadding+leftAxis,chartTop+innerPadding,chartLeft+innerPadding+leftAxis,chartTop+chartHeight-innerPadding,palette.sheetBorder,1.2);
+      drawLine(chartLeft+innerPadding,headerBottom,chartLeft+chartWidth-innerPadding,headerBottom,palette.sheetBorder,1.2);
+
+      const headerTextBaseline=headerTop+18;
+      drawText('Colleague Names',{
+        x:chartLeft+innerPadding+6,
+        y:headerTextBaseline,
+        size:12,
+        color:palette.axis,
+        fontWeight:700,
+      });
+      drawText('Time',{
+        x:chartLeft+innerPadding+leftAxis+6,
+        y:headerTextBaseline,
+        size:12,
+        color:palette.axis,
+        fontWeight:700,
+      });
+
+      const toX=minute=>chartLeft+innerPadding+leftAxis+(minute/1440)*innerW;
+      for(let minute=0;minute<=1440;minute+=15){
+        const x=toX(minute);
+        const isHour=minute%60===0;
+        if(minute<1440){
+          drawLine(x,headerTop,x,isHour?headerBottom:headerTop+headerHeight*(2/3),palette.axis,isHour?1:0.4,{opacity:isHour?1:0.5});
+        }
+        if(isHour && minute<1440){
+          const labelMinute=Math.min(minute+30,1440);
+          drawText(fmtHMDisplay(minute),{
+            x:toX(labelMinute),
+            y:headerTop+headerHeight*0.75,
+            size:11,
+            color:palette.axis,
+            align:'center',
+          });
+        }
+        if(minute>0 && minute<1440){
+          drawLine(x,headerTop,x,chartTop+chartHeight-innerPadding,isHour?palette.grid:palette.minorGrid,isHour?1:0.6);
+        }
+      }
+
+      chart.bodyRows.forEach((row,idx)=>{
+        const rowTop=bodyTop+idx*rowH;
+        if(idx>0){
+          drawLine(chartLeft+innerPadding,rowTop,chartLeft+chartWidth-innerPadding,rowTop,palette.grid,1);
+        }
+        drawText(row.name,{
+          x:chartLeft+innerPadding+6,
+          y:rowTop+rowH/2,
+          size:12,
+          color:palette.rowLabel,
+          baseline:'middle',
+        });
+        if(row.range){
+          const labelText=`${fmtHMDisplay(row.range.start)} - ${fmtHMDisplay(row.range.end)}`;
+          row.segments.forEach((seg,segIdx)=>{
+            const segY=rowTop+4;
+            const segHeight=rowH-8;
+            const segX=toX(seg.start);
+            const segW=Math.max(2,toX(seg.end)-segX);
+            drawRect(segX,segY,segW,segHeight,{fill:palette.bar});
+            if(segIdx===0){
+              drawText(labelText,{
+                x:segX+4,
+                y:segY+segHeight/2+1,
+                size:11,
+                color:palette.barLabel,
+                fontWeight:700,
+                baseline:'middle',
+              });
+            }
+          });
+        }
+      });
+
+      drawLine(chartLeft+innerPadding,bodyTop+chart.bodyRows.length*rowH,chartLeft+chartWidth-innerPadding,bodyTop+chart.bodyRows.length*rowH,palette.sheetBorder,1.2);
+
+      plan.footer.forEach(item=>{
+        drawText(item.text,{
+          x:plan.sheetWidth-plan.paddingOuter,
+          y:item.top,
+          size:item.size,
+          color:item.color||palette.muted,
+          align:'right',
+          baseline:'top',
+        });
+      });
     }
 
     function parseHexColor(color){
@@ -996,6 +1082,48 @@
       const g=(int>>8)&255;
       const b=int&255;
       return {r:r/255,g:g/255,b:b/255};
+    }
+
+    function parseCssColor(color){
+      if(!color || typeof color!=='string') return null;
+      const hex=parseHexColor(color);
+      if(hex) return hex;
+      const match=color.trim().match(/^rgba?\(([^)]+)\)$/i);
+      if(!match) return null;
+      const parts=match[1].split(',').map(part=>part.trim()).filter(Boolean);
+      if(parts.length<3) return null;
+      const nums=parts.slice(0,3).map(val=>{
+        if(val.endsWith('%')){
+          const pct=parseFloat(val);
+          if(!Number.isFinite(pct)) return NaN;
+          return Math.max(0,Math.min(100,pct))/100*255;
+        }
+        const num=parseFloat(val);
+        return Number.isFinite(num)?num:NaN;
+      });
+      if(nums.some(v=>!Number.isFinite(v))) return null;
+      const [r,g,b]=nums;
+      return {r:Math.max(0,Math.min(255,r))/255,g:Math.max(0,Math.min(255,g))/255,b:Math.max(0,Math.min(255,b))/255};
+    }
+
+    function buildPdfPalette(layout){
+      const computed=getComputedStyle(document.documentElement);
+      const inkRaw=(computed.getPropertyValue('--ink')||'#111111').trim()||'#111111';
+      const mutedRaw=(computed.getPropertyValue('--muted')||'#555555').trim()||'#555555';
+      const getColor=(value,def)=>parseCssColor(value)||parseCssColor(def)||{r:0,g:0,b:0};
+      return {
+        ink:getColor(inkRaw,'#111111'),
+        muted:getColor(mutedRaw,'#555555'),
+        sheetBackground:getColor(layout.sheetBackground,DEFAULT_LAYOUT.sheetBackground),
+        sheetBorder:getColor(layout.sheetBorder,DEFAULT_LAYOUT.sheetBorder),
+        headerBand:getColor(layout.headerBandColor,DEFAULT_LAYOUT.headerBandColor),
+        grid:getColor(layout.gridColor,DEFAULT_LAYOUT.gridColor),
+        minorGrid:getColor(layout.minorGridColor,DEFAULT_LAYOUT.minorGridColor),
+        axis:getColor(layout.axisColor,DEFAULT_LAYOUT.axisColor),
+        rowLabel:getColor(layout.rowLabelColor,DEFAULT_LAYOUT.rowLabelColor),
+        bar:getColor(layout.barColor,DEFAULT_LAYOUT.barColor),
+        barLabel:getColor(layout.barLabelColor,DEFAULT_LAYOUT.barLabelColor),
+      };
     }
 
     async function exportPDF(){
@@ -1015,41 +1143,22 @@
       btn.disabled=true;
       btn.textContent='Exporting…';
       try{
-        const {PDFDocument, rgb}=window.PDFLib;
+        const {PDFDocument, rgb, StandardFonts}=window.PDFLib;
         const pdfDoc=await PDFDocument.create();
+        const fontRegular=await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const fontBold=await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         const margin=24;
         const pageSize=[842,595];
         const renderInfo=lastRenderDetails || {};
         const layout=renderInfo.layout || currentLayout || DEFAULT_LAYOUT;
-        const pageBg=parseHexColor(layout.pageBackground);
+        const palette=buildPdfPalette(layout);
+        const pageBg=parseCssColor(layout.pageBackground);
         const formattedDates=(renderInfo.formattedDates && renderInfo.formattedDates.length?renderInfo.formattedDates:lastModel.dayHeaders.map(formatFullDayLabel));
         const totalPages=renderInfo.totalPages || lastModel.dayHeaders.length;
         const dateRangeLabel=renderInfo.dateRangeLabel || layout.subtitleOverride || buildDateRangeLabel(lastModel);
-        const renderedSections=Array.from(document.querySelectorAll('#sheets .sheet'));
         for(let i=0;i<lastModel.dayHeaders.length;i++){
           const label=lastModel.dayHeaders[i];
-          const section=renderedSections[i] || null;
-          let activeSection=section;
-          let cleanup=null;
-          let chartSvg=null;
-          if(!activeSection){
-            const hiddenHost=document.createElement('div');
-            hiddenHost.style.cssText='position:absolute;left:-99999px;top:-99999px;pointer-events:none;opacity:0;';
-            document.body.appendChild(hiddenHost);
-            const result=drawDayCard(hiddenHost,label,lastPerDay[i],{
-              dateRangeLabel,
-              pageNumber:i+1,
-              totalPages,
-              formattedDate:formattedDates[i],
-              staticCode:layout.staticCode,
-              layout,
-            });
-            activeSection=result.section;
-            chartSvg=result.svg;
-            cleanup=()=>hiddenHost.remove();
-          }else{
-            chartSvg=activeSection.querySelector('svg');
-          }
+          const rowsForDay=Array.isArray(lastPerDay[i])?lastPerDay[i]:[];
           const resolvedCode=(layout.staticCode||STATIC_CODE||'').trim();
           const footerText=formatFooterText(layout.footerTemplate,{
             pageNumber:i+1,
@@ -1058,40 +1167,26 @@
             label,
           });
           const footerNote=(layout.footerNote||'').trim();
-          let pngInfo;
-          try{
-            const exportSvg=buildExportSvg(chartSvg,{
-              layout,
-              title:layout.title||DEFAULT_LAYOUT.title,
-              rangeLabel:dateRangeLabel,
-              code:resolvedCode,
-              date:formattedDates[i],
-              footerText,
-              footerNote,
-            });
-            pngInfo=await svgToPngDataUrl(exportSvg,{scale:2});
-          }finally{
-            if(cleanup) cleanup();
-          }
-          const pngImage=await pdfDoc.embedPng(pngInfo.dataUrl);
+          const plan=buildPdfSheetPlan(rowsForDay,layout,{
+            title:layout.title||DEFAULT_LAYOUT.title,
+            rangeLabel:dateRangeLabel,
+            code:resolvedCode,
+            date:formattedDates[i],
+            footerText,
+            footerNote,
+          },palette);
           const page=pdfDoc.addPage(pageSize);
           const pageWidth=page.getWidth();
           const pageHeight=page.getHeight();
           if(pageBg){
             page.drawRectangle({x:0,y:0,width:pageWidth,height:pageHeight,color:rgb(pageBg.r,pageBg.g,pageBg.b)});
           }
-          const availableWidth=pageWidth-margin*2;
-          const availableHeight=pageHeight-margin*2;
-          let targetWidth=pngImage.width;
-          let targetHeight=pngImage.height;
-          const widthScale=availableWidth/targetWidth;
-          const heightScale=availableHeight/targetHeight;
-          const scale=Math.min(1,widthScale,heightScale);
-          targetWidth*=scale;
-          targetHeight*=scale;
-          const drawX=margin+(availableWidth-targetWidth)/2;
-          const drawY=pageHeight-margin-targetHeight;
-          page.drawImage(pngImage,{x:drawX,y:drawY,width:targetWidth,height:targetHeight});
+          drawPdfSheet(page,plan,{
+            fonts:{regular:fontRegular,bold:fontBold},
+            palette,
+            rgb,
+            margin,
+          });
         }
         const pdfBytes=await pdfDoc.save();
         const blob=new Blob([pdfBytes],{type:'application/pdf'});
