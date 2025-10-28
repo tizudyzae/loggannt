@@ -35,6 +35,8 @@
     .btn{appearance:none;border:1px solid #2d4a83;border-radius:4px;padding:9px 14px;background:linear-gradient(180deg,#4867a9,#324a7a);color:#fff;font-weight:600;cursor:pointer;letter-spacing:.2px}
     .btn[disabled]{opacity:.65;cursor:not-allowed}
     .btn:active{transform:translateY(1px)}
+    .file-upload{position:relative;display:inline-flex;justify-content:center;align-items:center;width:100%;text-align:center}
+    .file-upload input[type="file"]{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer}
     .side{display:flex;flex-direction:column;gap:12px;min-width:240px}
     .panel{border:1px solid #cfd5e2;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:0}
     .panel summary{cursor:pointer;list-style:none;font-weight:600;color:var(--ink);padding:12px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between}
@@ -99,6 +101,10 @@
       <textarea id="input"></textarea>
       <div class="side">
         <button class="btn" id="btnRender">Render</button>
+        <label class="btn file-upload">
+          Upload CSV
+          <input type="file" id="fileInput" accept=".csv,text/csv">
+        </label>
         <button class="btn" id="btnExport" style="background:linear-gradient(180deg,#f59e0b,#d97706)">Export PDF</button>
         <div class="row">
           <label class="switch"><input type="checkbox" id="chkFallback" checked><span class="slider"></span></label>
@@ -270,6 +276,16 @@
       if(!noId) return trimmed;
       const parts=noId.split(/\s+/);
       return parts.length?parts[parts.length-1]:trimmed;
+    }
+
+    const SPECIAL_NAME_COLOR='#0d9488';
+
+    function isNathanName(name){
+      if(!name) return false;
+      const normalized=String(name).toLowerCase().replace(/[^a-z\s]/g,' ');
+      if(!normalized.trim()) return false;
+      const tokens=normalized.split(/\s+/).filter(Boolean);
+      return tokens.some(token=>token.startsWith('nathan') || token.startsWith('nathen') || token.startsWith('nate'));
     }
 
     const STATIC_CODE='7774';
@@ -497,9 +513,10 @@
       for(let i=headerIdx+1;i<lines.length;i++){
         const parts=lines[i].split(',');
         if(parts.length<8) continue;
-        const name=cleanColleagueName(parts[0]);
+        const rawName=(parts[0]||'').trim();
+        const name=cleanColleagueName(rawName);
         const days=parts.slice(1,8);
-        rows.push({name,days});
+        rows.push({name,rawName,days});
       }
       return {title,sub,dayHeaders,rows};
     }
@@ -541,6 +558,7 @@
       const dayCount=model.dayHeaders.length;
       const perDay=Array.from({length:dayCount},()=>[]);
       model.rows.forEach(row=>{
+        const highlight=isNathanName(row.rawName||row.name);
         const daySegments=Array.from({length:dayCount},()=>[]);
         const dayRanges=Array.from({length:dayCount},()=>null);
         for(let dayIdx=0;dayIdx<dayCount;dayIdx++){
@@ -599,7 +617,7 @@
           const segs=daySegments[dayIdx];
           segs.sort((a,b)=>a.start-b.start);
           const range=dayRanges[dayIdx]?{...dayRanges[dayIdx]}:null;
-          perDay[dayIdx].push({name:row.name, range, segments:segs.map(s=>({...s}))});
+          perDay[dayIdx].push({name:row.name, range, segments:segs.map(s=>({...s})), highlight});
         }
       });
       return perDay;
@@ -615,7 +633,7 @@
       const innerW=Math.max(100,W-leftAxis-P*2);
       const headerHeight=Math.max(24,layout.headerHeight);
       const visibleRows=rows.filter(r=>r.range);
-      const bodyRows=visibleRows.length?visibleRows:[{name:'No scheduled colleagues',range:null,segments:[]}];
+      const bodyRows=visibleRows.length?visibleRows:[{name:'No scheduled colleagues',range:null,segments:[],highlight:false}];
       const bodyHeight=rowH*bodyRows.length;
       const H=P+headerHeight+bodyHeight+P;
       const svgNS='http://www.w3.org/2000/svg';
@@ -727,6 +745,7 @@
 
         if(row.range){
           const labelText=`${fmtHMDisplay(row.range.start)} - ${fmtHMDisplay(row.range.end)}`;
+          const barFill=row.highlight?SPECIAL_NAME_COLOR:(layout.barColor||DEFAULT_LAYOUT.barColor);
           row.segments.forEach((seg,segIdx)=>{
             const segY=y+4;
             const segHeight=rowH-8;
@@ -736,6 +755,7 @@
             rect.setAttribute('width',Math.max(2,toX(seg.end)-toX(seg.start)));
             rect.setAttribute('height',segHeight);
             rect.setAttribute('class','bar');
+            rect.setAttribute('fill',barFill);
             svg.appendChild(rect);
 
             if(segIdx===0){
@@ -858,7 +878,14 @@
       const innerW=Math.max(100,W-leftAxis-P*2);
       const headerHeight=Math.max(24,layout.headerHeight);
       const visibleRows=rows.filter(r=>r.range);
-      const bodyRows=visibleRows.length?visibleRows:[{name:'No scheduled colleagues',range:null,segments:[]}];
+      const bodyRows=visibleRows.length
+        ? visibleRows.map(row=>({
+            name:row.name,
+            range:row.range?{...row.range}:null,
+            segments:Array.isArray(row.segments)?row.segments.map(seg=>({...seg})):[],
+            highlight:!!row.highlight,
+          }))
+        : [{name:'No scheduled colleagues',range:null,segments:[],highlight:false}];
       const bodyHeight=rowH*bodyRows.length;
       const chartHeight=P+headerHeight+bodyHeight+P;
       const sheetWidth=W+paddingOuter*2;
@@ -1067,12 +1094,13 @@
         });
         if(row.range){
           const labelText=`${fmtHMDisplay(row.range.start)} - ${fmtHMDisplay(row.range.end)}`;
+          const barColor=row.highlight && palette.specialBar?palette.specialBar:palette.bar;
           row.segments.forEach((seg,segIdx)=>{
             const segY=rowTop+4;
             const segHeight=rowH-8;
             const segX=toX(seg.start);
             const segW=Math.max(2,toX(seg.end)-segX);
-            drawRect(segX,segY,segW,segHeight,{fill:palette.bar});
+            drawRect(segX,segY,segW,segHeight,{fill:barColor});
             if(segIdx===0){
               drawText(labelText,{
                 x:segX+4,
@@ -1173,6 +1201,7 @@
         axis:getColor(layout.axisColor,DEFAULT_LAYOUT.axisColor),
         columnHeader:getColor(layout.columnHeaderColor,layout.axisColor||DEFAULT_LAYOUT.columnHeaderColor),
         rowLabel:getColor(layout.rowLabelColor,DEFAULT_LAYOUT.rowLabelColor),
+        specialBar:getColor(SPECIAL_NAME_COLOR,DEFAULT_LAYOUT.barColor),
         bar:getColor(layout.barColor,DEFAULT_LAYOUT.barColor),
         barLabel:getColor(layout.barLabelColor,DEFAULT_LAYOUT.barLabelColor),
       };
@@ -1259,6 +1288,28 @@
       }
     }
 
+    function handleFileUpload(event){
+      const input=event.target;
+      if(!input || !input.files || !input.files.length) return;
+      const file=input.files[0];
+      const reader=new FileReader();
+      reader.onload=e=>{
+        const result=e && e.target && typeof e.target.result==='string'?e.target.result:'';
+        const textarea=document.getElementById('input');
+        if(textarea){
+          textarea.value=result;
+        }
+        if(result.trim()){
+          render(result);
+        }
+      };
+      reader.onerror=()=>{
+        alert('Failed to read the selected file. Please try again.');
+      };
+      reader.readAsText(file);
+      input.value='';
+    }
+
     function handleLayoutControlChange(){
       if(lastSourceText){
         render(lastSourceText);
@@ -1284,6 +1335,11 @@
       const text=document.getElementById('input').value.trim();
       if(text) render(text);
     });
+
+    const fileInput=document.getElementById('fileInput');
+    if(fileInput){
+      fileInput.addEventListener('change',handleFileUpload);
+    }
 
     const layoutControlIds=[
       'inpTitle','inpSubtitle','inpStaticCode','inpFooter','inpFooterNote','inpRowHeight','inpChartWidth','inpNameWidth','inpHeaderHeight','inpPadding','inpTitleSize','inpRangeSize','inpCodeSize','inpDateSize','inpFooterSize','inpColumnHeaderSize','inpRowLabelSize','inpBarLabelSize','inpBarColor','inpBarLabelColor','inpHeaderBandColor','inpGridColor','inpMinorGridColor','inpAxisColor','inpColumnHeaderColor','inpRowLabelColor','inpSheetBgColor','inpSheetBorderColor','inpPageBgColor'
