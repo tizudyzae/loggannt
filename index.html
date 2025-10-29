@@ -89,13 +89,12 @@
 <body>
   <div class="wrap">
     <h1>Daily Colleague Summary</h1>
-    <p>Upload your raw export and hit <b>Render</b>. By default we show <b>Whole Shift</b> ranges; if a day has none, we can <i>fallback</i> to the first <code>SCH:</code> range so you still see coverage.</p>
+    <p>Upload your raw export and we&apos;ll render it automatically. By default we show <b>Whole Shift</b> ranges; if a day has none, we can <i>fallback</i> to the first <code>SCH:</code> range so you still see coverage.</p>
 
     <div class="controls">
       <input type="file" id="fileInput" accept=".csv,text/csv" hidden>
       <div class="side">
         <button class="btn" id="btnUpload" type="button">Upload CSV</button>
-        <button class="btn" id="btnRender">Render</button>
         <button class="btn" id="btnExport" style="background:linear-gradient(180deg,#f59e0b,#d97706)">Export PDF</button>
         <div class="panel panel-static">
           <div class="ctrl">
@@ -636,8 +635,11 @@
       const leftAxis=Math.max(120,layout.nameColumnWidth);
       const innerW=Math.max(100,W-leftAxis-P*2);
       const headerHeight=Math.max(24,layout.headerHeight);
-      const visibleRows=rows.filter(r=>r.range);
-      const bodyRows=visibleRows.length?visibleRows:[{name:'No scheduled colleagues',range:null,segments:[],highlight:false}];
+      const showEmptyRows=!!ctx.showEmptyRows;
+      const placeholderLabel=(ctx.placeholderLabel||'No scheduled colleagues');
+      const sourceRows=Array.isArray(rows)?rows.filter(Boolean):[];
+      const visibleRows=showEmptyRows?sourceRows:sourceRows.filter(r=>r && r.range);
+      const bodyRows=visibleRows.length?visibleRows:[{name:placeholderLabel,range:null,segments:[],highlight:false}];
       const bodyHeight=rowH*bodyRows.length;
       const H=P+headerHeight+bodyHeight+P;
       const svgNS='http://www.w3.org/2000/svg';
@@ -838,6 +840,7 @@
     // ---------- Render / Export ----------
     let lastModel=null,lastPerDay=null,lastRenderDetails=null,lastSourceText='';
     let lastIndividuals=[];
+    let currentIndividualIndex=null;
 
     function render(text){
       const opts={fallbackSCH:true, splitMidnight:true};
@@ -855,16 +858,81 @@
       const totalPages=model.dayHeaders.length;
       const formattedDates=model.dayHeaders.map(formatFullDayLabel);
       lastRenderDetails={dateRangeLabel:resolvedRangeLabel,formattedDates,totalPages,layout};
+      renderPreview();
+    }
 
-      const sheets=document.getElementById('sheets'); sheets.innerHTML='';
-      model.dayHeaders.forEach((label,i)=>{
-        drawDayCard(sheets,label,perDay[i],{
-          dateRangeLabel:resolvedRangeLabel,
+    function renderPreview(){
+      const sheets=document.getElementById('sheets');
+      if(!sheets){
+        return;
+      }
+      sheets.innerHTML='';
+      if(!lastModel || !lastPerDay){
+        return;
+      }
+      const renderInfo=lastRenderDetails || {};
+      const layout=renderInfo.layout || currentLayout || DEFAULT_LAYOUT;
+      const dayHeaders=Array.isArray(lastModel.dayHeaders)?lastModel.dayHeaders:[];
+      const formattedDates=(renderInfo.formattedDates && renderInfo.formattedDates.length===dayHeaders.length)
+        ? renderInfo.formattedDates
+        : dayHeaders.map(formatFullDayLabel);
+      const totalPages=renderInfo.totalPages || dayHeaders.length || 0;
+      const dateRangeLabel=renderInfo.dateRangeLabel || layout.subtitleOverride || buildDateRangeLabel(lastModel);
+
+      const idx=currentIndividualIndex;
+      const hasIndividual=Number.isInteger(idx) && idx>=0 && lastModel.rows && idx<lastModel.rows.length;
+      if(!hasIndividual){
+        currentIndividualIndex=null;
+        dayHeaders.forEach((label,i)=>{
+          drawDayCard(sheets,label,lastPerDay[i],{
+            dateRangeLabel,
+            pageNumber:i+1,
+            totalPages,
+            formattedDate:formattedDates[i],
+            staticCode:layout.staticCode,
+            layout,
+          });
+        });
+        return;
+      }
+
+      const person=lastModel.rows[idx];
+      const record=lastIndividuals.find(rec=>rec.index===idx);
+      const displayName=(record && record.displayName) || getRowDisplayName(person,idx+1);
+      const perDayData=Array.isArray(lastPerDay)?lastPerDay:[];
+
+      dayHeaders.forEach((label,i)=>{
+        const entries=Array.isArray(perDayData[i])?perDayData[i]:[];
+        const match=entries.find(entry=>{
+          if(person.rawName && entry.rawName){
+            return entry.rawName===person.rawName;
+          }
+          return entry.name===person.name;
+        });
+        const rowData=match && match.range
+          ? {
+              name:displayName,
+              rawName:match.rawName || person.rawName || '',
+              range:{...match.range},
+              segments:Array.isArray(match.segments)?match.segments.map(seg=>({...seg})) : [],
+              highlight:!!match.highlight,
+            }
+          : {
+              name:`${displayName} (no shift)`,
+              rawName:person.rawName || '',
+              range:null,
+              segments:[],
+              highlight:false,
+            };
+        drawDayCard(sheets,label,[rowData],{
+          dateRangeLabel,
           pageNumber:i+1,
           totalPages,
           formattedDate:formattedDates[i],
           staticCode:layout.staticCode,
           layout,
+          showEmptyRows:true,
+          placeholderLabel:`${displayName} has no scheduled shifts`,
         });
       });
     }
@@ -883,6 +951,7 @@
         select.value='';
         select.disabled=true;
         btn.disabled=true;
+        currentIndividualIndex=null;
         return;
       }
       const rows=model.rows;
@@ -925,6 +994,13 @@
       }
       select.disabled=false;
       btn.disabled=!select.value;
+      const selectedValue=select.value;
+      const parsed=selectedValue?parseInt(selectedValue,10):NaN;
+      if(!Number.isNaN(parsed) && parsed>=0 && parsed<model.rows.length){
+        currentIndividualIndex=parsed;
+      }else{
+        currentIndividualIndex=null;
+      }
     }
 
     function sanitizeFileName(name){
@@ -1502,9 +1578,22 @@
         }
         const reader=new FileReader();
         reader.addEventListener('load',()=>{
-          if(hiddenInput){ hiddenInput.value=typeof reader.result==='string'?reader.result:''; }
+          const text=typeof reader.result==='string'?reader.result:'';
+          if(hiddenInput){ hiddenInput.value=text; }
           fileInput.value='';
           btnUpload.textContent='Replace CSV';
+          const sel=document.getElementById('selIndividual');
+          if(sel){ sel.value=''; }
+          currentIndividualIndex=null;
+          if(text.trim()){
+            render(text);
+          }else{
+            lastModel=null;
+            lastPerDay=null;
+            lastRenderDetails=null;
+            lastSourceText='';
+            renderPreview();
+          }
         });
         reader.addEventListener('error',()=>{
           const errDetail=reader.error && reader.error.message?reader.error.message:'Unknown error';
@@ -1518,11 +1607,6 @@
       });
     }
 
-    document.getElementById('btnRender').addEventListener('click',()=>{
-      const text=hiddenInput?hiddenInput.value.trim():'';
-      if(!text){ alert('Upload a CSV before rendering.'); return; }
-      render(text);
-    });
     document.getElementById('btnExport').addEventListener('click',()=>{ exportPDF(); });
     document.getElementById('btnExportIndividual').addEventListener('click',()=>{ exportIndividualPDF(); });
     const selIndividual=document.getElementById('selIndividual');
@@ -1532,6 +1616,14 @@
         if(btn){
           btn.disabled=!selIndividual.value;
         }
+        const value=selIndividual.value;
+        const parsed=value?parseInt(value,10):NaN;
+        if(!Number.isNaN(parsed) && parsed>=0 && lastModel && lastModel.rows && parsed<lastModel.rows.length){
+          currentIndividualIndex=parsed;
+        }else{
+          currentIndividualIndex=null;
+        }
+        renderPreview();
       });
     }
 
