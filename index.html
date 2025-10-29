@@ -31,7 +31,11 @@
     p{color:var(--muted);margin:6px 0 20px}
     .wrap{max-width:none;margin:0;padding:24px 32px;width:100%}
     .controls{display:grid;gap:12px;grid-template-columns:2fr minmax(240px,1fr);align-items:start;border:1px solid #cfcfcf;padding:16px 18px;border-radius:6px;background:#fafafa;box-shadow:0 2px 6px rgba(0,0,0,.05)}
-    textarea{width:100%;height:200px;resize:vertical;color:var(--ink);background:#fff;border:1px solid #cfcfcf;border-radius:4px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+    .upload{display:flex;flex-direction:column;gap:12px}
+    .upload-desc{margin:0;color:var(--muted);font-size:13px}
+    .upload-status{margin:0;color:var(--muted);font-size:12px}
+    .upload-status.success{color:#047857}
+    .upload-status.error{color:#b91c1c}
     .btn{appearance:none;border:1px solid #2d4a83;border-radius:4px;padding:9px 14px;background:linear-gradient(180deg,#4867a9,#324a7a);color:#fff;font-weight:600;cursor:pointer;letter-spacing:.2px}
     .btn[disabled]{opacity:.65;cursor:not-allowed}
     .btn:active{transform:translateY(1px)}
@@ -89,10 +93,17 @@
 <body>
   <div class="wrap">
     <h1>Daily Colleague Summary</h1>
-    <p>Paste your raw export and hit <b>Render</b>. By default we show <b>Whole Shift</b> ranges; if a day has none, we can <i>fallback</i> to the first <code>SCH:</code> range so you still see coverage.</p>
+    <p>Upload your raw export and hit <b>Render</b>. By default we show <b>Whole Shift</b> ranges; if a day has none, we can <i>fallback</i> to the first <code>SCH:</code> range so you still see coverage.</p>
 
     <div class="controls">
-      <textarea id="input"></textarea>
+      <div class="upload">
+        <p class="upload-desc">Upload a CSV export to render the daily colleague summary.</p>
+        <div>
+          <input type="file" id="fileInput" accept=".csv,text/csv" hidden>
+          <button class="btn" id="btnUpload" type="button">Upload CSV</button>
+        </div>
+        <p class="upload-status" id="uploadStatus" role="status" aria-live="polite">No file selected.</p>
+      </div>
       <div class="side">
         <button class="btn" id="btnRender">Render</button>
         <button class="btn" id="btnExport" style="background:linear-gradient(180deg,#f59e0b,#d97706)">Export PDF</button>
@@ -237,6 +248,7 @@
         </details>
       </div>
     </div>
+    <textarea id="input" hidden></textarea>
 
     <div class="sheets" id="sheets"></div>
       <div class="footer">Client‑side only. Uses pdf-lib to turn the SVG output into shareable landscape PDFs.</div>
@@ -1268,7 +1280,7 @@
       const btn=document.getElementById('btnExport');
       if(btn.disabled) return;
       if(!lastModel){
-        const t=document.getElementById('input').value.trim();
+        const t=(hiddenInput?hiddenInput.value:'').trim();
         if(!t) return;
         render(t);
         if(!lastModel) return;
@@ -1355,7 +1367,7 @@
         return;
       }
       if(!lastModel){
-        const t=document.getElementById('input').value.trim();
+        const t=(hiddenInput?hiddenInput.value:'').trim();
         if(t) render(t);
       }
       if(!lastModel || !lastPerDay){
@@ -1463,9 +1475,55 @@
     }
 
     // ---------- Sample & Wire-up ----------
+    const hiddenInput=document.getElementById('input');
+    const uploadStatus=document.getElementById('uploadStatus');
+    function setUploadStatus(message,type){
+      if(!uploadStatus) return;
+      uploadStatus.textContent=message;
+      uploadStatus.classList.remove('success','error');
+      if(type){
+        uploadStatus.classList.add(type);
+      }
+    }
+
+    const fileInput=document.getElementById('fileInput');
+    const btnUpload=document.getElementById('btnUpload');
+    if(btnUpload && fileInput){
+      btnUpload.addEventListener('click',()=>{ fileInput.click(); });
+      fileInput.addEventListener('change',()=>{
+        const files=fileInput.files;
+        const file=files && files.length?files[0]:null;
+        if(!file){
+          setUploadStatus('No file selected.');
+          if(hiddenInput){ hiddenInput.value=''; }
+          return;
+        }
+        const name=file.name||'file';
+        const isCsv=name.toLowerCase().endsWith('.csv') || (file.type && file.type.toLowerCase()==='text/csv');
+        if(!isCsv){
+          setUploadStatus('Please choose a CSV file.', 'error');
+          fileInput.value='';
+          if(hiddenInput){ hiddenInput.value=''; }
+          return;
+        }
+        const reader=new FileReader();
+        reader.addEventListener('load',()=>{
+          if(hiddenInput){ hiddenInput.value=typeof reader.result==='string'?reader.result:''; }
+          setUploadStatus(`Loaded ${name}.`, 'success');
+          fileInput.value='';
+        });
+        reader.addEventListener('error',()=>{
+          setUploadStatus(`Failed to read ${name}.`, 'error');
+          fileInput.value='';
+          if(hiddenInput){ hiddenInput.value=''; }
+        });
+        reader.readAsText(file);
+      });
+    }
+
     document.getElementById('btnRender').addEventListener('click',()=>{
-      const text=document.getElementById('input').value.trim();
-      if(!text){ alert('Paste an export into the text area before rendering.'); return; }
+      const text=hiddenInput?hiddenInput.value.trim():'';
+      if(!text){ alert('Upload a CSV before rendering.'); return; }
       render(text);
     });
     document.getElementById('btnExport').addEventListener('click',()=>{ exportPDF(); });
@@ -1492,7 +1550,8 @@
 
     // First paint
     document.addEventListener('DOMContentLoaded',()=>{
-      document.getElementById('input').value='';
+      if(hiddenInput){ hiddenInput.value=''; }
+      setUploadStatus('No file selected.');
       applyLayoutToDocument(currentLayout);
       updateIndividualControls(null,null);
     });
