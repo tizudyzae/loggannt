@@ -30,16 +30,12 @@
     h1{font-size:26px;margin:0;font-weight:600;color:var(--ink)}
     p{color:var(--muted);margin:6px 0 20px}
     .wrap{max-width:none;margin:0;padding:24px 32px;width:100%}
-    .controls{display:grid;gap:12px;grid-template-columns:2fr minmax(240px,1fr);align-items:start;border:1px solid #cfcfcf;padding:16px 18px;border-radius:6px;background:#fafafa;box-shadow:0 2px 6px rgba(0,0,0,.05)}
-    .upload{display:flex;flex-direction:column;gap:12px}
-    .upload-desc{margin:0;color:var(--muted);font-size:13px}
-    .upload-status{margin:0;color:var(--muted);font-size:12px}
-    .upload-status.success{color:#047857}
-    .upload-status.error{color:#b91c1c}
+    .controls{display:flex;flex-direction:column;gap:12px;align-items:stretch;border:1px solid #cfcfcf;padding:16px 18px;border-radius:6px;background:#fafafa;box-shadow:0 2px 6px rgba(0,0,0,.05)}
     .btn{appearance:none;border:1px solid #2d4a83;border-radius:4px;padding:9px 14px;background:linear-gradient(180deg,#4867a9,#324a7a);color:#fff;font-weight:600;cursor:pointer;letter-spacing:.2px}
     .btn[disabled]{opacity:.65;cursor:not-allowed}
     .btn:active{transform:translateY(1px)}
     .side{display:flex;flex-direction:column;gap:12px;min-width:240px}
+    .side>.btn{width:100%}
     .panel{border:1px solid #cfd5e2;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:0}
     .panel summary{cursor:pointer;list-style:none;font-weight:600;color:var(--ink);padding:12px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between}
     .panel summary::-webkit-details-marker{display:none}
@@ -96,15 +92,9 @@
     <p>Upload your raw export and hit <b>Render</b>. By default we show <b>Whole Shift</b> ranges; if a day has none, we can <i>fallback</i> to the first <code>SCH:</code> range so you still see coverage.</p>
 
     <div class="controls">
-      <div class="upload">
-        <p class="upload-desc">Upload a CSV export to render the daily colleague summary.</p>
-        <div>
-          <input type="file" id="fileInput" accept=".csv,text/csv" hidden>
-          <button class="btn" id="btnUpload" type="button">Upload CSV</button>
-        </div>
-        <p class="upload-status" id="uploadStatus" role="status" aria-live="polite">No file selected.</p>
-      </div>
+      <input type="file" id="fileInput" accept=".csv,text/csv" hidden>
       <div class="side">
+        <button class="btn" id="btnUpload" type="button">Upload CSV</button>
         <button class="btn" id="btnRender">Render</button>
         <button class="btn" id="btnExport" style="background:linear-gradient(180deg,#f59e0b,#d97706)">Export PDF</button>
         <div class="panel panel-static">
@@ -279,6 +269,17 @@
       if(!noId) return trimmed;
       const parts=noId.split(/\s+/);
       return parts.length?parts[parts.length-1]:trimmed;
+    }
+
+    function getRowDisplayName(row,index){
+      const fallbackLabel=`Colleague ${index}`;
+      if(!row) return fallbackLabel;
+      const cleaned=(row.name||'').trim();
+      if(cleaned) return cleaned;
+      const fromRaw=cleanColleagueName(row.rawName||'');
+      if(fromRaw) return fromRaw;
+      const stripped=(row.rawName||'').replace(/\s*\([^)]*\)\s*/g,' ').trim();
+      return stripped||fallbackLabel;
     }
 
     const SPECIAL_NAME_COLOR='#0d9488';
@@ -887,7 +888,7 @@
       const rows=model.rows;
       const perDayData=Array.isArray(perDay)?perDay:[];
       rows.forEach((row,idx)=>{
-        const displayName=(row.rawName||row.name||`Colleague ${idx+1}`).trim()||`Colleague ${idx+1}`;
+        const displayName=getRowDisplayName(row,idx+1);
         const record={
           index:idx,
           rawName:row.rawName||'',
@@ -913,7 +914,7 @@
         lastIndividuals.push(record);
         const option=document.createElement('option');
         option.value=String(idx);
-        option.textContent=record.hasSchedule?displayName:`${displayName} (no shifts)`;
+        option.textContent=record.hasSchedule?record.displayName:`${record.displayName} (no shifts)`;
         select.appendChild(option);
       });
       const preserved=lastIndividuals.some(rec=>String(rec.index)===previousValue);
@@ -1385,8 +1386,9 @@
       }
       const record=lastIndividuals.find(rec=>rec.index===idx);
       const person=lastModel.rows[idx];
-      const displayName=(record && record.displayName)||(person.rawName||person.name||`Colleague ${idx+1}`);
-      const resolvedName=displayName.trim()||`Colleague ${idx+1}`;
+      const baseName=getRowDisplayName(person,idx+1);
+      const displayName=(record && record.displayName)||baseName;
+      const resolvedName=displayName.trim()||baseName;
       const dayRows=[];
       const dayHeaders=Array.isArray(lastModel.dayHeaders)?lastModel.dayHeaders:[];
       for(let dayIdx=0;dayIdx<dayHeaders.length;dayIdx++){
@@ -1476,46 +1478,41 @@
 
     // ---------- Sample & Wire-up ----------
     const hiddenInput=document.getElementById('input');
-    const uploadStatus=document.getElementById('uploadStatus');
-    function setUploadStatus(message,type){
-      if(!uploadStatus) return;
-      uploadStatus.textContent=message;
-      uploadStatus.classList.remove('success','error');
-      if(type){
-        uploadStatus.classList.add(type);
-      }
-    }
-
     const fileInput=document.getElementById('fileInput');
     const btnUpload=document.getElementById('btnUpload');
     if(btnUpload && fileInput){
+      const defaultUploadLabel=btnUpload.textContent||'Upload CSV';
       btnUpload.addEventListener('click',()=>{ fileInput.click(); });
       fileInput.addEventListener('change',()=>{
         const files=fileInput.files;
         const file=files && files.length?files[0]:null;
         if(!file){
-          setUploadStatus('No file selected.');
           if(hiddenInput){ hiddenInput.value=''; }
+          btnUpload.textContent=defaultUploadLabel;
           return;
         }
         const name=file.name||'file';
         const isCsv=name.toLowerCase().endsWith('.csv') || (file.type && file.type.toLowerCase()==='text/csv');
         if(!isCsv){
-          setUploadStatus('Please choose a CSV file.', 'error');
+          alert('Please choose a CSV file.');
           fileInput.value='';
           if(hiddenInput){ hiddenInput.value=''; }
+          btnUpload.textContent=defaultUploadLabel;
           return;
         }
         const reader=new FileReader();
         reader.addEventListener('load',()=>{
           if(hiddenInput){ hiddenInput.value=typeof reader.result==='string'?reader.result:''; }
-          setUploadStatus(`Loaded ${name}.`, 'success');
           fileInput.value='';
+          btnUpload.textContent='Replace CSV';
         });
         reader.addEventListener('error',()=>{
-          setUploadStatus(`Failed to read ${name}.`, 'error');
+          const errDetail=reader.error && reader.error.message?reader.error.message:'Unknown error';
+          console.error(reader.error||new Error('Failed to read file'));
+          alert(`Failed to read ${name}: ${errDetail}`);
           fileInput.value='';
           if(hiddenInput){ hiddenInput.value=''; }
+          btnUpload.textContent=defaultUploadLabel;
         });
         reader.readAsText(file);
       });
@@ -1551,7 +1548,7 @@
     // First paint
     document.addEventListener('DOMContentLoaded',()=>{
       if(hiddenInput){ hiddenInput.value=''; }
-      setUploadStatus('No file selected.');
+      if(btnUpload){ btnUpload.textContent='Upload CSV'; }
       applyLayoutToDocument(currentLayout);
       updateIndividualControls(null,null);
     });
