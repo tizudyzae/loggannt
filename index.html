@@ -35,8 +35,6 @@
     .btn{appearance:none;border:1px solid #2d4a83;border-radius:4px;padding:9px 14px;background:linear-gradient(180deg,#4867a9,#324a7a);color:#fff;font-weight:600;cursor:pointer;letter-spacing:.2px}
     .btn[disabled]{opacity:.65;cursor:not-allowed}
     .btn:active{transform:translateY(1px)}
-    .file-upload{position:relative;display:inline-flex;justify-content:center;align-items:center;width:100%;text-align:center}
-    .file-upload input[type="file"]{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer}
     .side{display:flex;flex-direction:column;gap:12px;min-width:240px}
     .panel{border:1px solid #cfd5e2;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:0}
     .panel summary{cursor:pointer;list-style:none;font-weight:600;color:var(--ink);padding:12px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between}
@@ -44,6 +42,8 @@
     .panel summary::after{content:'▾';font-size:11px;color:var(--muted);transition:transform .2s}
     .panel[open] summary::after{transform:rotate(180deg)}
     .panel-body{padding:0 14px 14px;display:grid;gap:12px}
+    .panel.panel-static{padding:14px;display:grid;gap:12px}
+    .panel.panel-static .btn{width:100%}
     .ctrl-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
     .ctrl{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
     .ctrl input,.ctrl select{padding:7px 9px;border:1px solid #cfd5e2;border-radius:4px;font:12px/1.35 "Arial","Helvetica Neue",Helvetica,sans-serif;color:var(--ink);background:#fff}
@@ -84,12 +84,6 @@
     .bar{fill:#7b7b7b}
     .barlabel{fill:#fff;font-size:var(--bar-label-size,11px);font-weight:700;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
     .footer{margin-top:24px;color:var(--muted);font-size:12px;text-align:center}
-    .switch{position:relative;display:inline-block;width:46px;height:24px}
-    .switch input{opacity:0;width:0;height:0}
-    .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#cfd5e2;border-radius:999px;border:1px solid #a3afc5}
-    .slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;top:2px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
-    input:checked + .slider{background:#6aa871;border-color:#4e8d58}
-    input:checked + .slider:before{transform:translateX(20px)}
 </style>
 </head>
 <body>
@@ -101,20 +95,17 @@
       <textarea id="input"></textarea>
       <div class="side">
         <button class="btn" id="btnRender">Render</button>
-        <label class="btn file-upload">
-          Upload CSV
-          <input type="file" id="fileInput" accept=".csv,text/csv">
-        </label>
         <button class="btn" id="btnExport" style="background:linear-gradient(180deg,#f59e0b,#d97706)">Export PDF</button>
-        <div class="row">
-          <label class="switch"><input type="checkbox" id="chkFallback" checked><span class="slider"></span></label>
-          <span>Use <b>SCH:</b> when no <b>Whole&nbsp;Shift</b> found</span>
+        <div class="panel panel-static">
+          <div class="ctrl">
+            <span>Individual schedule</span>
+            <select id="selIndividual" disabled>
+              <option value="">Select colleague…</option>
+            </select>
+          </div>
+          <button class="btn" id="btnExportIndividual" disabled>Export individual PDF</button>
         </div>
-        <div class="row">
-          <label class="switch"><input type="checkbox" id="chkSplit" checked><span class="slider"></span></label>
-          <span>Split bars at midnight</span>
-        </div>
-        <details class="panel" open>
+        <details class="panel">
           <summary>Appearance &amp; Layout</summary>
           <div class="panel-body">
             <div class="ctrl-grid">
@@ -617,7 +608,7 @@
           const segs=daySegments[dayIdx];
           segs.sort((a,b)=>a.start-b.start);
           const range=dayRanges[dayIdx]?{...dayRanges[dayIdx]}:null;
-          perDay[dayIdx].push({name:row.name, range, segments:segs.map(s=>({...s})), highlight});
+          perDay[dayIdx].push({name:row.name, rawName:row.rawName, range, segments:segs.map(s=>({...s})), highlight});
         }
       });
       return perDay;
@@ -682,10 +673,11 @@
       const axisBaseline=headerBottom-6;
       const axisLabelOffset=6;
 
+      const columnLabel=ctx && ctx.columnHeaderLabel?String(ctx.columnHeaderLabel):'Colleague Names';
       const nameHeader=document.createElementNS(svgNS,'text');
       nameHeader.setAttribute('x',P+6);nameHeader.setAttribute('y',headerTextBaseline);
       nameHeader.setAttribute('class','colheader');
-      nameHeader.textContent='Colleague Names';
+      nameHeader.textContent=columnLabel;
       svg.appendChild(nameHeader);
 
       const toX=m=>P+leftAxis+(m/1440)*innerW;
@@ -832,9 +824,10 @@
 
     // ---------- Render / Export ----------
     let lastModel=null,lastPerDay=null,lastRenderDetails=null,lastSourceText='';
+    let lastIndividuals=[];
 
     function render(text){
-      const opts={fallbackSCH:document.getElementById('chkFallback').checked, splitMidnight:document.getElementById('chkSplit').checked};
+      const opts={fallbackSCH:true, splitMidnight:true};
       const layout=getLayoutSettings();
       applyLayoutToDocument(layout);
       currentLayout=layout;
@@ -842,6 +835,7 @@
       lastSourceText=text;
       const perDay=buildPerDay(model,opts);
       lastModel=model; lastPerDay=perDay;
+      updateIndividualControls(model,perDay);
 
       const autoRangeLabel=buildDateRangeLabel(model);
       const resolvedRangeLabel=layout.subtitleOverride || autoRangeLabel;
@@ -862,11 +856,71 @@
       });
     }
 
+    function updateIndividualControls(model,perDay){
+      const select=document.getElementById('selIndividual');
+      const btn=document.getElementById('btnExportIndividual');
+      if(!select || !btn){
+        lastIndividuals=[];
+        return;
+      }
+      const previousValue=select.value;
+      select.innerHTML='<option value="">Select colleague…</option>';
+      lastIndividuals=[];
+      if(!model || !Array.isArray(model.rows) || !model.rows.length){
+        select.value='';
+        select.disabled=true;
+        btn.disabled=true;
+        return;
+      }
+      const rows=model.rows;
+      const perDayData=Array.isArray(perDay)?perDay:[];
+      rows.forEach((row,idx)=>{
+        const displayName=(row.rawName||row.name||`Colleague ${idx+1}`).trim()||`Colleague ${idx+1}`;
+        const record={
+          index:idx,
+          rawName:row.rawName||'',
+          cleanName:row.name||'',
+          displayName,
+          hasSchedule:false,
+        };
+        if(perDayData.length){
+          for(let dayIdx=0;dayIdx<perDayData.length;dayIdx++){
+            const entries=Array.isArray(perDayData[dayIdx])?perDayData[dayIdx]:[];
+            const match=entries.find(entry=>{
+              if(record.rawName && entry.rawName){
+                return entry.rawName===record.rawName;
+              }
+              return entry.name===record.cleanName;
+            });
+            if(match && match.range){
+              record.hasSchedule=true;
+              break;
+            }
+          }
+        }
+        lastIndividuals.push(record);
+        const option=document.createElement('option');
+        option.value=String(idx);
+        option.textContent=record.hasSchedule?displayName:`${displayName} (no shifts)`;
+        select.appendChild(option);
+      });
+      const preserved=lastIndividuals.some(rec=>String(rec.index)===previousValue);
+      if(preserved){
+        select.value=previousValue;
+      }else{
+        select.value='';
+      }
+      select.disabled=false;
+      btn.disabled=!select.value;
+    }
+
     function sanitizeFileName(name){
       return name.replace(/[^\w\d\-_]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'') || 'gantt';
     }
 
-    function buildPdfSheetPlan(rows,layout,{title,rangeLabel,code,date,footerText,footerNote},palette){
+    function buildPdfSheetPlan(rows,layout,{title,rangeLabel,code,date,footerText,footerNote},palette,options={}){
+      const preserveEmptyRows=!!options.preserveEmptyRows;
+      const columnHeaderLabel=options.columnHeaderLabel||'Colleague Names';
       const paddingOuter=18;
       const blockGap=12;
       const lineGap=6;
@@ -877,7 +931,8 @@
       const leftAxis=Math.max(120,layout.nameColumnWidth);
       const innerW=Math.max(100,W-leftAxis-P*2);
       const headerHeight=Math.max(24,layout.headerHeight);
-      const visibleRows=rows.filter(r=>r.range);
+      const sourceRows=Array.isArray(rows)?rows:[];
+      const visibleRows=preserveEmptyRows?sourceRows:sourceRows.filter(r=>r && r.range);
       const bodyRows=visibleRows.length
         ? visibleRows.map(row=>({
             name:row.name,
@@ -940,6 +995,7 @@
           innerWidth:innerW,
           rowHeight:rowH,
           bodyRows,
+          columnHeaderLabel,
           columnHeaderSize:layout.columnHeaderSize||DEFAULT_LAYOUT.columnHeaderSize,
           rowLabelSize:layout.rowLabelSize||DEFAULT_LAYOUT.rowLabelSize,
           barLabelSize:layout.barLabelSize||DEFAULT_LAYOUT.barLabelSize,
@@ -1047,7 +1103,8 @@
       drawLine(chartLeft+innerPadding,headerBottom,chartLeft+chartWidth-innerPadding,headerBottom,palette.sheetBorder,1.2);
 
       const headerTextBaseline=headerTop+18;
-      drawText('Colleague Names',{
+      const columnLabel=chart.columnHeaderLabel||'Colleague Names';
+      drawText(columnLabel,{
         x:chartLeft+innerPadding+6,
         y:headerTextBaseline,
         size:chart.columnHeaderSize,
@@ -1288,26 +1345,111 @@
       }
     }
 
-    function handleFileUpload(event){
-      const input=event.target;
-      if(!input || !input.files || !input.files.length) return;
-      const file=input.files[0];
-      const reader=new FileReader();
-      reader.onload=e=>{
-        const result=e && e.target && typeof e.target.result==='string'?e.target.result:'';
-        const textarea=document.getElementById('input');
-        if(textarea){
-          textarea.value=result;
+    async function exportIndividualPDF(){
+      const btn=document.getElementById('btnExportIndividual');
+      const select=document.getElementById('selIndividual');
+      if(!btn || !select) return;
+      const selectedValue=select.value;
+      if(!selectedValue){
+        alert('Select a colleague before exporting.');
+        return;
+      }
+      if(!lastModel){
+        const t=document.getElementById('input').value.trim();
+        if(t) render(t);
+      }
+      if(!lastModel || !lastPerDay){
+        alert('Render the schedule before exporting an individual PDF.');
+        return;
+      }
+      const idx=parseInt(selectedValue,10);
+      if(Number.isNaN(idx) || idx<0 || idx>=lastModel.rows.length){
+        alert('Select a colleague before exporting.');
+        return;
+      }
+      if(!window.PDFLib){
+        alert('PDF generator failed to load. Please refresh and try again.');
+        return;
+      }
+      const record=lastIndividuals.find(rec=>rec.index===idx);
+      const person=lastModel.rows[idx];
+      const displayName=(record && record.displayName)||(person.rawName||person.name||`Colleague ${idx+1}`);
+      const resolvedName=displayName.trim()||`Colleague ${idx+1}`;
+      const dayRows=[];
+      const dayHeaders=Array.isArray(lastModel.dayHeaders)?lastModel.dayHeaders:[];
+      for(let dayIdx=0;dayIdx<dayHeaders.length;dayIdx++){
+        const label=dayHeaders[dayIdx];
+        const parsed=parseDayHeader(label);
+        const dayName=(parsed && parsed.dayName)||label;
+        const entries=Array.isArray(lastPerDay[dayIdx])?lastPerDay[dayIdx]:[];
+        const match=entries.find(entry=>{
+          if(person.rawName && entry.rawName){
+            return entry.rawName===person.rawName;
+          }
+          return entry.name===person.name;
+        });
+        const range=match && match.range?{...match.range}:null;
+        const segments=match && Array.isArray(match.segments)?match.segments.map(seg=>({...seg})):
+          [];
+        dayRows.push({name:dayName,range,segments,highlight:false});
+      }
+      const renderInfo=lastRenderDetails || {};
+      const layout=renderInfo.layout || currentLayout || DEFAULT_LAYOUT;
+      const palette=buildPdfPalette(layout);
+      const dateRangeLabel=renderInfo.dateRangeLabel || layout.subtitleOverride || buildDateRangeLabel(lastModel);
+      const footerText=formatFooterText(layout.footerTemplate,{
+        pageNumber:1,
+        totalPages:1,
+        formattedDate:resolvedName,
+        label:resolvedName,
+      });
+      const footerNote=(layout.footerNote||'').trim();
+      const plan=buildPdfSheetPlan(dayRows,layout,{
+        title:layout.title||DEFAULT_LAYOUT.title,
+        rangeLabel:dateRangeLabel,
+        code:(layout.staticCode||STATIC_CODE||'').trim(),
+        date:resolvedName,
+        footerText,
+        footerNote,
+      },palette,{preserveEmptyRows:true,columnHeaderLabel:'Day'});
+
+      const originalLabel=btn.textContent;
+      btn.disabled=true;
+      btn.textContent='Exporting…';
+      try{
+        const {PDFDocument,rgb,StandardFonts}=window.PDFLib;
+        const pdfDoc=await PDFDocument.create();
+        const fontRegular=await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const fontBold=await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const pageSize=[842,595];
+        const page=pdfDoc.addPage(pageSize);
+        const pageBg=parseCssColor(layout.pageBackground);
+        if(pageBg){
+          page.drawRectangle({x:0,y:0,width:page.getWidth(),height:page.getHeight(),color:rgb(pageBg.r,pageBg.g,pageBg.b)});
         }
-        if(result.trim()){
-          render(result);
-        }
-      };
-      reader.onerror=()=>{
-        alert('Failed to read the selected file. Please try again.');
-      };
-      reader.readAsText(file);
-      input.value='';
+        drawPdfSheet(page,plan,{
+          fonts:{regular:fontRegular,bold:fontBold},
+          palette,
+          rgb,
+          margin:24,
+        });
+        const pdfBytes=await pdfDoc.save();
+        const blob=new Blob([pdfBytes],{type:'application/pdf'});
+        const url=URL.createObjectURL(blob);
+        const link=document.createElement('a');
+        link.href=url;
+        link.download=`${sanitizeFileName(resolvedName||'schedule')}_schedule.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),5000);
+      }catch(err){
+        console.error(err);
+        alert(`Failed to export PDF: ${err.message}`);
+      }finally{
+        btn.disabled=false;
+        btn.textContent=originalLabel;
+      }
     }
 
     function handleLayoutControlChange(){
@@ -1327,18 +1469,15 @@
       render(text);
     });
     document.getElementById('btnExport').addEventListener('click',()=>{ exportPDF(); });
-    document.getElementById('chkFallback').addEventListener('change',()=>{
-      const text=document.getElementById('input').value.trim();
-      if(text) render(text);
-    });
-    document.getElementById('chkSplit').addEventListener('change',()=>{
-      const text=document.getElementById('input').value.trim();
-      if(text) render(text);
-    });
-
-    const fileInput=document.getElementById('fileInput');
-    if(fileInput){
-      fileInput.addEventListener('change',handleFileUpload);
+    document.getElementById('btnExportIndividual').addEventListener('click',()=>{ exportIndividualPDF(); });
+    const selIndividual=document.getElementById('selIndividual');
+    if(selIndividual){
+      selIndividual.addEventListener('change',()=>{
+        const btn=document.getElementById('btnExportIndividual');
+        if(btn){
+          btn.disabled=!selIndividual.value;
+        }
+      });
     }
 
     const layoutControlIds=[
@@ -1355,6 +1494,7 @@
     document.addEventListener('DOMContentLoaded',()=>{
       document.getElementById('input').value='';
       applyLayoutToDocument(currentLayout);
+      updateIndividualControls(null,null);
     });
   </script>
 </body>
