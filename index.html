@@ -26,6 +26,7 @@
       --bar-label-size:11px;
     }
     *{box-sizing:border-box}
+    [hidden]{display:none !important}
     body{margin:0;padding:0;font:12px/1.35 "Arial","Helvetica Neue",Helvetica,sans-serif;color:var(--ink);background:var(--page-bg)}
     h1{font-size:26px;margin:0;font-weight:600;color:var(--ink)}
     p{color:var(--muted);margin:6px 0 20px}
@@ -174,13 +175,13 @@
         <div class="controls">
           <input type="file" id="fileInput" accept=".csv,text/csv" hidden>
           <button class="btn control-btn" id="btnUpload" type="button">Upload CSV</button>
-          <label class="ctrl" for="selIndividual">
+          <label class="ctrl" for="selIndividual" id="reportScopeControl" hidden aria-hidden="true">
             <span>Report scope</span>
             <select id="selIndividual" disabled>
               <option value="all">All colleagues</option>
             </select>
           </label>
-          <p class="control-hint">Choose a colleague to focus the preview and export.</p>
+          <p class="control-hint" id="reportScopeHint" hidden aria-hidden="true">Choose a colleague to focus the preview and export.</p>
           <details class="panel" hidden>
               <summary>Appearance &amp; Layout</summary>
               <div class="panel-body">
@@ -315,8 +316,8 @@
         </div>
       </aside>
       <main class="main-panel">
-        <div class="viewer">
-          <div class="viewer-tabs" role="tablist" aria-label="Preview modes">
+        <div class="viewer" id="viewerContainer" hidden aria-hidden="true">
+          <div class="viewer-tabs" role="tablist" aria-label="Preview modes" hidden aria-hidden="true">
             <button class="viewer-tab active" id="tabSchedule" type="button" role="tab" aria-selected="true" aria-controls="viewSchedule" data-view="schedule">Schedule view</button>
             <button class="viewer-tab" id="tabPdf" type="button" role="tab" aria-selected="false" aria-controls="viewPdf" data-view="pdf">PDF preview</button>
           </div>
@@ -1312,14 +1313,29 @@
       });
     }
 
+    let viewPanels=null;
+
     function setViewerTabsVisibility(visible){
-      if(!viewerTabsContainer) return;
-      if(visible){
-        viewerTabsContainer.hidden=false;
-        viewerTabsContainer.setAttribute('aria-hidden','false');
-      }else{
-        viewerTabsContainer.hidden=true;
-        viewerTabsContainer.setAttribute('aria-hidden','true');
+      if(viewerContainer){
+        viewerContainer.hidden=!visible;
+        viewerContainer.setAttribute('aria-hidden',visible?'false':'true');
+      }
+      if(viewerTabsContainer){
+        viewerTabsContainer.hidden=!visible;
+        viewerTabsContainer.setAttribute('aria-hidden',visible?'false':'true');
+      }
+      if(viewPanels){
+        Object.values(viewPanels).forEach(panel=>{
+          if(!panel) return;
+          if(visible){
+            panel.hidden=false;
+            const isActive=panel.classList.contains('active');
+            panel.setAttribute('aria-hidden',isActive?'false':'true');
+          }else{
+            panel.hidden=true;
+            panel.setAttribute('aria-hidden','true');
+          }
+        });
       }
     }
 
@@ -1355,6 +1371,17 @@
     function updateIndividualControls(model,perDay){
       const select=document.getElementById('selIndividual');
       const btn=document.getElementById('btnExport');
+      const scopeControl=document.getElementById('reportScopeControl');
+      const scopeHint=document.getElementById('reportScopeHint');
+      const hasRows=!!(model && Array.isArray(model.rows) && model.rows.length);
+      if(scopeControl){
+        scopeControl.hidden=!hasRows;
+        scopeControl.setAttribute('aria-hidden',hasRows?'false':'true');
+      }
+      if(scopeHint){
+        scopeHint.hidden=!hasRows;
+        scopeHint.setAttribute('aria-hidden',hasRows?'false':'true');
+      }
       if(!select || !btn){
         lastIndividuals=[];
         return;
@@ -1366,7 +1393,7 @@
       allOption.textContent='All colleagues';
       select.appendChild(allOption);
       lastIndividuals=[];
-      if(!model || !Array.isArray(model.rows) || !model.rows.length){
+      if(!hasRows){
         select.value='all';
         select.disabled=true;
         btn.disabled=true;
@@ -2077,9 +2104,10 @@
       });
     }
 
+    const viewerContainer=document.getElementById('viewerContainer');
     const viewerTabsContainer=document.querySelector('.viewer-tabs');
     const viewerTabs=Array.from(document.querySelectorAll('.viewer-tab'));
-    const viewPanels={
+    viewPanels={
       schedule:document.getElementById('viewSchedule'),
       pdf:document.getElementById('viewPdf'),
     };
