@@ -34,6 +34,8 @@
     .side-panel{flex:0 0 320px;min-width:260px;display:flex;flex-direction:column;gap:16px}
     .main-panel{flex:1 1 0%;min-width:280px;display:flex;flex-direction:column;gap:20px}
     .controls{display:flex;flex-direction:column;gap:12px;align-items:stretch;border:1px solid #cfcfcf;padding:16px 18px;border-radius:10px;background:#fafafa;box-shadow:0 2px 6px rgba(0,0,0,.05);width:100%}
+    .control-btn{width:100%}
+    .control-hint{margin:0;font-size:11px;color:var(--muted)}
     .btn{appearance:none;border:1px solid #2d4a83;border-radius:4px;padding:9px 14px;background:linear-gradient(180deg,#4867a9,#324a7a);color:#fff;font-weight:600;cursor:pointer;letter-spacing:.2px}
     .btn[disabled]{opacity:.65;cursor:not-allowed}
     .btn:active{transform:translateY(1px)}
@@ -61,6 +63,9 @@
     .viewer-tab.active{background:#2d4a83;color:#fff;border-color:#2d4a83;box-shadow:0 2px 6px rgba(45,74,131,.3)}
     .view-panel{display:none}
     .view-panel.active{display:block}
+    .pdf-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:16px;padding:14px 16px;border:1px solid #cfd5e2;border-radius:10px;background:#fafafa;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+    .pdf-toolbar .btn{flex:0 0 auto}
+    .pdf-toolbar-hint{margin:0;font-size:12px;color:var(--muted)}
     .schedule-view{display:flex;flex-direction:column;gap:18px}
     .schedule-header{display:flex;flex-direction:column;gap:12px}
     .schedule-range{font-size:14px;font-weight:600;color:var(--muted)}
@@ -163,19 +168,15 @@
       <aside class="side-panel">
         <div class="controls">
           <input type="file" id="fileInput" accept=".csv,text/csv" hidden>
-          <div class="side">
-            <button class="btn" id="btnUpload" type="button">Upload CSV</button>
-            <button class="btn" id="btnExport" style="background:linear-gradient(180deg,#f59e0b,#d97706)">Export PDF</button>
-            <div class="panel panel-static">
-              <div class="ctrl">
-                <span>Individual schedule</span>
-                <select id="selIndividual" disabled>
-                  <option value="">Select colleague…</option>
-                </select>
-              </div>
-              <button class="btn" id="btnExportIndividual" disabled>Export individual PDF</button>
-            </div>
-            <details class="panel">
+          <button class="btn control-btn" id="btnUpload" type="button">Upload CSV</button>
+          <label class="ctrl" for="selIndividual">
+            <span>Report scope</span>
+            <select id="selIndividual" disabled>
+              <option value="all">All colleagues</option>
+            </select>
+          </label>
+          <p class="control-hint">Choose a colleague to focus the preview and export.</p>
+          <details class="panel" hidden>
               <summary>Appearance &amp; Layout</summary>
               <div class="panel-body">
             <div class="ctrl-grid">
@@ -318,6 +319,10 @@
             <div id="scheduleView" class="schedule-view"></div>
           </section>
           <section id="viewPdf" class="view-panel" role="tabpanel" aria-labelledby="tabPdf">
+            <div class="pdf-toolbar" role="region" aria-label="PDF export options">
+              <button class="btn" id="btnExport" type="button" style="background:linear-gradient(180deg,#f59e0b,#d97706)" disabled>Export PDF</button>
+              <p class="pdf-toolbar-hint">Exports the weekly overview or the selected colleague.</p>
+            </div>
             <div class="sheets" id="sheets"></div>
           </section>
         </div>
@@ -1283,18 +1288,23 @@
 
     function updateIndividualControls(model,perDay){
       const select=document.getElementById('selIndividual');
-      const btn=document.getElementById('btnExportIndividual');
+      const btn=document.getElementById('btnExport');
       if(!select || !btn){
         lastIndividuals=[];
         return;
       }
-      const previousValue=select.value;
-      select.innerHTML='<option value="">Select colleague…</option>';
+      const previousValue=select.value || 'all';
+      select.innerHTML='';
+      const allOption=document.createElement('option');
+      allOption.value='all';
+      allOption.textContent='All colleagues';
+      select.appendChild(allOption);
       lastIndividuals=[];
       if(!model || !Array.isArray(model.rows) || !model.rows.length){
-        select.value='';
+        select.value='all';
         select.disabled=true;
         btn.disabled=true;
+        btn.textContent='Export PDF';
         currentIndividualIndex=null;
         return;
       }
@@ -1334,17 +1344,22 @@
       if(preserved){
         select.value=previousValue;
       }else{
-        select.value='';
+        select.value='all';
       }
       select.disabled=false;
-      btn.disabled=!select.value;
+      btn.disabled=false;
       const selectedValue=select.value;
-      const parsed=selectedValue?parseInt(selectedValue,10):NaN;
-      if(!Number.isNaN(parsed) && parsed>=0 && parsed<model.rows.length){
-        currentIndividualIndex=parsed;
+      if(selectedValue && selectedValue!=='all'){
+        const parsed=parseInt(selectedValue,10);
+        if(!Number.isNaN(parsed) && parsed>=0 && parsed<model.rows.length){
+          currentIndividualIndex=parsed;
+        }else{
+          currentIndividualIndex=null;
+        }
       }else{
         currentIndividualIndex=null;
       }
+      btn.textContent=selectedValue && selectedValue!=='all'?'Export colleague PDF':'Export weekly PDF';
     }
 
     function sanitizeFileName(name){
@@ -1697,9 +1712,9 @@
       };
     }
 
-    async function exportPDF(){
-      const btn=document.getElementById('btnExport');
-      if(btn.disabled) return;
+    async function exportPDF(btnOverride){
+      const btn=btnOverride || document.getElementById('btnExport');
+      if(!btn || btn.disabled) return;
       if(!lastModel){
         const t=(hiddenInput?hiddenInput.value:'').trim();
         if(!t) return;
@@ -1778,12 +1793,11 @@
       }
     }
 
-    async function exportIndividualPDF(){
-      const btn=document.getElementById('btnExportIndividual');
-      const select=document.getElementById('selIndividual');
-      if(!btn || !select) return;
-      const selectedValue=select.value;
-      if(!selectedValue){
+    async function exportIndividualPDF(indexValue,btnOverride){
+      const btn=btnOverride || document.getElementById('btnExport');
+      if(!btn || btn.disabled) return;
+      const selectedValue=typeof indexValue==='number'?String(indexValue):String(indexValue||'');
+      if(!selectedValue || selectedValue==='all'){
         alert('Select a colleague before exporting.');
         return;
       }
@@ -1886,6 +1900,18 @@
       }
     }
 
+    async function exportSelectedPDF(){
+      const btn=document.getElementById('btnExport');
+      if(!btn || btn.disabled) return;
+      const select=document.getElementById('selIndividual');
+      const selection=select?select.value:'all';
+      if(selection && selection!=='all'){
+        await exportIndividualPDF(selection,btn);
+      }else{
+        await exportPDF(btn);
+      }
+    }
+
     function handleLayoutControlChange(){
       if(lastSourceText){
         render(lastSourceText);
@@ -1927,7 +1953,11 @@
           fileInput.value='';
           btnUpload.textContent='Replace CSV';
           const sel=document.getElementById('selIndividual');
-          if(sel){ sel.value=''; }
+          if(sel){ sel.value='all'; }
+          const exportBtn=document.getElementById('btnExport');
+          if(exportBtn){
+            exportBtn.textContent='Export PDF';
+          }
           currentIndividualIndex=null;
           if(text.trim()){
             render(text);
@@ -1936,6 +1966,7 @@
             lastPerDay=null;
             lastRenderDetails=null;
             lastSourceText='';
+            updateIndividualControls(null,null);
             renderViews();
           }
         });
@@ -1946,26 +1977,35 @@
           fileInput.value='';
           if(hiddenInput){ hiddenInput.value=''; }
           btnUpload.textContent=defaultUploadLabel;
+          const sel=document.getElementById('selIndividual');
+          if(sel){ sel.value='all'; }
+          updateIndividualControls(null,null);
         });
         reader.readAsText(file);
       });
     }
 
-    document.getElementById('btnExport').addEventListener('click',()=>{ exportPDF(); });
-    document.getElementById('btnExportIndividual').addEventListener('click',()=>{ exportIndividualPDF(); });
+    const exportButton=document.getElementById('btnExport');
+    if(exportButton){
+      exportButton.addEventListener('click',()=>{ exportSelectedPDF(); });
+    }
     const selIndividual=document.getElementById('selIndividual');
     if(selIndividual){
       selIndividual.addEventListener('change',()=>{
-        const btn=document.getElementById('btnExportIndividual');
-        if(btn){
-          btn.disabled=!selIndividual.value;
-        }
         const value=selIndividual.value;
-        const parsed=value?parseInt(value,10):NaN;
-        if(!Number.isNaN(parsed) && parsed>=0 && lastModel && lastModel.rows && parsed<lastModel.rows.length){
-          currentIndividualIndex=parsed;
+        if(value && value!=='all'){
+          const parsed=parseInt(value,10);
+          if(!Number.isNaN(parsed) && lastModel && lastModel.rows && parsed<lastModel.rows.length){
+            currentIndividualIndex=parsed;
+          }else{
+            currentIndividualIndex=null;
+          }
         }else{
           currentIndividualIndex=null;
+        }
+        const btn=document.getElementById('btnExport');
+        if(btn){
+          btn.textContent=value && value!=='all'?'Export colleague PDF':'Export weekly PDF';
         }
         renderViews();
       });
