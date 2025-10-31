@@ -1319,24 +1319,12 @@
       if(viewerContainer){
         viewerContainer.hidden=!visible;
         viewerContainer.setAttribute('aria-hidden',visible?'false':'true');
+=====
+main
       }
-      if(viewerTabsContainer){
-        viewerTabsContainer.hidden=!visible;
-        viewerTabsContainer.setAttribute('aria-hidden',visible?'false':'true');
-      }
-      if(viewPanels){
-        Object.values(viewPanels).forEach(panel=>{
-          if(!panel) return;
-          if(visible){
-            panel.hidden=false;
-            const isActive=panel.classList.contains('active');
-            panel.setAttribute('aria-hidden',isActive?'false':'true');
-          }else{
-            panel.hidden=true;
-            panel.setAttribute('aria-hidden','true');
-          }
-        });
-      }
+      if(!viewerTabsContainer) return;
+      viewerTabsContainer.hidden=!visible;
+      viewerTabsContainer.setAttribute('aria-hidden',visible?'false':'true');
     }
 
     function renderViews(){
