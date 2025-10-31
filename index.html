@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Daily Colleague Summary — HTML Demo</title>
+  <title>Logile Rota Viewer — HTML Demo</title>
   <style>
     :root {
       --page-bg:#fff;
@@ -29,8 +29,11 @@
     body{margin:0;padding:0;font:12px/1.35 "Arial","Helvetica Neue",Helvetica,sans-serif;color:var(--ink);background:var(--page-bg)}
     h1{font-size:26px;margin:0;font-weight:600;color:var(--ink)}
     p{color:var(--muted);margin:6px 0 20px}
-    .wrap{max-width:none;margin:0;padding:24px 32px;width:100%}
-    .controls{display:flex;flex-direction:column;gap:12px;align-items:stretch;border:1px solid #cfcfcf;padding:16px 18px;border-radius:6px;background:#fafafa;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+    .wrap{max-width:1200px;margin:0 auto;padding:24px 32px;width:100%;display:flex;flex-direction:column;gap:24px}
+    .layout{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+    .side-panel{flex:0 0 320px;min-width:260px;display:flex;flex-direction:column;gap:16px}
+    .main-panel{flex:1 1 0%;min-width:280px;display:flex;flex-direction:column;gap:20px}
+    .controls{display:flex;flex-direction:column;gap:12px;align-items:stretch;border:1px solid #cfcfcf;padding:16px 18px;border-radius:10px;background:#fafafa;box-shadow:0 2px 6px rgba(0,0,0,.05);width:100%}
     .btn{appearance:none;border:1px solid #2d4a83;border-radius:4px;padding:9px 14px;background:linear-gradient(180deg,#4867a9,#324a7a);color:#fff;font-weight:600;cursor:pointer;letter-spacing:.2px}
     .btn[disabled]{opacity:.65;cursor:not-allowed}
     .btn:active{transform:translateY(1px)}
@@ -51,6 +54,50 @@
     .ctrl small{color:var(--muted);font-size:11px}
     .ctrl-inline{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
     .row{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px}
+    .viewer{display:flex;flex-direction:column;gap:16px}
+    .viewer-tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .viewer-tab{appearance:none;border:1px solid #cfd5e2;border-radius:999px;padding:8px 16px;font-size:13px;font-weight:600;background:#fff;color:var(--muted);cursor:pointer;transition:all .2s ease;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    .viewer-tab:hover{border-color:#2d4a83;color:#2d4a83}
+    .viewer-tab.active{background:#2d4a83;color:#fff;border-color:#2d4a83;box-shadow:0 2px 6px rgba(45,74,131,.3)}
+    .view-panel{display:none}
+    .view-panel.active{display:block}
+    .schedule-view{display:flex;flex-direction:column;gap:18px}
+    .schedule-header{display:flex;flex-direction:column;gap:12px}
+    .schedule-range{font-size:14px;font-weight:600;color:var(--muted)}
+    .schedule-day-buttons{display:flex;gap:8px;flex-wrap:wrap}
+    .schedule-day-button{border:1px solid #cfd5e2;border-radius:999px;padding:6px 14px;font-size:13px;background:#fff;color:var(--ink);cursor:pointer;transition:all .2s ease;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    .schedule-day-button:hover{border-color:#2d4a83;color:#2d4a83}
+    .schedule-day-button.active{background:#2d4a83;color:#fff;border-color:#2d4a83}
+    .schedule-days{display:grid;gap:16px}
+    .schedule-day-card{border:1px solid #e3e6ef;border-radius:14px;padding:16px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+    .schedule-day-card.active{border-color:#324a7a;box-shadow:0 0 0 2px rgba(50,74,122,.18)}
+    .schedule-day-card.schedule-day-focus{box-shadow:0 0 0 3px rgba(45,74,131,.25)}
+    .schedule-day-header{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+    .schedule-day-title{font-size:18px;font-weight:700;color:var(--ink)}
+    .schedule-day-subtitle{font-size:13px;color:var(--muted)}
+    .schedule-shifts{display:flex;flex-direction:column;gap:10px}
+    .shift-card{border:1px solid #d9dfea;border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;background:#f8fbff;transition:box-shadow .2s ease,border-color .2s ease,background .2s ease}
+    .shift-card.highlight{border-color:#0d9488;background:#ecfdf5}
+    .shift-card.selected{border-color:#324a7a;background:#eef2ff}
+    .shift-card.highlight.selected{border-color:#0d9488;background:#d1fae5}
+    .shift-card .shift-name{font-weight:600;color:var(--ink);font-size:14px}
+    .shift-card .shift-time{font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right}
+    .shift-card .shift-duration{font-size:12px;color:var(--muted);font-weight:500}
+    .shift-card .shift-split{font-size:12px;color:var(--muted)}
+    .no-shifts{border:1px dashed #d9dfea;border-radius:12px;padding:16px;color:var(--muted);text-align:center;font-size:13px;background:#fdfdff}
+    .empty-state{border:1px dashed #d9dfea;border-radius:14px;padding:24px;text-align:center;color:var(--muted);background:#fdfdff;font-size:14px}
+    .empty-state strong{display:block;font-size:16px;color:var(--ink);margin-bottom:6px}
+    .individual-summary{border:1px solid #cfd5e2;border-radius:14px;padding:18px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:12px}
+    .individual-summary h2{margin:0;font-size:18px;font-weight:700;color:var(--ink)}
+    .individual-summary p{margin:0;font-size:13px;color:var(--muted)}
+    .individual-summary ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+    .individual-summary li{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:8px 0;border-bottom:1px solid #edf1f9}
+    .individual-summary li:last-child{border-bottom:none}
+    .individual-summary .day-label{font-weight:600;color:var(--ink)}
+    .individual-summary .day-time{color:var(--muted);font-size:13px;text-align:right}
+    .individual-summary .day-off{color:#9b1c1c;font-weight:600}
+    .individual-summary .btn-clear-selection{align-self:flex-start;margin-top:4px;padding:6px 12px;border:1px solid #cfd5e2;border-radius:8px;background:#fff;font-size:13px;font-weight:600;color:#324a7a;cursor:pointer;transition:all .2s ease}
+    .individual-summary .btn-clear-selection:hover{border-color:#2d4a83;background:#eff4ff}
     .sheets{display:flex;flex-direction:column;gap:28px}
     .sheet{
       padding:18px;
@@ -83,31 +130,44 @@
     .divider{stroke:#000;stroke-width:1.2}
     .bar{fill:#7b7b7b}
     .barlabel{fill:#fff;font-size:var(--bar-label-size,11px);font-weight:700;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
-    .footer{margin-top:24px;color:var(--muted);font-size:12px;text-align:center}
-</style>
+    .footer{margin-top:8px;color:var(--muted);font-size:12px;text-align:center}
+    @media (max-width:960px){
+      .layout{flex-direction:column}
+      .side-panel{width:100%}
+    }
+    @media (max-width:640px){
+      .wrap{padding:20px}
+      .shift-card{flex-direction:column;align-items:flex-start}
+      .shift-card .shift-time{text-align:left;align-items:flex-start}
+    }
+  </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Daily Colleague Summary</h1>
-    <p>Upload your raw export and we&apos;ll render it automatically. By default we show <b>Whole Shift</b> ranges; if a day has none, we can <i>fallback</i> to the first <code>SCH:</code> range so you still see coverage.</p>
+    <header class="hero">
+      <h1>Logile rota viewer</h1>
+      <p>Upload your weekly export to explore a mobile-friendly schedule and generate printable PDF sheets. Preview every day, focus on individual colleagues, and share polished reports in a few clicks.</p>
+    </header>
 
-    <div class="controls">
-      <input type="file" id="fileInput" accept=".csv,text/csv" hidden>
-      <div class="side">
-        <button class="btn" id="btnUpload" type="button">Upload CSV</button>
-        <button class="btn" id="btnExport" style="background:linear-gradient(180deg,#f59e0b,#d97706)">Export PDF</button>
-        <div class="panel panel-static">
-          <div class="ctrl">
-            <span>Individual schedule</span>
-            <select id="selIndividual" disabled>
-              <option value="">Select colleague…</option>
-            </select>
-          </div>
-          <button class="btn" id="btnExportIndividual" disabled>Export individual PDF</button>
-        </div>
-        <details class="panel">
-          <summary>Appearance &amp; Layout</summary>
-          <div class="panel-body">
+    <div class="layout">
+      <aside class="side-panel">
+        <div class="controls">
+          <input type="file" id="fileInput" accept=".csv,text/csv" hidden>
+          <div class="side">
+            <button class="btn" id="btnUpload" type="button">Upload CSV</button>
+            <button class="btn" id="btnExport" style="background:linear-gradient(180deg,#f59e0b,#d97706)">Export PDF</button>
+            <div class="panel panel-static">
+              <div class="ctrl">
+                <span>Individual schedule</span>
+                <select id="selIndividual" disabled>
+                  <option value="">Select colleague…</option>
+                </select>
+              </div>
+              <button class="btn" id="btnExportIndividual" disabled>Export individual PDF</button>
+            </div>
+            <details class="panel">
+              <summary>Appearance &amp; Layout</summary>
+              <div class="panel-body">
             <div class="ctrl-grid">
               <label class="ctrl">
                 <span>Sheet title</span>
@@ -233,14 +293,28 @@
                 <input type="color" id="inpPageBgColor" value="#ffffff">
               </label>
             </div>
+              </div>
+            </details>
           </div>
-        </details>
-      </div>
+        </div>
+      </aside>
+      <main class="main-panel">
+        <div class="viewer">
+          <div class="viewer-tabs" role="tablist" aria-label="Preview modes">
+            <button class="viewer-tab active" id="tabSchedule" type="button" role="tab" aria-selected="true" aria-controls="viewSchedule" data-view="schedule">Schedule view</button>
+            <button class="viewer-tab" id="tabPdf" type="button" role="tab" aria-selected="false" aria-controls="viewPdf" data-view="pdf">PDF preview</button>
+          </div>
+          <section id="viewSchedule" class="view-panel active" role="tabpanel" aria-labelledby="tabSchedule">
+            <div id="scheduleView" class="schedule-view"></div>
+          </section>
+          <section id="viewPdf" class="view-panel" role="tabpanel" aria-labelledby="tabPdf">
+            <div class="sheets" id="sheets"></div>
+          </section>
+        </div>
+        <div class="footer">Client‑side only. Uses pdf-lib to turn the SVG output into shareable landscape PDFs.</div>
+      </main>
     </div>
     <textarea id="input" hidden></textarea>
-
-    <div class="sheets" id="sheets"></div>
-      <div class="footer">Client‑side only. Uses pdf-lib to turn the SVG output into shareable landscape PDFs.</div>
   </div>
 
   <script src="pdf-lib.min.js"></script>
@@ -331,6 +405,32 @@
       const pieces=[parsed.dayName || '', ordinal(parsed.day), monthName];
       if(parsed.year) pieces.push(parsed.year);
       return pieces.filter(Boolean).join(' ');
+    }
+
+    function formatShortDayLabel(label){
+      const parsed=parseDayHeader(label);
+      if(!parsed) return label || '';
+      const abbrev=(parsed.dayName||'').slice(0,3);
+      const parts=[];
+      if(abbrev) parts.push(abbrev);
+      if(Number.isFinite(parsed.day) && Number.isFinite(parsed.month)){
+        parts.push(`${pad2(parsed.day)}/${pad2(parsed.month)}`);
+      }
+      if(parsed.year && !parts.length){
+        parts.push(String(parsed.year));
+      }
+      return parts.length?parts.join(' '):(label||'');
+    }
+
+    function formatDuration(mins){
+      if(!Number.isFinite(mins) || mins<=0) return '';
+      const total=Math.round(mins);
+      const hours=Math.floor(total/60);
+      const minutes=total%60;
+      const pieces=[];
+      if(hours>0) pieces.push(`${hours}h`);
+      if(minutes>0) pieces.push(`${minutes}m`);
+      return pieces.join(' ');
     }
 
     function formatRangeDate(part){
@@ -841,33 +941,258 @@
     let lastModel=null,lastPerDay=null,lastRenderDetails=null,lastSourceText='';
     let lastIndividuals=[];
     let currentIndividualIndex=null;
+    const scheduleViewState={activeDay:0};
 
-    function render(text){
-      const opts={fallbackSCH:true, splitMidnight:true};
-      const layout=getLayoutSettings();
-      applyLayoutToDocument(layout);
-      currentLayout=layout;
-      let model; try{ model=parseExport(text);}catch(e){ alert(e.message); return; }
-      lastSourceText=text;
-      const perDay=buildPerDay(model,opts);
-      lastModel=model; lastPerDay=perDay;
-      updateIndividualControls(model,perDay);
-
-      const autoRangeLabel=buildDateRangeLabel(model);
-      const resolvedRangeLabel=layout.subtitleOverride || autoRangeLabel;
-      const totalPages=model.dayHeaders.length;
-      const formattedDates=model.dayHeaders.map(formatFullDayLabel);
-      lastRenderDetails={dateRangeLabel:resolvedRangeLabel,formattedDates,totalPages,layout};
-      renderPreview();
+    function buildDisplayNameLookup(model){
+      const map=new Map();
+      if(!model || !Array.isArray(model.rows)) return map;
+      model.rows.forEach((row,idx)=>{
+        const display=getRowDisplayName(row,idx+1);
+        if(row.rawName) map.set(`raw:${row.rawName}`,display);
+        if(row.name) map.set(`clean:${row.name}`,display);
+      });
+      return map;
     }
 
-    function renderPreview(){
+    function resolveEntryDisplayName(entry,lookup){
+      if(!entry) return 'Colleague';
+      if(entry.rawName){
+        const rawMatch=lookup.get(`raw:${entry.rawName}`);
+        if(rawMatch) return rawMatch;
+      }
+      if(entry.name){
+        const cleanMatch=lookup.get(`clean:${entry.name}`);
+        if(cleanMatch) return cleanMatch;
+      }
+      return entry.name || 'Colleague';
+    }
+
+    function entryMatchesSelection(entry,person){
+      if(!entry || !person) return false;
+      if(person.rawName && entry.rawName && entry.rawName===person.rawName) return true;
+      if(person.name && entry.name && entry.name===person.name) return true;
+      return false;
+    }
+
+    function updateScheduleActiveButtons(buttons){
+      buttons.forEach((btn,idx)=>{
+        const isActive=idx===scheduleViewState.activeDay;
+        btn.classList.toggle('active',isActive);
+        btn.setAttribute('aria-pressed',isActive?'true':'false');
+      });
+    }
+
+    function renderScheduleView(){
+      const container=document.getElementById('scheduleView');
+      if(!container) return;
+      container.innerHTML='';
+      if(!lastModel || !lastPerDay){
+        const placeholder=document.createElement('div');
+        placeholder.className='empty-state';
+        placeholder.innerHTML='<strong>Upload a rota</strong>Use the controls to load your Logile CSV and explore shifts here.';
+        container.appendChild(placeholder);
+        return;
+      }
+      const renderInfo=lastRenderDetails || {};
+      const layout=renderInfo.layout || currentLayout || DEFAULT_LAYOUT;
+      const dayHeaders=Array.isArray(lastModel.dayHeaders)?lastModel.dayHeaders:[];
+      if(!dayHeaders.length){
+        const placeholder=document.createElement('div');
+        placeholder.className='empty-state';
+        placeholder.innerHTML='<strong>No day columns found</strong>We couldn\'t detect any day headings in this CSV.';
+        container.appendChild(placeholder);
+        return;
+      }
+      if(scheduleViewState.activeDay>=dayHeaders.length){
+        scheduleViewState.activeDay=0;
+      }
+      const formattedDates=(renderInfo.formattedDates && renderInfo.formattedDates.length===dayHeaders.length)
+        ? renderInfo.formattedDates
+        : dayHeaders.map(formatFullDayLabel);
+      const dateRangeLabel=renderInfo.dateRangeLabel || layout.subtitleOverride || buildDateRangeLabel(lastModel);
+      const header=document.createElement('div');
+      header.className='schedule-header';
+      const range=document.createElement('div');
+      range.className='schedule-range';
+      range.textContent=dateRangeLabel || 'Date range unavailable';
+      header.appendChild(range);
+      const buttonsWrap=document.createElement('div');
+      buttonsWrap.className='schedule-day-buttons';
+      header.appendChild(buttonsWrap);
+      container.appendChild(header);
+      const buttons=[];
+      const cards=[];
+      const refreshActiveDay=()=>{
+        updateScheduleActiveButtons(buttons);
+        cards.forEach((card,idx)=>{
+          card.classList.toggle('active',idx===scheduleViewState.activeDay);
+        });
+      };
+      dayHeaders.forEach((label,idx)=>{
+        const btn=document.createElement('button');
+        btn.type='button';
+        btn.className='schedule-day-button';
+        btn.dataset.dayIndex=String(idx);
+        btn.textContent=formatShortDayLabel(label);
+        btn.addEventListener('click',()=>{
+          scheduleViewState.activeDay=idx;
+          refreshActiveDay();
+          const target=document.getElementById(`schedule-day-${idx}`);
+          if(target){
+            target.classList.add('schedule-day-focus');
+            target.scrollIntoView({behavior:'smooth',block:'start',inline:'nearest'});
+            setTimeout(()=>target.classList.remove('schedule-day-focus'),600);
+          }
+        });
+        buttonsWrap.appendChild(btn);
+        buttons.push(btn);
+      });
+      const scheduleDays=document.createElement('div');
+      scheduleDays.className='schedule-days';
+      container.appendChild(scheduleDays);
+      const lookup=buildDisplayNameLookup(lastModel);
+      const selectedPerson=(Number.isInteger(currentIndividualIndex) && currentIndividualIndex>=0 && lastModel.rows && currentIndividualIndex<lastModel.rows.length)
+        ? lastModel.rows[currentIndividualIndex]
+        : null;
+      const selectedRecord=lastIndividuals.find(rec=>rec.index===currentIndividualIndex) || null;
+      const perDayData=Array.isArray(lastPerDay)?lastPerDay:[];
+      dayHeaders.forEach((label,idx)=>{
+        const card=document.createElement('section');
+        card.className='schedule-day-card';
+        card.id=`schedule-day-${idx}`;
+        const cardHeader=document.createElement('div');
+        cardHeader.className='schedule-day-header';
+        const title=document.createElement('div');
+        title.className='schedule-day-title';
+        title.textContent=formattedDates[idx] || label || `Day ${idx+1}`;
+        cardHeader.appendChild(title);
+        const entries=Array.isArray(perDayData[idx])?perDayData[idx].filter(Boolean):[];
+        const scheduledEntries=entries.filter(entry=>entry && entry.range);
+        const subtitle=document.createElement('div');
+        subtitle.className='schedule-day-subtitle';
+        if(scheduledEntries.length){
+          const labelText=scheduledEntries.length===1?'colleague':'colleagues';
+          subtitle.textContent=`${scheduledEntries.length} ${labelText} scheduled`;
+        }else{
+          subtitle.textContent='No scheduled colleagues';
+        }
+        cardHeader.appendChild(subtitle);
+        card.appendChild(cardHeader);
+        const shiftList=document.createElement('div');
+        shiftList.className='schedule-shifts';
+        if(!scheduledEntries.length){
+          const empty=document.createElement('div');
+          empty.className='no-shifts';
+          empty.textContent='No scheduled colleagues';
+          shiftList.appendChild(empty);
+        }else{
+          const sorted=scheduledEntries.slice().sort((a,b)=>{
+            const aStart=a && a.range? a.range.start:Infinity;
+            const bStart=b && b.range? b.range.start:Infinity;
+            return aStart-bStart;
+          });
+          sorted.forEach(entry=>{
+            const item=document.createElement('article');
+            item.className='shift-card';
+            if(entry.highlight) item.classList.add('highlight');
+            if(entryMatchesSelection(entry,selectedPerson)) item.classList.add('selected');
+            const nameEl=document.createElement('div');
+            nameEl.className='shift-name';
+            nameEl.textContent=resolveEntryDisplayName(entry,lookup);
+            item.appendChild(nameEl);
+            const timeEl=document.createElement('div');
+            timeEl.className='shift-time';
+            const baseLabel=`${fmtHMDisplay(entry.range.start)} – ${fmtHMDisplay(entry.range.end)}`;
+            const timeSpan=document.createElement('span');
+            timeSpan.textContent=baseLabel;
+            timeEl.appendChild(timeSpan);
+            if(entry.segments && entry.segments.length>1){
+              const segmentsSpan=document.createElement('span');
+              segmentsSpan.className='shift-split';
+              segmentsSpan.textContent=entry.segments.map(seg=>`${fmtHMDisplay(seg.start)}–${fmtHMDisplay(seg.end)}`).join('  •  ');
+              timeEl.appendChild(segmentsSpan);
+            }
+            const durationValue=formatDuration((entry.range.end||0)-(entry.range.start||0));
+            if(durationValue){
+              const durationSpan=document.createElement('span');
+              durationSpan.className='shift-duration';
+              durationSpan.textContent=durationValue;
+              timeEl.appendChild(durationSpan);
+            }
+            item.appendChild(timeEl);
+            shiftList.appendChild(item);
+          });
+        }
+        card.appendChild(shiftList);
+        scheduleDays.appendChild(card);
+        cards.push(card);
+      });
+      refreshActiveDay();
+      const individualSection=document.createElement('section');
+      individualSection.className='individual-summary';
+      const heading=document.createElement('h2');
+      heading.textContent='Individual rota';
+      individualSection.appendChild(heading);
+      if(!selectedPerson){
+        const message=document.createElement('p');
+        message.textContent='Select a colleague in the left-hand controls to focus on their shifts. Everyone is shown in the daily rota above.';
+        individualSection.appendChild(message);
+      }else{
+        const displayName=(selectedRecord && selectedRecord.displayName) || getRowDisplayName(selectedPerson,currentIndividualIndex+1);
+        const intro=document.createElement('p');
+        intro.textContent=`Showing shifts for ${displayName}.`;
+        individualSection.appendChild(intro);
+        const list=document.createElement('ul');
+        const perDay=Array.isArray(lastPerDay)?lastPerDay:[];
+        dayHeaders.forEach((label,idx)=>{
+          const listItem=document.createElement('li');
+          const dayLabel=document.createElement('span');
+          dayLabel.className='day-label';
+          dayLabel.textContent=formatShortDayLabel(label) || `Day ${idx+1}`;
+          listItem.appendChild(dayLabel);
+          const entries=Array.isArray(perDay[idx])?perDay[idx]:[];
+          const match=entries.find(entry=>entryMatchesSelection(entry,selectedPerson));
+          const timeInfo=document.createElement('span');
+          timeInfo.className='day-time';
+          if(match && match.range){
+            const durationText=formatDuration((match.range.end||0)-(match.range.start||0));
+            const base=`${fmtHMDisplay(match.range.start)} – ${fmtHMDisplay(match.range.end)}`;
+            timeInfo.textContent=durationText?`${base} (${durationText})`:base;
+          }else{
+            timeInfo.textContent='Off';
+            timeInfo.classList.add('day-off');
+          }
+          listItem.appendChild(timeInfo);
+          list.appendChild(listItem);
+        });
+        individualSection.appendChild(list);
+        const clearBtn=document.createElement('button');
+        clearBtn.type='button';
+        clearBtn.className='btn-clear-selection';
+        clearBtn.textContent='Show all colleagues';
+        clearBtn.addEventListener('click',()=>{
+          const select=document.getElementById('selIndividual');
+          if(select){
+            select.value='';
+            select.dispatchEvent(new Event('change',{bubbles:true}));
+          }
+        });
+        individualSection.appendChild(clearBtn);
+      }
+      container.appendChild(individualSection);
+    }
+
+    function renderPdfPreview(){
       const sheets=document.getElementById('sheets');
       if(!sheets){
         return;
       }
       sheets.innerHTML='';
       if(!lastModel || !lastPerDay){
+        const placeholder=document.createElement('div');
+        placeholder.className='empty-state';
+        placeholder.innerHTML='<strong>No PDF preview</strong>Upload a CSV to generate printable sheets.';
+        sheets.appendChild(placeholder);
         return;
       }
       const renderInfo=lastRenderDetails || {};
@@ -900,7 +1225,6 @@
       const record=lastIndividuals.find(rec=>rec.index===idx);
       const displayName=(record && record.displayName) || getRowDisplayName(person,idx+1);
       const perDayData=Array.isArray(lastPerDay)?lastPerDay:[];
-
       dayHeaders.forEach((label,i)=>{
         const entries=Array.isArray(perDayData[i])?perDayData[i]:[];
         const match=entries.find(entry=>{
@@ -935,6 +1259,31 @@
           placeholderLabel:`${displayName} has no scheduled shifts`,
         });
       });
+    }
+
+    function renderViews(){
+      renderScheduleView();
+      renderPdfPreview();
+    }
+
+    function render(text){
+      const opts={fallbackSCH:true, splitMidnight:true};
+      const layout=getLayoutSettings();
+      applyLayoutToDocument(layout);
+      currentLayout=layout;
+      let model; try{ model=parseExport(text);}catch(e){ alert(e.message); return; }
+      lastSourceText=text;
+      const perDay=buildPerDay(model,opts);
+      lastModel=model; lastPerDay=perDay;
+      updateIndividualControls(model,perDay);
+
+      const autoRangeLabel=buildDateRangeLabel(model);
+      const resolvedRangeLabel=layout.subtitleOverride || autoRangeLabel;
+      const totalPages=model.dayHeaders.length;
+      const formattedDates=model.dayHeaders.map(formatFullDayLabel);
+      lastRenderDetails={dateRangeLabel:resolvedRangeLabel,formattedDates,totalPages,layout};
+      scheduleViewState.activeDay=0;
+      renderViews();
     }
 
     function updateIndividualControls(model,perDay){
@@ -1592,7 +1941,7 @@
             lastPerDay=null;
             lastRenderDetails=null;
             lastSourceText='';
-            renderPreview();
+            renderViews();
           }
         });
         reader.addEventListener('error',()=>{
@@ -1623,8 +1972,45 @@
         }else{
           currentIndividualIndex=null;
         }
-        renderPreview();
+        renderViews();
       });
+    }
+
+    const viewerTabs=Array.from(document.querySelectorAll('.viewer-tab'));
+    const viewPanels={
+      schedule:document.getElementById('viewSchedule'),
+      pdf:document.getElementById('viewPdf'),
+    };
+    let activeView='schedule';
+
+    function switchView(view){
+      if(!viewPanels[view]) return;
+      activeView=view;
+      viewerTabs.forEach(btn=>{
+        const isActive=btn.dataset.view===view;
+        btn.classList.toggle('active',isActive);
+        btn.setAttribute('aria-selected',isActive?'true':'false');
+        btn.setAttribute('aria-pressed',isActive?'true':'false');
+        btn.setAttribute('tabindex',isActive?'0':'-1');
+      });
+      Object.entries(viewPanels).forEach(([key,panel])=>{
+        if(!panel) return;
+        const isActive=key===view;
+        panel.classList.toggle('active',isActive);
+        panel.setAttribute('aria-hidden',isActive?'false':'true');
+      });
+    }
+
+    if(viewerTabs.length){
+      viewerTabs.forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const view=btn.dataset.view;
+          if(view){
+            switchView(view);
+          }
+        });
+      });
+      switchView(activeView);
     }
 
     const layoutControlIds=[
@@ -1643,6 +2029,8 @@
       if(btnUpload){ btnUpload.textContent='Upload CSV'; }
       applyLayoutToDocument(currentLayout);
       updateIndividualControls(null,null);
+      renderViews();
+      switchView('schedule');
     });
   </script>
 </body>
