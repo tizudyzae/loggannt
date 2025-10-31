@@ -28,6 +28,7 @@
     *{box-sizing:border-box}
     [hidden]{display:none !important}
     body{margin:0;padding:0;font:12px/1.35 "Arial","Helvetica Neue",Helvetica,sans-serif;color:var(--ink);background:var(--page-bg)}
+    .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
     h1{font-size:26px;margin:0;font-weight:600;color:var(--ink)}
     p{color:var(--muted);margin:6px 0 20px}
     .wrap{max-width:1200px;margin:0 auto;padding:24px 32px;width:100%;display:flex;flex-direction:column;gap:24px}
@@ -173,7 +174,7 @@
     <div class="layout">
       <aside class="side-panel">
         <div class="controls">
-          <input type="file" id="fileInput" accept=".csv,text/csv" hidden>
+          <input type="file" id="fileInput" accept=".csv,text/csv" class="visually-hidden">
           <button class="btn control-btn" id="btnUpload" type="button">Upload CSV</button>
           <label class="ctrl" for="selIndividual" id="reportScopeControl" hidden aria-hidden="true">
             <span>Report scope</span>
