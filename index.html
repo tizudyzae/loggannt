@@ -154,8 +154,8 @@
     .barlabel{fill:#fff;font-size:var(--bar-label-size,11px);font-weight:700;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
     .footer{margin-top:8px;color:var(--muted);font-size:12px;text-align:center}
     @media (max-width:960px){
-      .layout{flex-direction:column}
-      .side-panel{width:100%}
+      .layout{flex-direction:column;gap:0}
+      .side-panel{width:100%;flex:0 0 auto}
     }
     @media (max-width:640px){
       .wrap{padding:20px}
@@ -183,137 +183,7 @@
             </select>
           </label>
           <p class="control-hint" id="reportScopeHint" hidden aria-hidden="true">Choose a colleague to focus the preview and export.</p>
-          <details class="panel" hidden>
-              <summary>Appearance &amp; Layout</summary>
-              <div class="panel-body">
-            <div class="ctrl-grid">
-              <label class="ctrl">
-                <span>Sheet title</span>
-                <input type="text" id="inpTitle" value="Daily Colleague Summary">
-              </label>
-              <label class="ctrl">
-                <span>Subtitle override</span>
-                <input type="text" id="inpSubtitle" placeholder="Leave blank to auto-fill">
-              </label>
-              <label class="ctrl">
-                <span>Static code</span>
-                <input type="text" id="inpStaticCode" value="7774">
-              </label>
-              <label class="ctrl">
-                <span>Footer template</span>
-                <input type="text" id="inpFooter" value="Page {page} of {total}">
-                <small>Use {page}, {total}, {date}, {label}</small>
-              </label>
-              <label class="ctrl">
-                <span>Footer note</span>
-                <input type="text" id="inpFooterNote" placeholder="Optional text shown under chart">
-              </label>
-            </div>
-            <div class="ctrl-grid">
-              <label class="ctrl">
-                <span>Row height</span>
-                <input type="number" id="inpRowHeight" value="28" min="18" max="80">
-              </label>
-              <label class="ctrl">
-                <span>Chart width</span>
-                <input type="number" id="inpChartWidth" value="1150" min="600" max="1600">
-              </label>
-              <label class="ctrl">
-                <span>Name column width</span>
-                <input type="number" id="inpNameWidth" value="140" min="140" max="400" disabled>
-              </label>
-              <label class="ctrl">
-                <span>Header height</span>
-                <input type="number" id="inpHeaderHeight" value="36" min="24" max="80">
-              </label>
-              <label class="ctrl">
-                <span>Chart padding</span>
-                <input type="number" id="inpPadding" value="14" min="6" max="40">
-              </label>
-            </div>
-            <div class="ctrl-grid">
-              <label class="ctrl">
-                <span>Title size</span>
-                <input type="number" id="inpTitleSize" value="26" min="14" max="48">
-              </label>
-              <label class="ctrl">
-                <span>Subtitle size</span>
-                <input type="number" id="inpRangeSize" value="22" min="10" max="28" disabled>
-              </label>
-              <label class="ctrl">
-                <span>Code size</span>
-                <input type="number" id="inpCodeSize" value="21" min="12" max="48" disabled>
-              </label>
-              <label class="ctrl">
-                <span>Date size</span>
-                <input type="number" id="inpDateSize" value="16" min="12" max="36">
-              </label>
-              <label class="ctrl">
-                <span>Footer size</span>
-                <input type="number" id="inpFooterSize" value="12" min="10" max="24">
-              </label>
-              <label class="ctrl">
-                <span>Column header size</span>
-                <input type="number" id="inpColumnHeaderSize" value="12" min="8" max="32">
-              </label>
-              <label class="ctrl">
-                <span>Row label size</span>
-                <input type="number" id="inpRowLabelSize" value="12" min="8" max="32">
-              </label>
-              <label class="ctrl">
-                <span>Bar label size</span>
-                <input type="number" id="inpBarLabelSize" value="11" min="8" max="32">
-              </label>
-            </div>
-            <div class="ctrl-grid">
-              <label class="ctrl">
-                <span>Bar colour</span>
-                <input type="color" id="inpBarColor" value="#4b4b4b">
-              </label>
-              <label class="ctrl">
-                <span>Bar label colour</span>
-                <input type="color" id="inpBarLabelColor" value="#ffffff">
-              </label>
-              <label class="ctrl">
-                <span>Header band colour</span>
-                <input type="color" id="inpHeaderBandColor" value="#efefef">
-              </label>
-              <label class="ctrl">
-                <span>Grid line colour</span>
-                <input type="color" id="inpGridColor" value="#bfbfbf">
-              </label>
-              <label class="ctrl">
-                <span>Minor grid colour</span>
-                <input type="color" id="inpMinorGridColor" value="#e5e5e5">
-              </label>
-              <label class="ctrl">
-                <span>Axis/label colour</span>
-                <input type="color" id="inpAxisColor" value="#111111">
-              </label>
-              <label class="ctrl">
-                <span>Column header colour</span>
-                <input type="color" id="inpColumnHeaderColor" value="#111111">
-              </label>
-              <label class="ctrl">
-                <span>Row label colour</span>
-                <input type="color" id="inpRowLabelColor" value="#111111">
-              </label>
-              <label class="ctrl">
-                <span>Sheet background</span>
-                <input type="color" id="inpSheetBgColor" value="#ffffff">
-              </label>
-              <label class="ctrl">
-                <span>Sheet border</span>
-                <input type="color" id="inpSheetBorderColor" value="#000000">
-              </label>
-              <label class="ctrl">
-                <span>Page background</span>
-                <input type="color" id="inpPageBgColor" value="#ffffff">
-              </label>
-            </div>
-              </div>
-            </details>
-          </div>
+          <div id="appearanceControls" hidden aria-hidden="true"></div>
         </div>
       </aside>
       <main class="main-panel">
