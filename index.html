@@ -64,17 +64,17 @@
     .schedule-view{display:flex;flex-direction:column;gap:18px}
     .schedule-header{display:flex;flex-direction:column;gap:12px}
     .schedule-range{font-size:14px;font-weight:600;color:var(--muted)}
-    .schedule-day-buttons{display:flex;gap:8px;flex-wrap:wrap}
-    .schedule-day-button{border:1px solid #cfd5e2;border-radius:999px;padding:6px 14px;font-size:13px;background:#fff;color:var(--ink);cursor:pointer;transition:all .2s ease;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-    .schedule-day-button:hover{border-color:#2d4a83;color:#2d4a83}
-    .schedule-day-button.active{background:#2d4a83;color:#fff;border-color:#2d4a83}
     .schedule-days{display:grid;gap:16px}
-    .schedule-day-card{border:1px solid #e3e6ef;border-radius:14px;padding:16px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.05)}
-    .schedule-day-card.active{border-color:#324a7a;box-shadow:0 0 0 2px rgba(50,74,122,.18)}
-    .schedule-day-card.schedule-day-focus{box-shadow:0 0 0 3px rgba(45,74,131,.25)}
-    .schedule-day-header{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+    .schedule-day-card{border:1px solid #e3e6ef;border-radius:14px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.05);overflow:hidden}
+    .schedule-day-card summary{cursor:pointer;list-style:none;padding:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:600;color:var(--ink)}
+    .schedule-day-card summary::-webkit-details-marker{display:none}
+    .schedule-day-card summary::after{content:'▾';font-size:12px;color:var(--muted);transition:transform .2s ease}
+    .schedule-day-card[open] summary::after{transform:rotate(180deg)}
+    .schedule-day-summary-text{display:flex;flex-direction:column;gap:4px}
+    .schedule-day-header{display:flex;flex-direction:column;gap:4px}
     .schedule-day-title{font-size:18px;font-weight:700;color:var(--ink)}
     .schedule-day-subtitle{font-size:13px;color:var(--muted)}
+    .schedule-day-content{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
     .schedule-shifts{display:flex;flex-direction:column;gap:10px}
     .shift-card{border:1px solid #d9dfea;border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;background:#f8fbff;transition:box-shadow .2s ease,border-color .2s ease,background .2s ease}
     .shift-card.highlight{border-color:#0d9488;background:#ecfdf5}
@@ -87,6 +87,16 @@
     .no-shifts{border:1px dashed #d9dfea;border-radius:12px;padding:16px;color:var(--muted);text-align:center;font-size:13px;background:#fdfdff}
     .empty-state{border:1px dashed #d9dfea;border-radius:14px;padding:24px;text-align:center;color:var(--muted);background:#fdfdff;font-size:14px}
     .empty-state strong{display:block;font-size:16px;color:var(--ink);margin-bottom:6px}
+    .schedule-individual{border:1px solid #cfd5e2;border-radius:14px;padding:18px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:16px}
+    .schedule-individual-title{margin:0;font-size:18px;font-weight:700;color:var(--ink)}
+    .individual-list{display:flex;flex-direction:column;gap:10px}
+    .individual-item{border:1px solid #d9dfea;border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;background:#f8fbff;transition:box-shadow .2s ease,border-color .2s ease,background .2s ease}
+    .individual-item.highlight{border-color:#0d9488;background:#ecfdf5}
+    .individual-item-day{font-weight:600;color:var(--ink);font-size:14px}
+    .individual-item-time{font-size:13px;color:var(--muted);text-align:right;display:flex;flex-direction:column;gap:4px}
+    .individual-item-duration{font-size:12px;color:var(--muted);font-weight:500}
+    .individual-item-segments{font-size:12px;color:var(--muted)}
+    .individual-item-off{color:#9b1c1c;font-weight:600}
     .individual-summary{border:1px solid #cfd5e2;border-radius:14px;padding:18px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:12px}
     .individual-summary h2{margin:0;font-size:18px;font-weight:700;color:var(--ink)}
     .individual-summary p{margin:0;font-size:13px;color:var(--muted)}
@@ -96,8 +106,8 @@
     .individual-summary .day-label{font-weight:600;color:var(--ink)}
     .individual-summary .day-time{color:var(--muted);font-size:13px;text-align:right}
     .individual-summary .day-off{color:#9b1c1c;font-weight:600}
-    .individual-summary .btn-clear-selection{align-self:flex-start;margin-top:4px;padding:6px 12px;border:1px solid #cfd5e2;border-radius:8px;background:#fff;font-size:13px;font-weight:600;color:#324a7a;cursor:pointer;transition:all .2s ease}
-    .individual-summary .btn-clear-selection:hover{border-color:#2d4a83;background:#eff4ff}
+    .btn-clear-selection{align-self:flex-start;margin-top:4px;padding:6px 12px;border:1px solid #cfd5e2;border-radius:8px;background:#fff;font-size:13px;font-weight:600;color:#324a7a;cursor:pointer;transition:all .2s ease}
+    .btn-clear-selection:hover{border-color:#2d4a83;background:#eff4ff}
     .sheets{display:flex;flex-direction:column;gap:28px}
     .sheet{
       padding:18px;
@@ -941,7 +951,6 @@
     let lastModel=null,lastPerDay=null,lastRenderDetails=null,lastSourceText='';
     let lastIndividuals=[];
     let currentIndividualIndex=null;
-    const scheduleViewState={activeDay:0};
 
     function buildDisplayNameLookup(model){
       const map=new Map();
@@ -974,14 +983,6 @@
       return false;
     }
 
-    function updateScheduleActiveButtons(buttons){
-      buttons.forEach((btn,idx)=>{
-        const isActive=idx===scheduleViewState.activeDay;
-        btn.classList.toggle('active',isActive);
-        btn.setAttribute('aria-pressed',isActive?'true':'false');
-      });
-    }
-
     function renderScheduleView(){
       const container=document.getElementById('scheduleView');
       if(!container) return;
@@ -1003,9 +1004,6 @@
         container.appendChild(placeholder);
         return;
       }
-      if(scheduleViewState.activeDay>=dayHeaders.length){
-        scheduleViewState.activeDay=0;
-      }
       const formattedDates=(renderInfo.formattedDates && renderInfo.formattedDates.length===dayHeaders.length)
         ? renderInfo.formattedDates
         : dayHeaders.map(formatFullDayLabel);
@@ -1016,58 +1014,98 @@
       range.className='schedule-range';
       range.textContent=dateRangeLabel || 'Date range unavailable';
       header.appendChild(range);
-      const buttonsWrap=document.createElement('div');
-      buttonsWrap.className='schedule-day-buttons';
-      header.appendChild(buttonsWrap);
       container.appendChild(header);
-      const buttons=[];
-      const cards=[];
-      const refreshActiveDay=()=>{
-        updateScheduleActiveButtons(buttons);
-        cards.forEach((card,idx)=>{
-          card.classList.toggle('active',idx===scheduleViewState.activeDay);
-        });
-      };
-      dayHeaders.forEach((label,idx)=>{
-        const btn=document.createElement('button');
-        btn.type='button';
-        btn.className='schedule-day-button';
-        btn.dataset.dayIndex=String(idx);
-        btn.textContent=formatShortDayLabel(label);
-        btn.addEventListener('click',()=>{
-          scheduleViewState.activeDay=idx;
-          refreshActiveDay();
-          const target=document.getElementById(`schedule-day-${idx}`);
-          if(target){
-            target.classList.add('schedule-day-focus');
-            target.scrollIntoView({behavior:'smooth',block:'start',inline:'nearest'});
-            setTimeout(()=>target.classList.remove('schedule-day-focus'),600);
-          }
-        });
-        buttonsWrap.appendChild(btn);
-        buttons.push(btn);
-      });
-      const scheduleDays=document.createElement('div');
-      scheduleDays.className='schedule-days';
-      container.appendChild(scheduleDays);
+
       const lookup=buildDisplayNameLookup(lastModel);
-      const selectedPerson=(Number.isInteger(currentIndividualIndex) && currentIndividualIndex>=0 && lastModel.rows && currentIndividualIndex<lastModel.rows.length)
+      const perDayData=Array.isArray(lastPerDay)?lastPerDay:[];
+      const hasRows=Array.isArray(lastModel.rows) && lastModel.rows.length>0;
+      const selectedPerson=(Number.isInteger(currentIndividualIndex) && currentIndividualIndex>=0 && hasRows && currentIndividualIndex<lastModel.rows.length)
         ? lastModel.rows[currentIndividualIndex]
         : null;
       const selectedRecord=lastIndividuals.find(rec=>rec.index===currentIndividualIndex) || null;
-      const perDayData=Array.isArray(lastPerDay)?lastPerDay:[];
+
+      if(selectedPerson){
+        const displayName=(selectedRecord && selectedRecord.displayName) || getRowDisplayName(selectedPerson,currentIndividualIndex+1);
+        const focusSection=document.createElement('section');
+        focusSection.className='schedule-individual';
+        const title=document.createElement('h2');
+        title.className='schedule-individual-title';
+        title.textContent=`Shifts for ${displayName}`;
+        focusSection.appendChild(title);
+        const list=document.createElement('div');
+        list.className='individual-list';
+        dayHeaders.forEach((label,idx)=>{
+          const entries=Array.isArray(perDayData[idx])?perDayData[idx]:[];
+          const match=entries.find(entry=>entryMatchesSelection(entry,selectedPerson));
+          const item=document.createElement('article');
+          item.className='individual-item';
+          if(match && match.highlight) item.classList.add('highlight');
+          const dayEl=document.createElement('div');
+          dayEl.className='individual-item-day';
+          dayEl.textContent=formatShortDayLabel(label) || `Day ${idx+1}`;
+          item.appendChild(dayEl);
+          const timeWrap=document.createElement('div');
+          timeWrap.className='individual-item-time';
+          if(match && match.range){
+            const timeSpan=document.createElement('span');
+            timeSpan.textContent=`${fmtHMDisplay(match.range.start)} – ${fmtHMDisplay(match.range.end)}`;
+            timeWrap.appendChild(timeSpan);
+            if(match.segments && match.segments.length>1){
+              const segments=document.createElement('span');
+              segments.className='individual-item-segments';
+              segments.textContent=match.segments.map(seg=>`${fmtHMDisplay(seg.start)}–${fmtHMDisplay(seg.end)}`).join('  • ');
+              timeWrap.appendChild(segments);
+            }
+            const durationText=formatDuration((match.range.end||0)-(match.range.start||0));
+            if(durationText){
+              const duration=document.createElement('span');
+              duration.className='individual-item-duration';
+              duration.textContent=durationText;
+              timeWrap.appendChild(duration);
+            }
+          }else{
+            const off=document.createElement('span');
+            off.className='individual-item-off';
+            off.textContent='Off';
+            timeWrap.appendChild(off);
+          }
+          item.appendChild(timeWrap);
+          list.appendChild(item);
+        });
+        focusSection.appendChild(list);
+        const clearBtn=document.createElement('button');
+        clearBtn.type='button';
+        clearBtn.className='btn-clear-selection';
+        clearBtn.textContent='Show all colleagues';
+        clearBtn.addEventListener('click',()=>{
+          const select=document.getElementById('selIndividual');
+          if(select){
+            select.value='';
+            select.dispatchEvent(new Event('change',{bubbles:true}));
+          }
+        });
+        focusSection.appendChild(clearBtn);
+        container.appendChild(focusSection);
+        return;
+      }
+
+      const scheduleDays=document.createElement('div');
+      scheduleDays.className='schedule-days';
+      container.appendChild(scheduleDays);
       dayHeaders.forEach((label,idx)=>{
-        const card=document.createElement('section');
+        const entries=Array.isArray(perDayData[idx])?perDayData[idx].filter(Boolean):[];
+        const scheduledEntries=entries.filter(entry=>entry && entry.range);
+        const card=document.createElement('details');
         card.className='schedule-day-card';
+        if(idx===0) card.open=true;
         card.id=`schedule-day-${idx}`;
-        const cardHeader=document.createElement('div');
-        cardHeader.className='schedule-day-header';
+        const summary=document.createElement('summary');
+        const summaryText=document.createElement('div');
+        summaryText.className='schedule-day-summary-text';
         const title=document.createElement('div');
         title.className='schedule-day-title';
         title.textContent=formattedDates[idx] || label || `Day ${idx+1}`;
-        cardHeader.appendChild(title);
-        const entries=Array.isArray(perDayData[idx])?perDayData[idx].filter(Boolean):[];
-        const scheduledEntries=entries.filter(entry=>entry && entry.range);
+        summaryText.appendChild(title);
         const subtitle=document.createElement('div');
         subtitle.className='schedule-day-subtitle';
         if(scheduledEntries.length){
@@ -1076,8 +1114,12 @@
         }else{
           subtitle.textContent='No scheduled colleagues';
         }
-        cardHeader.appendChild(subtitle);
-        card.appendChild(cardHeader);
+        summaryText.appendChild(subtitle);
+        summary.appendChild(summaryText);
+        card.appendChild(summary);
+
+        const content=document.createElement('div');
+        content.className='schedule-day-content';
         const shiftList=document.createElement('div');
         shiftList.className='schedule-shifts';
         if(!scheduledEntries.length){
@@ -1095,7 +1137,6 @@
             const item=document.createElement('article');
             item.className='shift-card';
             if(entry.highlight) item.classList.add('highlight');
-            if(entryMatchesSelection(entry,selectedPerson)) item.classList.add('selected');
             const nameEl=document.createElement('div');
             nameEl.className='shift-name';
             nameEl.textContent=resolveEntryDisplayName(entry,lookup);
@@ -1109,7 +1150,7 @@
             if(entry.segments && entry.segments.length>1){
               const segmentsSpan=document.createElement('span');
               segmentsSpan.className='shift-split';
-              segmentsSpan.textContent=entry.segments.map(seg=>`${fmtHMDisplay(seg.start)}–${fmtHMDisplay(seg.end)}`).join('  •  ');
+              segmentsSpan.textContent=entry.segments.map(seg=>`${fmtHMDisplay(seg.start)}–${fmtHMDisplay(seg.end)}`).join('  • ');
               timeEl.appendChild(segmentsSpan);
             }
             const durationValue=formatDuration((entry.range.end||0)-(entry.range.start||0));
@@ -1123,65 +1164,21 @@
             shiftList.appendChild(item);
           });
         }
-        card.appendChild(shiftList);
+        content.appendChild(shiftList);
+        card.appendChild(content);
         scheduleDays.appendChild(card);
-        cards.push(card);
       });
-      refreshActiveDay();
+
       const individualSection=document.createElement('section');
       individualSection.className='individual-summary';
       const heading=document.createElement('h2');
       heading.textContent='Individual rota';
       individualSection.appendChild(heading);
-      if(!selectedPerson){
-        const message=document.createElement('p');
-        message.textContent='Select a colleague in the left-hand controls to focus on their shifts. Everyone is shown in the daily rota above.';
-        individualSection.appendChild(message);
-      }else{
-        const displayName=(selectedRecord && selectedRecord.displayName) || getRowDisplayName(selectedPerson,currentIndividualIndex+1);
-        const intro=document.createElement('p');
-        intro.textContent=`Showing shifts for ${displayName}.`;
-        individualSection.appendChild(intro);
-        const list=document.createElement('ul');
-        const perDay=Array.isArray(lastPerDay)?lastPerDay:[];
-        dayHeaders.forEach((label,idx)=>{
-          const listItem=document.createElement('li');
-          const dayLabel=document.createElement('span');
-          dayLabel.className='day-label';
-          dayLabel.textContent=formatShortDayLabel(label) || `Day ${idx+1}`;
-          listItem.appendChild(dayLabel);
-          const entries=Array.isArray(perDay[idx])?perDay[idx]:[];
-          const match=entries.find(entry=>entryMatchesSelection(entry,selectedPerson));
-          const timeInfo=document.createElement('span');
-          timeInfo.className='day-time';
-          if(match && match.range){
-            const durationText=formatDuration((match.range.end||0)-(match.range.start||0));
-            const base=`${fmtHMDisplay(match.range.start)} – ${fmtHMDisplay(match.range.end)}`;
-            timeInfo.textContent=durationText?`${base} (${durationText})`:base;
-          }else{
-            timeInfo.textContent='Off';
-            timeInfo.classList.add('day-off');
-          }
-          listItem.appendChild(timeInfo);
-          list.appendChild(listItem);
-        });
-        individualSection.appendChild(list);
-        const clearBtn=document.createElement('button');
-        clearBtn.type='button';
-        clearBtn.className='btn-clear-selection';
-        clearBtn.textContent='Show all colleagues';
-        clearBtn.addEventListener('click',()=>{
-          const select=document.getElementById('selIndividual');
-          if(select){
-            select.value='';
-            select.dispatchEvent(new Event('change',{bubbles:true}));
-          }
-        });
-        individualSection.appendChild(clearBtn);
-      }
+      const message=document.createElement('p');
+      message.textContent='Select a colleague in the left-hand controls to focus on their shifts above.';
+      individualSection.appendChild(message);
       container.appendChild(individualSection);
     }
-
     function renderPdfPreview(){
       const sheets=document.getElementById('sheets');
       if(!sheets){
@@ -1225,39 +1222,38 @@
       const record=lastIndividuals.find(rec=>rec.index===idx);
       const displayName=(record && record.displayName) || getRowDisplayName(person,idx+1);
       const perDayData=Array.isArray(lastPerDay)?lastPerDay:[];
-      dayHeaders.forEach((label,i)=>{
-        const entries=Array.isArray(perDayData[i])?perDayData[i]:[];
+      const dayRows=[];
+      dayHeaders.forEach((label,dayIdx)=>{
+        const parsed=parseDayHeader(label);
+        const dayName=(parsed && parsed.dayName) || formatShortDayLabel(label) || label || `Day ${dayIdx+1}`;
+        const entries=Array.isArray(perDayData[dayIdx])?perDayData[dayIdx]:[];
         const match=entries.find(entry=>{
           if(person.rawName && entry.rawName){
             return entry.rawName===person.rawName;
           }
           return entry.name===person.name;
         });
-        const rowData=match && match.range
-          ? {
-              name:displayName,
-              rawName:match.rawName || person.rawName || '',
-              range:{...match.range},
-              segments:Array.isArray(match.segments)?match.segments.map(seg=>({...seg})) : [],
-              highlight:!!match.highlight,
-            }
-          : {
-              name:`${displayName} (no shift)`,
-              rawName:person.rawName || '',
-              range:null,
-              segments:[],
-              highlight:false,
-            };
-        drawDayCard(sheets,label,[rowData],{
-          dateRangeLabel,
-          pageNumber:i+1,
-          totalPages,
-          formattedDate:formattedDates[i],
-          staticCode:layout.staticCode,
-          layout,
-          showEmptyRows:true,
-          placeholderLabel:`${displayName} has no scheduled shifts`,
+        const range=match && match.range?{...match.range}:null;
+        const segments=match && Array.isArray(match.segments)?match.segments.map(seg=>({...seg})):[];
+        dayRows.push({
+          name:dayName,
+          rawName:match && match.rawName ? match.rawName : person.rawName || '',
+          range,
+          segments,
+          highlight:!!(match && match.highlight),
         });
+      });
+
+      drawDayCard(sheets,displayName,dayRows,{
+        dateRangeLabel,
+        pageNumber:1,
+        totalPages:1,
+        formattedDate:displayName,
+        staticCode:layout.staticCode,
+        layout,
+        showEmptyRows:true,
+        placeholderLabel:`${displayName} has no scheduled shifts`,
+        columnHeaderLabel:'Day',
       });
     }
 
@@ -1282,7 +1278,6 @@
       const totalPages=model.dayHeaders.length;
       const formattedDates=model.dayHeaders.map(formatFullDayLabel);
       lastRenderDetails={dateRangeLabel:resolvedRangeLabel,formattedDates,totalPages,layout};
-      scheduleViewState.activeDay=0;
       renderViews();
     }
 
