@@ -42,6 +42,7 @@
     .side{display:flex;flex-direction:column;gap:12px;min-width:240px}
     .side>.btn{width:100%}
     .panel{border:1px solid #cfd5e2;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:0}
+    .panel[hidden]{display:none !important;margin:0 !important;padding:0 !important;border:0}
     .panel summary{cursor:pointer;list-style:none;font-weight:600;color:var(--ink);padding:12px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between}
     .panel summary::-webkit-details-marker{display:none}
     .panel summary::after{content:'▾';font-size:11px;color:var(--muted);transition:transform .2s}
@@ -76,6 +77,10 @@
     .schedule-day-card summary::after{content:'▾';font-size:12px;color:var(--muted);transition:transform .2s ease}
     .schedule-day-card[open] summary::after{transform:rotate(180deg)}
     .schedule-day-summary-text{display:flex;flex-direction:column;gap:4px}
+    .schedule-day-card.today{border-color:#0d9488}
+    .schedule-day-card.today summary{background:#f1f5f9}
+    .schedule-day-card.today .schedule-day-title{color:#0f172a}
+    .schedule-day-card.today .schedule-day-today-badge{display:inline-flex;align-items:center;justify-content:center;padding:3px 8px;border-radius:999px;background:#0d9488;color:#fff;font-size:11px;font-weight:600;letter-spacing:.3px;text-transform:uppercase}
     .schedule-day-header{display:flex;flex-direction:column;gap:4px}
     .schedule-day-title{font-size:18px;font-weight:700;color:var(--ink)}
     .schedule-day-subtitle{font-size:13px;color:var(--muted)}
@@ -411,6 +416,35 @@
         }
       }
       return {dayName,day:dayNum,month:monthNum,year};
+    }
+
+    function extractYearFromLabel(text){
+      if(typeof text!=='string' || !text.trim()) return null;
+      const matches=Array.from(text.matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/g));
+      if(matches.length){
+        const last=matches[matches.length-1];
+        const rawYear=parseInt(last[3],10);
+        if(!Number.isNaN(rawYear)){
+          return last[3].length===2?2000+rawYear:rawYear;
+        }
+      }
+      const standalone=text.match(/\b(20\d{2})\b/);
+      if(standalone){
+        const year=parseInt(standalone[1],10);
+        if(!Number.isNaN(year)) return year;
+      }
+      return null;
+    }
+
+    function isTodayDate(part,fallbackYear){
+      if(!part) return false;
+      const today=new Date();
+      const todayDay=today.getDate();
+      const todayMonth=today.getMonth()+1;
+      const todayYear=today.getFullYear();
+      const resolvedYear=Number.isInteger(part.year)?part.year:(Number.isInteger(fallbackYear)?fallbackYear:null);
+      if(resolvedYear!==null && resolvedYear!==todayYear) return false;
+      return part.day===todayDay && part.month===todayMonth;
     }
 
     function formatFullDayLabel(label){
@@ -1013,6 +1047,14 @@
         ? renderInfo.formattedDates
         : dayHeaders.map(formatFullDayLabel);
       const dateRangeLabel=renderInfo.dateRangeLabel || layout.subtitleOverride || buildDateRangeLabel(lastModel);
+      const parsedHeaders=dayHeaders.map(parseDayHeader);
+      const fallbackYear=(()=>{
+        const withYear=parsedHeaders.find(info=>info && Number.isInteger(info.year));
+        if(withYear) return withYear.year;
+        const yearFromLabel=extractYearFromLabel(dateRangeLabel);
+        if(Number.isInteger(yearFromLabel)) return yearFromLabel;
+        return null;
+      })();
       const header=document.createElement('div');
       header.className='schedule-header';
       const range=document.createElement('div');
@@ -1102,7 +1144,6 @@
         const scheduledEntries=entries.filter(entry=>entry && entry.range);
         const card=document.createElement('details');
         card.className='schedule-day-card';
-        if(idx===0) card.open=true;
         card.id=`schedule-day-${idx}`;
         const summary=document.createElement('summary');
         const summaryText=document.createElement('div');
@@ -1121,6 +1162,15 @@
         }
         summaryText.appendChild(subtitle);
         summary.appendChild(summaryText);
+        const headerInfo=parsedHeaders[idx];
+        if(isTodayDate(headerInfo,fallbackYear)){
+          card.classList.add('today');
+          const badge=document.createElement('span');
+          badge.className='schedule-day-today-badge';
+          badge.textContent='Today';
+          summary.appendChild(badge);
+          summary.setAttribute('aria-label',`${title.textContent} (Today)`);
+        }
         card.appendChild(summary);
 
         const content=document.createElement('div');
@@ -1262,7 +1312,23 @@
       });
     }
 
+    function setViewerTabsVisibility(visible){
+      if(!viewerTabsContainer) return;
+      if(visible){
+        viewerTabsContainer.hidden=false;
+        viewerTabsContainer.setAttribute('aria-hidden','false');
+      }else{
+        viewerTabsContainer.hidden=true;
+        viewerTabsContainer.setAttribute('aria-hidden','true');
+      }
+    }
+
     function renderViews(){
+      const hasData=!!(lastModel && Array.isArray(lastModel.dayHeaders) && lastModel.dayHeaders.length);
+      setViewerTabsVisibility(hasData);
+      if(!hasData && activeView!=='schedule'){
+        switchView('schedule');
+      }
       renderScheduleView();
       renderPdfPreview();
     }
@@ -2011,6 +2077,7 @@
       });
     }
 
+    const viewerTabsContainer=document.querySelector('.viewer-tabs');
     const viewerTabs=Array.from(document.querySelectorAll('.viewer-tab'));
     const viewPanels={
       schedule:document.getElementById('viewSchedule'),
