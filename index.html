@@ -2229,6 +2229,9 @@
       };
     }
 
+    function handleLayoutControlChange(){
+      const layout=getLayoutSettings();
+      applyLayoutToDocument(layout);
       currentLayout=layout;
       renderViews();
     }
@@ -2349,14 +2352,33 @@
 
     if(btnUpload && fileInput){
       const defaultUploadLabel=btnUpload.textContent||'Upload CSV';
-      btnUpload.addEventListener('click',()=>{ fileInput.click(); });
+      btnUpload.addEventListener('click',()=>{
+        console.info('[upload-debug] Upload button clicked. Triggering hidden file input.');
+        if(!fileInput){
+          console.error('[upload-debug] File input element is missing; cannot open file picker.');
+          addUploadLog('File input element missing when attempting to upload.','error');
+          return;
+        }
+        try{
+          fileInput.click();
+          console.info('[upload-debug] fileInput.click() invoked. Waiting for user to select a file…');
+        }catch(err){
+          console.error('[upload-debug] Failed to trigger file input click.',err);
+          addUploadLog('Could not open the file chooser.','error',err && err.message?err.message:err);
+        }
+      });
+      fileInput.addEventListener('click',()=>{
+        console.info('[upload-debug] Native file input received a click event.');
+      });
       fileInput.addEventListener('change',()=>{
+        console.info('[upload-debug] File input change event fired.',{ fileCount:fileInput.files?fileInput.files.length:0 });
         const files=fileInput.files;
         const file=files && files.length?files[0]:null;
         if(!file){
           if(hiddenInput){ hiddenInput.value=''; }
           btnUpload.textContent=defaultUploadLabel;
           addUploadLog('File selection cancelled or no file chosen.','info');
+          console.warn('[upload-debug] No file was selected after the change event.');
           return;
         }
         const name=file.name||'file';
@@ -2367,14 +2389,17 @@
           if(hiddenInput){ hiddenInput.value=''; }
           btnUpload.textContent=defaultUploadLabel;
           addUploadLog('Rejected non-CSV file.','warning',{name,type:file.type||'unknown'});
+          console.warn('[upload-debug] Rejected non-CSV file selection.',{ name,type:file.type||'unknown' });
           return;
         }
         const sizeLabel=formatFileSize(file.size);
         addUploadLog(`Selected ${name}${sizeLabel?` (${sizeLabel})`:''}.`,'info',{type:file.type||'text/csv'});
+        console.info('[upload-debug] Accepted CSV file selection.',{ name,size:file.size,type:file.type||'text/csv' });
         const reader=new FileReader();
         reader.addEventListener('load',()=>{
           const text=typeof reader.result==='string'?reader.result:'';
           addUploadLog(`Finished reading ${name} (${text.length} characters).`,'success');
+          console.info('[upload-debug] FileReader load event completed.',{ characters:text.length });
           if(hiddenInput){ hiddenInput.value=text; }
           fileInput.value='';
           btnUpload.textContent='Replace CSV';
@@ -2403,6 +2428,7 @@
             alert(err && err.message?err.message:'Failed to parse the provided CSV file.');
             btnUpload.textContent=defaultUploadLabel;
             addUploadLog('Failed to parse uploaded CSV.','error',err && err.message?err.message:err);
+            console.error('[upload-debug] Error while parsing uploaded CSV.',err);
           }
         });
         reader.addEventListener('error',()=>{
@@ -2413,8 +2439,10 @@
           if(hiddenInput){ hiddenInput.value=''; }
           btnUpload.textContent=defaultUploadLabel;
           addUploadLog(`FileReader error while reading ${name}.`,'error',errDetail);
+          console.error('[upload-debug] FileReader encountered an error while reading the file.',reader.error);
         });
         addUploadLog(`Reading ${name}${sizeLabel?` (${sizeLabel})`:''}…`,'info');
+        console.info('[upload-debug] Began reading file contents with FileReader.');
         reader.readAsText(file);
       });
     }
