@@ -2347,64 +2347,14 @@
       });
     }
 
-    function withTemporarilyExposedInput(input,task){
-      if(!input || typeof task!=='function') return;
-      const previousStyle=input.getAttribute('style');
-      const hadHiddenClass=input.classList && input.classList.contains('visually-hidden');
-      if(hadHiddenClass){
-        input.classList.remove('visually-hidden');
-      }
-      input.style.position='fixed';
-      input.style.top='0';
-      input.style.left='0';
-      input.style.width='1px';
-      input.style.height='1px';
-      input.style.opacity='0';
-      input.style.pointerEvents='none';
-
-      let cleanedUp=false;
-      const cleanup=()=>{
-        if(cleanedUp) return;
-        cleanedUp=true;
-        if(previousStyle===null){
-          input.removeAttribute('style');
-        }else{
-          input.setAttribute('style',previousStyle);
-        }
-        if(hadHiddenClass){
-          input.classList.add('visually-hidden');
-        }
-      };
-
-      try{
-        const result=task();
-        if(result && typeof result.then==='function'){
-          result.then(()=>cleanup(),()=>cleanup());
-        }else{
-          cleanup();
-        }
-        return result;
-      }catch(err){
-        cleanup();
-        throw err;
-      }
-    }
-
     function openFilePicker(input){
-      if(!input){
-        addUploadLog('File input element is missing.','error');
-        return;
-      }
-
-      addUploadLog('Opening file picker…','info');
+      if(!input) return;
 
       const triggerClickFallback=()=>{
-        addUploadLog('Falling back to legacy file picker behaviour.','info');
         try{
-          withTemporarilyExposedInput(input,()=>{ input.click(); });
+          input.click();
         }catch(fallbackError){
           console.error('Unable to trigger file input',fallbackError);
-          addUploadLog('Unable to trigger legacy file input programmatically.','error',fallbackError && fallbackError.message?fallbackError.message:fallbackError);
         }
       };
 
@@ -2418,12 +2368,11 @@
       const canUseShowPicker=typeof input.showPicker==='function' && !isEffectivelyHidden();
       if(canUseShowPicker){
         try{
-          const maybePromise=withTemporarilyExposedInput(input,()=>input.showPicker());
+          const maybePromise=input.showPicker();
           if(maybePromise && typeof maybePromise.catch==='function'){
             maybePromise.catch(err=>{
               if(err && err.name==='AbortError') return;
               console.error('File picker failed, falling back to click()',err);
-              addUploadLog('showPicker() failed, using legacy fallback.','warning',err && err.message?err.message:err);
               triggerClickFallback();
             });
           }
@@ -2431,13 +2380,10 @@
         }catch(err){
           if(err && err.name==='AbortError'){ return; }
           if(err && err.name==='NotAllowedError'){
-            // Browser blocked showPicker, fall back to click() immediately.
-            addUploadLog('showPicker() blocked by browser permissions.','warning');
             triggerClickFallback();
             return;
           }
           console.error('File picker error',err);
-          addUploadLog('Unexpected error opening file picker.','error',err && err.message?err.message:err);
           triggerClickFallback();
           return;
         }
