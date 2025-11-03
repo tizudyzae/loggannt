@@ -223,12 +223,7 @@
   <button class="settings-toggle" id="btnToggleSettings" type="button" aria-label="Show saved weeks" aria-expanded="false">⚙️</button>
   <div class="panel panel-static settings-panel" id="savedWeeksPanel" hidden aria-hidden="true">
     <h2 class="panel-title">Saved weeks</h2>
-    <p class="control-hint">Select which week to preview or export. Up to four weeks are stored on this device.</p>
-    <label class="saved-week-select" for="savedWeekSelect">
-      <span>Saved week</span>
-      <select id="savedWeekSelect" disabled></select>
-    </label>
-    <p class="saved-week-meta" id="savedWeekMeta" hidden></p>
+    <p class="control-hint">Manage the saved weeks stored on this device.</p>
     <div class="saved-week-actions">
       <button class="btn btn-secondary" id="btnForgetWeek" type="button">Forget selected week</button>
       <button class="btn btn-secondary" id="btnClearWeeks" type="button">Clear saved weeks</button>
@@ -245,6 +240,11 @@
         <div class="controls">
           <input type="file" id="fileInput" accept=".csv,text/csv" class="visually-hidden">
           <button class="btn control-btn" id="btnUpload" type="button">Upload CSV</button>
+          <label class="saved-week-select" for="savedWeekSelect">
+            <span>Saved week</span>
+            <select id="savedWeekSelect" disabled></select>
+          </label>
+          <p class="saved-week-meta" id="savedWeekMeta" hidden></p>
           <label class="ctrl" for="selIndividual" id="reportScopeControl" hidden aria-hidden="true">
             <span>Report scope</span>
             <select id="selIndividual" disabled>
@@ -1685,6 +1685,7 @@
         currentIndividualIndex=null;
         return;
       }
+      const desiredSelection=Number.isInteger(currentIndividualIndex)?String(currentIndividualIndex):(select.value||'all');
       lastIndividuals=[];
       if(!hasWeeks){
         select.innerHTML='<option value="all">All colleagues</option>';
@@ -1708,17 +1709,16 @@
       });
       select.innerHTML=options.join('');
       select.disabled=!rows.length;
-      const previousValue=select.value || 'all';
-      const preserved=lastIndividuals.some(rec=>String(rec.index)===previousValue);
-      if(preserved){
-        select.value=previousValue;
-        currentIndividualIndex=parseInt(previousValue,10);
+      const validValues=new Set(['all',...lastIndividuals.map(rec=>String(rec.index))]);
+      const selectionToApply=validValues.has(desiredSelection)?desiredSelection:'all';
+      select.value=selectionToApply;
+      if(selectionToApply!=='all'){
+        currentIndividualIndex=parseInt(selectionToApply,10);
       }else{
-        select.value='all';
         currentIndividualIndex=null;
       }
       btn.disabled=false;
-      btn.textContent=(select.value && select.value!=='all')?'Export colleague PDF':'Export weekly PDF';
+      btn.textContent=selectionToApply!=='all'?'Export colleague PDF':'Export weekly PDF';
     }
 
     function renderViews(){
