@@ -1,15 +1,2640 @@
-  const fileInput = document.getElementById('fileInput');
-  const btnUpload = document.getElementById('btnUpload');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Logile Rota Viewer — HTML Demo</title>
+  <style>
+    :root {
+      --page-bg:#f3f6f9;
+      --ink:#01263a;
+      --muted:#4a5b6a;
+      --grid:#d0dde7;
+      --axis:#7c8d9b;
+      --accent:#007bc3;
+      --accent-strong:#005c91;
+      --accent-soft:#d9edf8;
+      --focus:#00b2a9;
+      --surface:#ffffff;
+      --surface-soft:#f0f4f7;
+      --border:#d6e1ea;
+      --sheet-bg:#fff;
+      --sheet-border:#13394a;
+      --sheet-header-band:#e1eef5;
+      --sheet-title-size:26px;
+      --sheet-range-size:22px;
+      --sheet-code-size:21px;
+      --sheet-date-size:16px;
+      --sheet-footer-size:12px;
+      --column-header-size:12px;
+      --column-header-color:#01263a;
+      --row-label-size:12px;
+      --bar-label-size:11px;
+    }
+    *{box-sizing:border-box}
+    [hidden]{display:none !important}
+    body{margin:0;padding:0;font:14px/1.5 "Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--ink);background:var(--page-bg)}
+    .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    h1{font-size:34px;margin:0;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+    p{color:var(--muted);margin:8px 0 24px;font-size:16px;max-width:60ch}
+    .wrap{max-width:1200px;margin:0 auto;padding:32px 36px 48px;width:100%;display:flex;flex-direction:column;gap:32px}
+    .hero{position:relative;padding:40px 44px;background:var(--surface);border-radius:32px;overflow:hidden;box-shadow:0 22px 45px rgba(4,37,52,.12);display:flex;flex-direction:column;gap:12px}
+    .hero::after{content:"";position:absolute;inset:auto -30% -45% auto;width:320px;height:320px;background:radial-gradient(circle at center,var(--accent-soft),transparent 65%);opacity:.9;transform:rotate(12deg)}
+    .hero h1{font-size:40px}
+    .hero p{margin:0;color:var(--muted);font-size:18px}
+    .layout{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+    .side-panel{flex:0 0 320px;min-width:260px;display:flex;flex-direction:column;gap:20px}
+    .main-panel{flex:1 1 0%;min-width:280px;display:flex;flex-direction:column;gap:24px}
+    .controls{display:flex;flex-direction:column;gap:16px;align-items:stretch;border:1px solid var(--border);padding:26px 28px;border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);width:100%}
+    .control-btn{width:100%}
+    .control-hint{margin:0;font-size:12px;color:var(--muted);background:var(--surface-soft);padding:12px 14px;border-radius:12px}
+    .log-panel{display:flex;flex-direction:column;gap:12px;border:1px solid var(--border);border-radius:18px;background:var(--surface-soft);padding:16px 18px;box-shadow:0 12px 24px rgba(7,45,65,.08);max-height:260px;overflow:hidden}
+    .log-panel-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .log-panel-title{margin:0;font-size:16px;font-weight:700;color:var(--ink)}
+    .log-clear{border-radius:999px;border:1px solid transparent;background:transparent;color:var(--accent);font-weight:700;font-size:12px;padding:6px 12px;cursor:pointer;transition:all .2s ease}
+    .log-clear:hover{background:var(--accent-soft);color:var(--accent-strong)}
+    .log-clear:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+    .log-panel-body{display:flex;flex-direction:column;gap:10px;overflow:auto;padding-right:4px;max-height:180px}
+    .log-entry{border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:1.4}
+    .log-entry[data-level="success"]{border-color:#1b9e3e;background:rgba(27,158,62,.12)}
+    .log-entry[data-level="warning"]{border-color:#d69e2e;background:rgba(214,158,46,.16)}
+    .log-entry[data-level="error"]{border-color:#c53030;background:rgba(197,48,48,.14)}
+    .log-entry-message{font-weight:600;color:var(--ink)}
+    .log-entry-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);gap:8px;flex-wrap:wrap}
+    .log-entry-details{margin:0;font-family:"Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;white-space:pre-wrap;color:var(--muted);font-size:11px;background:rgba(255,255,255,.6);padding:8px 10px;border-radius:10px;border:1px solid rgba(0,0,0,.05)}
+    .log-empty{margin:0;font-size:12px;color:var(--muted);padding:8px 0}
+    .panel-title{margin:0;font-size:18px;font-weight:700;color:var(--ink)}
+    .saved-week-list{display:flex;flex-direction:column;gap:12px}
+    .saved-week-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--surface-soft)}
+    .saved-week-item input[type="checkbox"]{margin-top:4px}
+    .saved-week-label{flex:1;display:flex;flex-direction:column;gap:4px}
+    .saved-week-name{font-weight:700;color:var(--ink)}
+    .saved-week-meta{font-size:12px;color:var(--muted)}
+    .saved-week-actions{display:flex;align-items:center;gap:8px}
+    .saved-week-remove{background:transparent;border:1px solid transparent;color:var(--accent);font-weight:700;cursor:pointer;font-size:12px;padding:6px 10px;border-radius:999px;transition:all .2s ease}
+    .saved-week-remove:hover{background:var(--accent-soft);color:var(--accent-strong)}
+    .saved-week-remove:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+    .btn{appearance:none;border-radius:999px;padding:11px 18px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer;letter-spacing:.15px;border:1px solid var(--accent);box-shadow:0 10px 20px rgba(0,123,195,.18);transition:background .2s ease,border-color .2s ease,box-shadow .2s ease,transform .1s ease}
+    .btn:hover{background:var(--accent-strong);border-color:var(--accent-strong);box-shadow:0 12px 24px rgba(0,92,145,.22)}
+    .btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+    .btn[disabled]{opacity:.55;cursor:not-allowed;box-shadow:none;background:#8fa3b3;border-color:#8fa3b3}
+    .btn:active{transform:translateY(1px)}
+    .btn-secondary{background:#00b2a9;border-color:#00b2a9;box-shadow:0 10px 20px rgba(0,178,169,.18)}
+    .btn-secondary:hover{background:#00948c;border-color:#00948c;box-shadow:0 12px 24px rgba(0,148,140,.22)}
+    .side{display:flex;flex-direction:column;gap:12px;min-width:240px}
+    .side>.btn{width:100%}
+    .panel{border:1px solid var(--border);border-radius:22px;background:var(--surface);box-shadow:0 14px 30px rgba(9,42,58,.08);padding:0;overflow:hidden}
+    .panel[hidden]{display:none !important;margin:0 !important;padding:0 !important;border:0}
+    .panel summary{cursor:pointer;list-style:none;font-weight:700;color:var(--ink);padding:18px 24px;font-size:15px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);transition:background .2s ease,color .2s ease}
+    .panel summary::-webkit-details-marker{display:none}
+    .panel summary::after{content:'▾';font-size:13px;color:var(--muted);transition:transform .2s ease,color .2s ease}
+    .panel[open] summary{background:var(--surface-soft)}
+    .panel[open] summary::after{transform:rotate(180deg);color:var(--accent)}
+    .panel-body{padding:0 24px 24px;display:grid;gap:16px;background:var(--surface-soft)}
+    .panel.panel-static{padding:24px 28px;display:grid;gap:16px}
+    .panel.panel-static .btn{width:100%}
+    .ctrl-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+    .ctrl{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+    .ctrl input,.ctrl select{padding:9px 11px;border:1px solid var(--border);border-radius:12px;font:14px/1.5 "Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;transition:border-color .2s ease,box-shadow .2s ease}
+    .ctrl input:focus,.ctrl select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,123,195,.2)}
+    .ctrl input[type="color"]{padding:0;height:40px;border-radius:12px;overflow:hidden}
+    .ctrl small{color:var(--muted);font-size:12px}
+    .ctrl-inline{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
+    .row{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:13px}
+    .viewer{display:flex;flex-direction:column;gap:20px}
+    .viewer-tabs{display:flex;gap:12px;flex-wrap:wrap;background:var(--surface);padding:12px;border-radius:20px;box-shadow:0 14px 30px rgba(9,42,58,.08)}
+    .viewer-tab{appearance:none;border:1px solid transparent;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:700;background:transparent;color:var(--muted);cursor:pointer;transition:all .2s ease;box-shadow:none}
+    .viewer-tab:hover{color:var(--accent)}
+    .viewer-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 10px 20px rgba(0,123,195,.18)}
+    .view-panel{display:none}
+    .view-panel.active{display:block}
+    .pdf-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-bottom:16px;padding:20px 22px;border:1px solid var(--border);border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08)}
+    .pdf-toolbar .btn{flex:0 0 auto}
+    .pdf-toolbar-hint{margin:0;font-size:13px;color:var(--muted);max-width:480px}
+    .schedule-view{display:flex;flex-direction:column;gap:24px}
+    .schedule-week{display:flex;flex-direction:column;gap:18px}
+    .schedule-week-heading{display:flex;flex-direction:column;gap:4px}
+    .schedule-week-title{font-size:20px;font-weight:700;color:var(--ink)}
+    .schedule-week-range{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+    .schedule-header{display:flex;flex-direction:column;gap:10px}
+    .schedule-range{font-size:16px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+    .schedule-days{display:grid;gap:20px}
+    .schedule-day-card{border:1px solid var(--border);border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);overflow:hidden;transition:transform .2s ease,box-shadow .2s ease}
+    .schedule-day-card:hover{transform:translateY(-2px);box-shadow:0 22px 44px rgba(7,45,65,.12)}
+    .schedule-day-card summary{cursor:pointer;list-style:none;padding:24px 28px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:700;color:var(--ink);background:linear-gradient(90deg,var(--surface) 0%,var(--surface-soft) 100%)}
+    .schedule-day-card summary::-webkit-details-marker{display:none}
+    .schedule-day-card summary::after{content:'▾';font-size:14px;color:var(--muted);transition:transform .2s ease,color .2s ease}
+    .schedule-day-card[open] summary::after{transform:rotate(180deg);color:var(--accent)}
+    .schedule-day-summary-text{display:flex;flex-direction:column;gap:6px}
+    .schedule-day-card.today{border-color:var(--accent);box-shadow:0 24px 48px rgba(0,123,195,.12)}
+    .schedule-day-card.today summary{background:linear-gradient(90deg,var(--accent-soft) 0%,var(--surface) 100%)}
+    .schedule-day-card.today .schedule-day-title{color:var(--accent-strong)}
+    .schedule-day-card.today .schedule-day-today-badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+    .schedule-day-header{display:flex;flex-direction:column;gap:6px}
+    .schedule-day-title{font-size:22px;font-weight:700;color:var(--ink)}
+    .schedule-day-subtitle{font-size:14px;color:var(--muted)}
+    .schedule-day-content{padding:0 28px 28px;display:flex;flex-direction:column;gap:16px;background:var(--surface)}
+    .schedule-shifts{display:flex;flex-direction:column;gap:12px}
+    .shift-card{border:1px solid transparent;border-radius:16px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:16px;background:var(--surface-soft);transition:box-shadow .2s ease,border-color .2s ease,background .2s ease,transform .2s ease}
+    .shift-card:hover{transform:translateX(2px);box-shadow:0 14px 30px rgba(9,42,58,.08)}
+    .shift-card.highlight{border-color:#00b2a9;background:rgba(0,178,169,.1)}
+    .shift-card.selected{border-color:var(--accent);background:rgba(0,123,195,.12)}
+    .shift-card.highlight.selected{border-color:#008f88;background:rgba(0,178,169,.18)}
+    .shift-card .shift-name{font-weight:700;color:var(--ink);font-size:16px}
+    .shift-card .shift-time{font-size:14px;color:var(--muted);display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right}
+    .shift-card .shift-duration{font-size:13px;color:var(--muted);font-weight:600}
+    .shift-card .shift-split{font-size:12px;color:var(--muted)}
+    .no-shifts{border:1px dashed var(--border);border-radius:18px;padding:18px;color:var(--muted);text-align:center;font-size:14px;background:var(--surface-soft)}
+    .empty-state{border:1px dashed var(--border);border-radius:24px;padding:32px;text-align:center;color:var(--muted);background:var(--surface);font-size:16px;box-shadow:0 18px 36px rgba(7,45,65,.08)}
+    .empty-state strong{display:block;font-size:20px;color:var(--ink);margin-bottom:8px}
+    .schedule-individual{border:1px solid var(--border);border-radius:24px;padding:24px 28px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);display:flex;flex-direction:column;gap:20px}
+    .schedule-individual-title{margin:0;font-size:22px;font-weight:700;color:var(--ink)}
+    .individual-list{display:flex;flex-direction:column;gap:12px}
+    .individual-item{border:1px solid transparent;border-radius:18px;padding:16px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;background:var(--surface-soft);transition:box-shadow .2s ease,border-color .2s ease,background .2s ease,transform .2s ease}
+    .individual-item:hover{transform:translateX(2px);box-shadow:0 14px 30px rgba(9,42,58,.08)}
+    .individual-item.highlight{border-color:#00b2a9;background:rgba(0,178,169,.1)}
+    .individual-item-day{font-weight:700;color:var(--ink);font-size:16px}
+    .individual-item-time{font-size:14px;color:var(--muted);text-align:right;display:flex;flex-direction:column;gap:4px}
+    .individual-item-duration{font-size:13px;color:var(--muted);font-weight:600}
+    .individual-item-segments{font-size:12px;color:var(--muted)}
+    .individual-item-off{color:#a4161a;font-weight:700}
+    .individual-summary{border:1px solid var(--border);border-radius:24px;padding:24px 28px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);display:flex;flex-direction:column;gap:16px}
+    .individual-summary h2{margin:0;font-size:22px;font-weight:700;color:var(--ink)}
+    .individual-summary p{margin:0;font-size:14px;color:var(--muted)}
+    .individual-summary ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+    .individual-summary li{display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:10px 0;border-bottom:1px solid var(--border)}
+    .individual-summary li:last-child{border-bottom:none}
+    .individual-summary .day-label{font-weight:700;color:var(--ink)}
+    .individual-summary .day-time{color:var(--muted);font-size:14px;text-align:right}
+    .individual-summary .day-off{color:#a4161a;font-weight:700}
+    .btn-clear-selection{align-self:flex-start;margin-top:4px;padding:8px 14px;border:1px solid transparent;border-radius:999px;background:transparent;font-size:14px;font-weight:700;color:var(--accent);cursor:pointer;transition:all .2s ease}
+    .btn-clear-selection:hover{background:var(--accent-soft);color:var(--accent-strong)}
+    .btn-clear-selection:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+    .sheets{display:flex;flex-direction:column;gap:32px}
+    .sheet{
+      padding:24px;
+      background:var(--sheet-bg);
+      border:1px solid var(--sheet-border);
+      border-radius:24px;
+      box-shadow:0 24px 48px rgba(3,34,48,.14);
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+    .sheet-header{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      gap:12px;
+      padding-bottom:8px;
+      border-bottom:1px solid rgba(19,57,74,.12);
+    }
+    .sheet-title{font-size:var(--sheet-title-size);font-weight:700;color:var(--ink);letter-spacing:-.01em}
+    .sheet-range{font-size:var(--sheet-range-size);color:var(--muted);font-weight:600}
+    .sheet-code{font-size:var(--sheet-code-size);font-weight:700;color:var(--ink);margin-top:8px}
+    .sheet-date{font-size:var(--sheet-date-size);font-weight:700;color:var(--ink)}
+    .sheet svg{width:100%;height:auto;display:block}
+    .sheet-footer{margin-top:auto;font-size:var(--sheet-footer-size);color:var(--muted);text-align:right}
+    .sheet-footnote{font-size:var(--sheet-footer-size);color:var(--muted);text-align:right;white-space:pre-wrap}
+    .sheet-week-heading{font-size:18px;font-weight:700;color:var(--ink);margin:12px 0 8px}
+    .axislabel{fill:#02293e;font-size:12px;font-family:"Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif}
+    .colheader{fill:var(--column-header-color,#02293e);font-size:var(--column-header-size,12px);font-weight:700;font-family:"Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;text-transform:uppercase;letter-spacing:.08em}
+    .rowlabel{fill:var(--row-label-color,#02293e);font-size:var(--row-label-size,12px);dominant-baseline:middle;font-family:"Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif}
+    .gridline{stroke:var(--grid);stroke-width:1}
+    .gridline-minor{stroke:#edf3f8;stroke-width:.6}
+    .divider{stroke:#02293e;stroke-width:1.2}
+    .bar{fill:#19649b}
+    .barlabel{fill:#fff;font-size:var(--bar-label-size,11px);font-weight:700;dominant-baseline:middle;font-family:"Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif}
+    .footer{margin-top:8px;color:var(--muted);font-size:13px;text-align:center}
+    @media (max-width:960px){
+      .wrap{padding:24px}
+      .hero{padding:32px}
+      .hero::after{display:none}
+      .layout{flex-direction:column;gap:24px}
+      .side-panel{width:100%;flex:0 0 auto}
+      .viewer-tabs{justify-content:flex-start}
+    }
+    @media (max-width:640px){
+      body{font-size:13px}
+      .wrap{padding:20px}
+      .hero{padding:28px;border-radius:24px}
+      .hero h1{font-size:32px}
+      .hero p{font-size:16px}
+      .controls{padding:22px;border-radius:20px}
+      .pdf-toolbar{padding:18px;border-radius:20px}
+      .schedule-day-card summary{padding:20px}
+      .schedule-day-content{padding:0 20px 20px}
+      .shift-card{flex-direction:column;align-items:flex-start}
+      .shift-card .shift-time{text-align:left;align-items:flex-start}
+      .individual-item{flex-direction:column;align-items:flex-start}
+      .individual-item-time{text-align:left;align-items:flex-start}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>Logile rota viewer</h1>
+      <p>Upload your weekly export to explore a mobile-friendly schedule and generate printable PDF sheets. Preview every day, focus on individual colleagues, and share polished reports in a few clicks.</p>
+    </header>
 
-  function openFilePicker(input) {
-    if (!input) return;
-    try {
-      if (typeof input.showPicker === 'function') {
-        input.showPicker();
+    <div class="layout">
+      <aside class="side-panel">
+        <div class="controls">
+          <input type="file" id="fileInput" accept=".csv,text/csv" class="visually-hidden">
+          <button class="btn control-btn" id="btnUpload" type="button">Upload CSV</button>
+          <section class="log-panel" id="uploadLogPanel" aria-label="Upload activity">
+            <div class="log-panel-header">
+              <h2 class="log-panel-title">Upload activity</h2>
+              <button class="log-clear" id="btnClearLog" type="button">Clear log</button>
+            </div>
+            <div class="log-panel-body" id="uploadLog" role="log" aria-live="polite" aria-relevant="additions"></div>
+          </section>
+          <div class="panel panel-static" id="savedWeeksPanel" hidden aria-hidden="true">
+            <h2 class="panel-title">Saved weeks</h2>
+            <p class="control-hint">Select which weeks to preview or export. Up to four weeks are stored on this device.</p>
+            <div id="savedWeekList" class="saved-week-list"></div>
+            <button class="btn btn-secondary" id="btnClearWeeks" type="button">Clear saved weeks</button>
+          </div>
+          <label class="ctrl" for="selIndividual" id="reportScopeControl" hidden aria-hidden="true">
+            <span>Report scope</span>
+            <select id="selIndividual" disabled>
+              <option value="all">All colleagues</option>
+            </select>
+          </label>
+          <p class="control-hint" id="reportScopeHint" hidden aria-hidden="true">Choose a colleague to focus the preview and export.</p>
+          <div id="appearanceControls" hidden aria-hidden="true"></div>
+        </div>
+      </aside>
+      <main class="main-panel">
+        <div class="viewer" id="viewerContainer" hidden aria-hidden="true">
+          <div class="viewer-tabs" role="tablist" aria-label="Preview modes" hidden aria-hidden="true">
+            <button class="viewer-tab active" id="tabSchedule" type="button" role="tab" aria-selected="true" aria-controls="viewSchedule" data-view="schedule">Schedule view</button>
+            <button class="viewer-tab" id="tabPdf" type="button" role="tab" aria-selected="false" aria-controls="viewPdf" data-view="pdf">PDF preview</button>
+          </div>
+          <section id="viewSchedule" class="view-panel active" role="tabpanel" aria-labelledby="tabSchedule">
+            <div id="scheduleView" class="schedule-view"></div>
+          </section>
+          <section id="viewPdf" class="view-panel" role="tabpanel" aria-labelledby="tabPdf">
+            <div class="pdf-toolbar" role="region" aria-label="PDF export options">
+              <button class="btn btn-secondary" id="btnExport" type="button" disabled>Export PDF</button>
+              <p class="pdf-toolbar-hint">Exports the weekly overview or the selected colleague.</p>
+            </div>
+            <div class="sheets" id="sheets"></div>
+          </section>
+        </div>
+        <div class="footer">Client‑side only. Uses pdf-lib to turn the SVG output into shareable landscape PDFs.</div>
+      </main>
+    </div>
+    <textarea id="input" hidden></textarea>
+  </div>
+
+  <script src="pdf-lib.min.js"></script>
+  <script>
+    // ---------- Utilities ----------
+    const pad2=n=>String(n).padStart(2,'0');
+    const toMin=(h,m)=>parseInt(h,10)*60+parseInt(m,10);
+    const fmtHM=mins=>{const m=((mins%1440)+1440)%1440;const h=Math.floor(m/60), mm=m%60;return `${pad2(h)}:${pad2(mm)}`};
+    const fmtHMDisplay=mins=>{
+      if(Number.isNaN(mins)) return '';
+      const total=((mins%1440)+1440)%1440;
+      const hours=Math.floor(total/60);
+      const minutes=total%60;
+      const suffix=hours>=12?'pm':'am';
+      const hour12=(hours%12)||12;
+      const minutePart=minutes===0?'':`:${pad2(minutes)}`;
+      return `${hour12}${minutePart}${suffix}`;
+    };
+
+    function cleanColleagueName(raw){
+      if(typeof raw!=='string') return '';
+      const trimmed=raw.trim();
+      if(!trimmed) return '';
+      const noId=trimmed.replace(/\s*\([^)]*\)\s*/g,' ').trim();
+      if(!noId) return trimmed;
+      const parts=noId.split(/\s+/);
+      return parts.length?parts[parts.length-1]:trimmed;
+    }
+
+    function getRowDisplayName(row,index){
+      const fallbackLabel=`Colleague ${index}`;
+      if(!row) return fallbackLabel;
+      const cleaned=(row.name||'').trim();
+      if(cleaned) return cleaned;
+      const fromRaw=cleanColleagueName(row.rawName||'');
+      if(fromRaw) return fromRaw;
+      const stripped=(row.rawName||'').replace(/\s*\([^)]*\)\s*/g,' ').trim();
+      return stripped||fallbackLabel;
+    }
+
+    const SPECIAL_NAME_COLOR='#0d9488';
+
+    function isNathanName(name){
+      if(!name) return false;
+      const normalized=String(name).toLowerCase().replace(/[^a-z\s]/g,' ');
+      if(!normalized.trim()) return false;
+      const tokens=normalized.split(/\s+/).filter(Boolean);
+      return tokens.some(token=>token.startsWith('nathan') || token.startsWith('nathen') || token.startsWith('nate'));
+    }
+
+    const STATIC_CODE='7774';
+    const DAY_NAME_MAP={sun:'Sunday',mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday'};
+    const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    function ordinal(n){
+      const rem10=n%10;
+      const rem100=n%100;
+      if(rem10===1 && rem100!==11) return `${n}st`;
+      if(rem10===2 && rem100!==12) return `${n}nd`;
+      if(rem10===3 && rem100!==13) return `${n}rd`;
+      return `${n}th`;
+    }
+
+    function parseDayHeader(label){
+      if(!label) return null;
+      const match=label.match(/([A-Za-z]{3,})\s*\(?\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s*\)?/);
+      if(!match) return null;
+      const [,dayPart,dayStr,monthStr,yearStr]=match;
+      const dayNum=parseInt(dayStr,10);
+      const monthNum=parseInt(monthStr,10);
+      if(Number.isNaN(dayNum) || Number.isNaN(monthNum)) return null;
+      const key=dayPart.slice(0,3).toLowerCase();
+      const dayName=DAY_NAME_MAP[key] || dayPart;
+      let year=undefined;
+      if(yearStr){
+        const yr=parseInt(yearStr,10);
+        if(!Number.isNaN(yr)){
+          year=yearStr.length===2?2000+yr:yr;
+        }
+      }
+      return {dayName,day:dayNum,month:monthNum,year};
+    }
+
+    function extractYearFromLabel(text){
+      if(typeof text!=='string' || !text.trim()) return null;
+      const matches=Array.from(text.matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/g));
+      if(matches.length){
+        const last=matches[matches.length-1];
+        const rawYear=parseInt(last[3],10);
+        if(!Number.isNaN(rawYear)){
+          return last[3].length===2?2000+rawYear:rawYear;
+        }
+      }
+      const standalone=text.match(/\b(20\d{2})\b/);
+      if(standalone){
+        const year=parseInt(standalone[1],10);
+        if(!Number.isNaN(year)) return year;
+      }
+      return null;
+    }
+
+    function isTodayDate(part,fallbackYear){
+      if(!part) return false;
+      const today=new Date();
+      const todayDay=today.getDate();
+      const todayMonth=today.getMonth()+1;
+      const todayYear=today.getFullYear();
+      const resolvedYear=Number.isInteger(part.year)?part.year:(Number.isInteger(fallbackYear)?fallbackYear:null);
+      if(resolvedYear!==null && resolvedYear!==todayYear) return false;
+      return part.day===todayDay && part.month===todayMonth;
+    }
+
+    function formatFullDayLabel(label){
+      const parsed=parseDayHeader(label);
+      if(!parsed) return label;
+      const monthName=MONTH_NAMES[parsed.month-1] || '';
+      const pieces=[parsed.dayName || '', ordinal(parsed.day), monthName];
+      if(parsed.year) pieces.push(parsed.year);
+      return pieces.filter(Boolean).join(' ');
+    }
+
+    function formatShortDayLabel(label){
+      const parsed=parseDayHeader(label);
+      if(!parsed) return label || '';
+      const abbrev=(parsed.dayName||'').slice(0,3);
+      const parts=[];
+      if(abbrev) parts.push(abbrev);
+      if(Number.isFinite(parsed.day) && Number.isFinite(parsed.month)){
+        parts.push(`${pad2(parsed.day)}/${pad2(parsed.month)}`);
+      }
+      if(parsed.year && !parts.length){
+        parts.push(String(parsed.year));
+      }
+      return parts.length?parts.join(' '):(label||'');
+    }
+
+    function formatDuration(mins){
+      if(!Number.isFinite(mins) || mins<=0) return '';
+      const total=Math.round(mins);
+      const hours=Math.floor(total/60);
+      const minutes=total%60;
+      const pieces=[];
+      if(hours>0) pieces.push(`${hours}h`);
+      if(minutes>0) pieces.push(`${minutes}m`);
+      return pieces.join(' ');
+    }
+
+    function formatRangeDate(part){
+      if(!part) return '';
+      const day=pad2(part.day);
+      const month=pad2(part.month);
+      return `${day}/${month}${part.year?`/${part.year}`:''}`;
+    }
+
+    function buildDateRangeLabel(model){
+      if(model && typeof model.sub==='string'){
+        const match=model.sub.match(/Date\s*range\s*:\s*(.+)/i);
+        if(match) return `Date range: ${match[1].trim()}`;
+      }
+      if(!model || !Array.isArray(model.dayHeaders) || !model.dayHeaders.length) return '';
+      const parsed=model.dayHeaders.map(parseDayHeader).filter(Boolean);
+      if(!parsed.length) return '';
+      const start=parsed[0];
+      const end=parsed[parsed.length-1];
+      const startStr=formatRangeDate(start);
+      const endStr=formatRangeDate(end);
+      if(!startStr && !endStr) return '';
+      if(startStr && endStr) return `Date range: ${startStr} - ${endStr}`;
+      return `Date range: ${startStr || endStr}`;
+    }
+
+    const STORAGE_KEY='loggannt.rotas.v1';
+    const STORAGE_SELECTION_KEY='loggannt.rotas.selection';
+    const MAX_STORED_WEEKS=4;
+
+    function sanitizeModelForStorage(model){
+      if(!model || typeof model!=='object'){
+        return {title:'',sub:'',dayHeaders:[],rows:[]};
+      }
+      const title=typeof model.title==='string'?model.title:'';
+      const sub=typeof model.sub==='string'?model.sub:'';
+      const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders.map(header=>String(header||'')):[];
+      const rows=Array.isArray(model.rows)?model.rows.map(row=>{
+        const days=Array.isArray(row && row.days)?row.days.map(cell=>String(cell||'')):[];
+        return {
+          name:row && typeof row.name==='string'?row.name:'',
+          rawName:row && typeof row.rawName==='string'?row.rawName:'',
+          days,
+        };
+      }):[];
+      return {title,sub,dayHeaders,rows};
+    }
+
+    function cloneStoredModel(model){
+      if(!model || typeof model!=='object'){
+        return {title:'',sub:'',dayHeaders:[],rows:[]};
+      }
+      return {
+        title:typeof model.title==='string'?model.title:'',
+        sub:typeof model.sub==='string'?model.sub:'',
+        dayHeaders:Array.isArray(model.dayHeaders)?model.dayHeaders.map(header=>String(header||'')):[],
+        rows:Array.isArray(model.rows)?model.rows.map(row=>({
+          name:row && typeof row.name==='string'?row.name:'',
+          rawName:row && typeof row.rawName==='string'?row.rawName:'',
+          days:Array.isArray(row && row.days)?row.days.map(cell=>String(cell||'')):[],
+        })) : [],
+      };
+    }
+
+    function hashWeekKey(value){
+      const text=String(value||'');
+      let hash=0;
+      for(let i=0;i<text.length;i++){
+        hash=(hash*31+text.charCodeAt(i))|0;
+      }
+      return `wk-${Math.abs(hash)}`;
+    }
+
+    function dateFromParts(part,fallbackYear){
+      if(!part || !Number.isInteger(part.day) || !Number.isInteger(part.month)) return null;
+      const year=Number.isInteger(part.year)?part.year:(Number.isInteger(fallbackYear)?fallbackYear:null);
+      if(year===null) return null;
+      const date=new Date(year,part.month-1,part.day);
+      if(Number.isNaN(date.getTime())) return null;
+      return date;
+    }
+
+    function resolveFallbackYear(parsedHeaders,model){
+      const withYear=parsedHeaders.find(info=>info && Number.isInteger(info.year));
+      if(withYear) return withYear.year;
+      const fromSub=extractYearFromLabel(model && model.sub);
+      if(Number.isInteger(fromSub)) return fromSub;
+      const fromTitle=extractYearFromLabel(model && model.title);
+      if(Number.isInteger(fromTitle)) return fromTitle;
+      return null;
+    }
+
+    function deriveWeekMetadata(model){
+      const dayHeaders=Array.isArray(model && model.dayHeaders)?model.dayHeaders:[];
+      const parsed=dayHeaders.map(parseDayHeader);
+      const fallbackYear=resolveFallbackYear(parsed,model||{});
+      const firstIdx=parsed.findIndex(part=>part && Number.isInteger(part.day) && Number.isInteger(part.month));
+      let lastIdx=-1;
+      for(let i=parsed.length-1;i>=0;i--){
+        const part=parsed[i];
+        if(part && Number.isInteger(part.day) && Number.isInteger(part.month)){
+          lastIdx=i;
+          break;
+        }
+      }
+      const firstPart=firstIdx>=0?parsed[firstIdx]:null;
+      const lastPart=lastIdx>=0?parsed[lastIdx]:null;
+      const startDate=dateFromParts(firstPart,fallbackYear);
+      const endDate=dateFromParts(lastPart,fallbackYear);
+      const startIso=startDate?startDate.toISOString().slice(0,10):null;
+      const endIso=endDate?endDate.toISOString().slice(0,10):null;
+      const rangeLabel=buildDateRangeLabel(model);
+      let label='';
+      if(firstIdx>=0){
+        label=`Week of ${formatFullDayLabel(dayHeaders[firstIdx])}`;
+      }else if(rangeLabel){
+        label=rangeLabel;
+      }else if(model && typeof model.title==='string' && model.title.trim()){
+        label=model.title.trim();
+      }else{
+        label='Saved rota';
+      }
+      const fingerprint=[model && model.title?model.title:'',model && model.sub?model.sub:'',dayHeaders.join('|')].join('::');
+      const id=startIso?`week-${startIso}`:hashWeekKey(fingerprint);
+      return {id,label,startIso,endIso,displayRange:rangeLabel||''};
+    }
+
+    const DEFAULT_LAYOUT={
+      title:'Daily Colleague Summary',
+      subtitleOverride:'',
+      staticCode:STATIC_CODE,
+      footerTemplate:'Page {page} of {total}',
+      footerNote:'',
+      rowHeight:28,
+      chartWidth:1150,
+      nameColumnWidth:140,
+      headerHeight:36,
+      padding:14,
+      titleSize:26,
+      subtitleSize:22,
+      codeSize:21,
+      dateSize:16,
+      footerSize:12,
+      columnHeaderSize:12,
+      rowLabelSize:12,
+      barLabelSize:11,
+      barColor:'#4b4b4b',
+      barLabelColor:'#ffffff',
+      headerBandColor:'#efefef',
+      gridColor:'#bfbfbf',
+      minorGridColor:'#e5e5e5',
+      axisColor:'#111111',
+      columnHeaderColor:'#111111',
+      rowLabelColor:'#111111',
+      sheetBackground:'#ffffff',
+      sheetBorder:'#000000',
+      pageBackground:'#ffffff',
+    };
+
+    let currentLayout={...DEFAULT_LAYOUT};
+
+    function readControlValue(id){
+      const el=document.getElementById(id);
+      return el?el.value:'';
+    }
+
+    function readNumberValue(id,fallback){
+      const raw=readControlValue(id);
+      const num=parseFloat(raw);
+      return Number.isFinite(num)?num:fallback;
+    }
+
+    function getLayoutSettings(){
+      const layout={...DEFAULT_LAYOUT};
+      layout.title=readControlValue('inpTitle')||DEFAULT_LAYOUT.title;
+      layout.subtitleOverride=readControlValue('inpSubtitle').trim();
+      const staticCode=readControlValue('inpStaticCode').trim();
+      layout.staticCode=staticCode||DEFAULT_LAYOUT.staticCode;
+      layout.footerTemplate=readControlValue('inpFooter')||DEFAULT_LAYOUT.footerTemplate;
+      layout.footerNote=readControlValue('inpFooterNote').trim();
+      layout.rowHeight=readNumberValue('inpRowHeight',DEFAULT_LAYOUT.rowHeight);
+      layout.chartWidth=readNumberValue('inpChartWidth',DEFAULT_LAYOUT.chartWidth);
+      layout.nameColumnWidth=DEFAULT_LAYOUT.nameColumnWidth;
+      layout.headerHeight=readNumberValue('inpHeaderHeight',DEFAULT_LAYOUT.headerHeight);
+      layout.padding=readNumberValue('inpPadding',DEFAULT_LAYOUT.padding);
+      layout.titleSize=readNumberValue('inpTitleSize',DEFAULT_LAYOUT.titleSize);
+      layout.subtitleSize=DEFAULT_LAYOUT.subtitleSize;
+      layout.codeSize=DEFAULT_LAYOUT.codeSize;
+      layout.dateSize=readNumberValue('inpDateSize',DEFAULT_LAYOUT.dateSize);
+      layout.footerSize=readNumberValue('inpFooterSize',DEFAULT_LAYOUT.footerSize);
+      layout.columnHeaderSize=readNumberValue('inpColumnHeaderSize',DEFAULT_LAYOUT.columnHeaderSize);
+      layout.rowLabelSize=readNumberValue('inpRowLabelSize',DEFAULT_LAYOUT.rowLabelSize);
+      layout.barLabelSize=readNumberValue('inpBarLabelSize',DEFAULT_LAYOUT.barLabelSize);
+      layout.barColor=readControlValue('inpBarColor')||DEFAULT_LAYOUT.barColor;
+      layout.barLabelColor=readControlValue('inpBarLabelColor')||DEFAULT_LAYOUT.barLabelColor;
+      layout.headerBandColor=readControlValue('inpHeaderBandColor')||DEFAULT_LAYOUT.headerBandColor;
+      layout.gridColor=readControlValue('inpGridColor')||DEFAULT_LAYOUT.gridColor;
+      layout.minorGridColor=readControlValue('inpMinorGridColor')||DEFAULT_LAYOUT.minorGridColor;
+      layout.axisColor=readControlValue('inpAxisColor')||DEFAULT_LAYOUT.axisColor;
+      layout.columnHeaderColor=readControlValue('inpColumnHeaderColor')||DEFAULT_LAYOUT.columnHeaderColor;
+      layout.rowLabelColor=readControlValue('inpRowLabelColor')||DEFAULT_LAYOUT.rowLabelColor;
+      layout.sheetBackground=readControlValue('inpSheetBgColor')||DEFAULT_LAYOUT.sheetBackground;
+      layout.sheetBorder=readControlValue('inpSheetBorderColor')||DEFAULT_LAYOUT.sheetBorder;
+      layout.pageBackground=readControlValue('inpPageBgColor')||DEFAULT_LAYOUT.pageBackground;
+      return layout;
+    }
+
+    function applyLayoutCssVariables(style,layout){
+      if(!style || typeof style.setProperty!=='function') return;
+      style.setProperty('--page-bg',layout.pageBackground);
+      style.setProperty('--sheet-bg',layout.sheetBackground);
+      style.setProperty('--sheet-border',layout.sheetBorder);
+      style.setProperty('--sheet-header-band',layout.headerBandColor);
+      style.setProperty('--sheet-title-size',`${layout.titleSize}px`);
+      style.setProperty('--sheet-range-size',`${layout.subtitleSize}px`);
+      style.setProperty('--sheet-code-size',`${layout.codeSize}px`);
+      style.setProperty('--sheet-date-size',`${layout.dateSize}px`);
+      style.setProperty('--sheet-footer-size',`${layout.footerSize}px`);
+      style.setProperty('--column-header-size',`${layout.columnHeaderSize}px`);
+      style.setProperty('--column-header-color',layout.columnHeaderColor);
+      style.setProperty('--row-label-size',`${layout.rowLabelSize}px`);
+      style.setProperty('--bar-label-size',`${layout.barLabelSize}px`);
+      style.setProperty('--bar-color',layout.barColor);
+      style.setProperty('--bar-label-color',layout.barLabelColor);
+      style.setProperty('--header-band-color',layout.headerBandColor);
+      style.setProperty('--grid-color',layout.gridColor);
+      style.setProperty('--minor-grid-color',layout.minorGridColor);
+      style.setProperty('--axis-color',layout.axisColor);
+      style.setProperty('--row-label-color',layout.rowLabelColor);
+    }
+
+    function applyLayoutToElement(element,layout){
+      if(!element) return;
+      applyLayoutCssVariables(element.style,layout);
+    }
+
+    function applyLayoutToDocument(layout){
+      applyLayoutCssVariables(document.documentElement.style,layout);
+    }
+
+    function buildSvgStyleBlock(theme){
+      const axis=theme.axisColor;
+      const columnHeaderColor=theme.columnHeaderColor || axis;
+      const columnHeaderSize=theme.columnHeaderSize || DEFAULT_LAYOUT.columnHeaderSize;
+      const axisLabelSize=Math.max(10,Math.round((theme.axisLabelSize||columnHeaderSize*0.9)));
+      const rowLabelColor=theme.rowLabelColor || DEFAULT_LAYOUT.rowLabelColor;
+      const rowLabelSize=theme.rowLabelSize || DEFAULT_LAYOUT.rowLabelSize;
+      const barLabelColor=theme.barLabelColor || DEFAULT_LAYOUT.barLabelColor;
+      const barLabelSize=theme.barLabelSize || DEFAULT_LAYOUT.barLabelSize;
+      return `
+      .axislabel{fill:${axis};font-size:${axisLabelSize}px;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
+      .colheader{fill:${columnHeaderColor};font-size:${columnHeaderSize}px;font-weight:700;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif;text-transform:uppercase}
+      .rowlabel{fill:${rowLabelColor};font-size:${rowLabelSize}px;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
+      .gridline{stroke:${theme.gridColor};stroke-width:1}
+      .gridline-minor{stroke:${theme.minorGridColor};stroke-width:.6}
+      .divider{stroke:${theme.sheetBorder};stroke-width:1.2}
+      .headerband{fill:${theme.headerBandColor}}
+      .tick-major{stroke:${axis};stroke-width:1}
+      .tick-minor{stroke:${axis};stroke-width:.4;opacity:.5}
+      .bar{fill:${theme.barColor}}
+      .barlabel{fill:${barLabelColor};font-size:${barLabelSize}px;font-weight:700;dominant-baseline:middle;font-family:"Arial","Helvetica Neue",Helvetica,sans-serif}
+      `;
+    }
+
+    function formatFooterText(template,ctx){
+      if(!template) return '';
+      return template
+        .replace(/\{page\}/gi,String(ctx.pageNumber||''))
+        .replace(/\{total\}/gi,String(ctx.totalPages||''))
+        .replace(/\{date\}/gi,ctx.formattedDate||'')
+        .replace(/\{label\}/gi,ctx.label||'');
+    }
+
+    // ---------- Parsing ----------
+    function parseExport(text){
+      text=text.replace(/^\"|\"$/g,'').replace(/\r/g,'');
+      const lines=text.split('\n').map(x=>x.trim()).filter(Boolean);
+      const headerIdx=lines.findIndex(l=>l.startsWith('Employee,'));
+      if(headerIdx===-1) throw new Error('Header row starting with "Employee," not found.');
+      const title=lines[0]||''; const sub=lines[1]||'';
+      const header=lines[headerIdx].split(',');
+      const dayHeaders=header.slice(1,8); // Sun..Sat
+      const rows=[];
+      for(let i=headerIdx+1;i<lines.length;i++){
+        const parts=lines[i].split(',');
+        if(parts.length<8) continue;
+        const rawName=(parts[0]||'').trim();
+        const name=cleanColleagueName(rawName);
+        const days=parts.slice(1,8);
+        rows.push({name,rawName,days});
+      }
+      return {title,sub,dayHeaders,rows};
+    }
+
+    function pickRange(cell,{fallbackSCH}){
+      if(!cell) return null;
+      // Prefer Whole Shift
+      let m=cell.match(/Whole\s*Shift:\s*(\d{1,2}):(\d{1,2})\s*-\s*(\d{1,2}):(\d{1,2})/i);
+      if(!m && fallbackSCH){
+        m=cell.match(/SCH:\s*(\d{1,2}):(\d{1,2})\s*-\s*(\d{1,2}):(\d{1,2})/i);
+      }
+      if(!m) return null;
+      let s=toMin(m[1],m[2]), e=toMin(m[3],m[4]);
+      if(e<s) e+=1440; // overnight
+      return {start:s,end:e};
+    }
+
+    function segmentsForRange(range,splitMidnight){
+      if(!range) return [];
+      const segments=[];
+      let start=Math.max(0,Math.min(1440,range.start));
+      let end=Math.max(0,range.end);
+      if(splitMidnight && end>1440){
+        segments.push({start,end:1440});
+        let remaining=end-1440;
+        while(remaining>0){
+          const segEnd=Math.min(remaining,1440);
+          if(segEnd>0) segments.push({start:0,end:segEnd});
+          remaining-=1440;
+        }
+        return segments;
+      }
+      end=Math.min(end,1440);
+      if(end<=start) return [];
+      return [{start,end}];
+    }
+
+    function buildPerDay(model,opts){
+      const dayCount=model.dayHeaders.length;
+      const perDay=Array.from({length:dayCount},()=>[]);
+      model.rows.forEach(row=>{
+        const highlight=isNathanName(row.rawName||row.name);
+        const daySegments=Array.from({length:dayCount},()=>[]);
+        const dayRanges=Array.from({length:dayCount},()=>null);
+        for(let dayIdx=0;dayIdx<dayCount;dayIdx++){
+          const cell=row.days[dayIdx];
+          const rng=pickRange(cell,opts);
+          if(!rng) continue;
+          if(!opts.splitMidnight){
+            const segs=segmentsForRange(rng,false);
+            if(!segs.length) continue;
+            segs.forEach(seg=>{
+              const start=Math.max(0,seg.start);
+              const end=Math.max(0,seg.end);
+              if(end<=start) return;
+              daySegments[dayIdx].push({start,end});
+            });
+            if(daySegments[dayIdx].length){
+              if(rng){
+                dayRanges[dayIdx]={start:rng.start,end:Math.max(rng.end,rng.start)};
+              }else{
+                const starts=daySegments[dayIdx].map(s=>s.start);
+                const ends=daySegments[dayIdx].map(s=>s.end);
+                const merged={start:Math.min(...starts),end:Math.max(...ends)};
+                dayRanges[dayIdx]=merged;
+              }
+            }
+            continue;
+          }
+          const clampedStart=Math.max(0,Math.min(1440,rng.start));
+          const startAbs=dayIdx*1440+clampedStart;
+          const rawEnd=Math.max(rng.end,rng.start);
+          const endAbs=dayIdx*1440+Math.max(rawEnd,clampedStart);
+          if(!Number.isFinite(startAbs) || !Number.isFinite(endAbs) || endAbs<=startAbs) continue;
+          for(let targetDay=dayIdx;targetDay<dayCount;targetDay++){
+            const dayStart=targetDay*1440;
+            const dayEnd=dayStart+1440;
+            const segStartAbs=Math.max(startAbs,dayStart);
+            const segEndAbs=Math.min(endAbs,dayEnd);
+            if(segEndAbs>segStartAbs){
+              const localStart=Math.max(0,Math.min(1440,segStartAbs-dayStart));
+              const localEnd=Math.max(0,Math.min(1440,segEndAbs-dayStart));
+              if(localEnd>localStart){
+                daySegments[targetDay].push({start:localStart,end:localEnd});
+                const existing=dayRanges[targetDay];
+                if(existing){
+                  existing.start=Math.min(existing.start,localStart);
+                  existing.end=Math.max(existing.end,localEnd);
+                }else{
+                  dayRanges[targetDay]={start:localStart,end:localEnd};
+                }
+              }
+            }
+            if(segEndAbs>=endAbs || endAbs<=dayEnd) break;
+          }
+        }
+        for(let dayIdx=0;dayIdx<dayCount;dayIdx++){
+          const segs=daySegments[dayIdx];
+          segs.sort((a,b)=>a.start-b.start);
+          const range=dayRanges[dayIdx]?{...dayRanges[dayIdx]}:null;
+          perDay[dayIdx].push({name:row.name, rawName:row.rawName, range, segments:segs.map(s=>({...s})), highlight});
+        }
+      });
+      return perDay;
+    }
+
+    // ---------- Week storage ----------
+    function storageAvailable(){
+      try{
+        if(typeof window==='undefined' || !window.localStorage) return false;
+        const key='loggannt-storage-test';
+        window.localStorage.setItem(key,'1');
+        window.localStorage.removeItem(key);
+        return true;
+      }catch(err){
+        console.warn('Local storage unavailable:',err);
+        return false;
+      }
+    }
+
+    const storageSupported=storageAvailable();
+
+    function loadSavedWeekRecords(){
+      if(!storageSupported) return [];
+      try{
+        const raw=window.localStorage.getItem(STORAGE_KEY);
+        if(!raw) return [];
+        const parsed=JSON.parse(raw);
+        if(!Array.isArray(parsed)) return [];
+        return parsed.map(entry=>{
+          const model=cloneStoredModel(entry && entry.model);
+          const meta=deriveWeekMetadata(model);
+          const storedAt=Number.isFinite(entry && entry.storedAt)?Number(entry.storedAt):Date.now();
+          const id=entry && typeof entry.id==='string'?entry.id:meta.id;
+          if(meta.id!==id) meta.id=id;
+          return {id,storedAt,metadata:meta,model};
+        }).filter(record=>record && record.id && record.model);
+      }catch(err){
+        console.warn('Failed to read stored weeks:',err);
+        return [];
+      }
+    }
+
+    function persistSavedWeekRecords(records){
+      if(!storageSupported) return;
+      try{
+        const payload=records.map(record=>({
+          id:record.id,
+          storedAt:record.storedAt,
+          metadata:record.metadata,
+          model:sanitizeModelForStorage(record.model),
+        }));
+        window.localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));
+      }catch(err){
+        console.warn('Failed to persist weeks:',err);
+      }
+    }
+
+    function loadSavedSelection(){
+      if(!storageSupported) return [];
+      try{
+        const raw=window.localStorage.getItem(STORAGE_SELECTION_KEY);
+        if(!raw) return [];
+        const parsed=JSON.parse(raw);
+        if(!Array.isArray(parsed)) return [];
+        return parsed.filter(id=>typeof id==='string');
+      }catch(err){
+        console.warn('Failed to read week selection:',err);
+        return [];
+      }
+    }
+
+    function persistActiveSelection(ids){
+      if(!storageSupported) return;
+      try{
+        window.localStorage.setItem(STORAGE_SELECTION_KEY,JSON.stringify(ids));
+      }catch(err){
+        console.warn('Failed to store selection:',err);
+      }
+    }
+
+    function compareWeekRecords(a,b){
+      const aDate=a && a.metadata && typeof a.metadata.startIso==='string'?a.metadata.startIso:'';
+      const bDate=b && b.metadata && typeof b.metadata.startIso==='string'?b.metadata.startIso:'';
+      if(aDate && bDate && aDate!==bDate){
+        return aDate>bDate?-1:1;
+      }
+      const aStored=Number.isFinite(a && a.storedAt)?a.storedAt:0;
+      const bStored=Number.isFinite(b && b.storedAt)?b.storedAt:0;
+      return bStored-aStored;
+    }
+
+    function trimWeekRecords(records){
+      const list=records.slice().sort(compareWeekRecords);
+      while(list.length>MAX_STORED_WEEKS){
+        list.pop();
+      }
+      return list;
+    }
+
+    let savedWeekRecords=trimWeekRecords(loadSavedWeekRecords());
+    const cachedWeeks=new Map();
+    let activeWeekIds=loadSavedSelection();
+
+    function hydrateWeekRecord(record){
+      if(!record || !record.model) return null;
+      const model=cloneStoredModel(record.model);
+      const metadata=deriveWeekMetadata(model);
+      const mergedMeta={...metadata};
+      const storedAt=Number.isFinite(record.storedAt)?record.storedAt:Date.now();
+      const perDay=buildPerDay(model,{fallbackSCH:true,splitMidnight:true});
+      return {id:metadata.id,storedAt,metadata:mergedMeta,model,perDay};
+    }
+
+    function rebuildWeekCache(){
+      cachedWeeks.clear();
+      savedWeekRecords=trimWeekRecords(savedWeekRecords);
+      savedWeekRecords.forEach(record=>{
+        const hydrated=hydrateWeekRecord(record);
+        if(!hydrated) return;
+        record.id=hydrated.id;
+        record.metadata=hydrated.metadata;
+        record.storedAt=hydrated.storedAt;
+        record.model=sanitizeModelForStorage(record.model);
+        cachedWeeks.set(hydrated.id,hydrated);
+      });
+      savedWeekRecords=trimWeekRecords(savedWeekRecords);
+      persistSavedWeekRecords(savedWeekRecords);
+    }
+
+    rebuildWeekCache();
+
+    function getSortedWeekRecords(){
+      return savedWeekRecords.slice().sort(compareWeekRecords);
+    }
+
+    function getActiveWeekData(){
+      return activeWeekIds.map(id=>cachedWeeks.get(id)).filter(Boolean);
+    }
+
+    function setActiveWeeks(ids,{persist=true}={}){
+      const unique=[];
+      ids.forEach(id=>{
+        if(typeof id!=='string') return;
+        if(!cachedWeeks.has(id)) return;
+        if(!unique.includes(id)) unique.push(id);
+      });
+      activeWeekIds=unique;
+      if(persist) persistActiveSelection(activeWeekIds);
+    }
+
+    function ensureActiveWeeks(){
+      const available=getSortedWeekRecords();
+      if(!available.length){
+        activeWeekIds=[];
+        persistActiveSelection(activeWeekIds);
         return;
       }
-    } catch (_) {}
-    input.click();
-  }
+      const valid=activeWeekIds.filter(id=>cachedWeeks.has(id));
+      if(valid.length){
+        activeWeekIds=valid;
+        persistActiveSelection(activeWeekIds);
+        return;
+      }
+      activeWeekIds=[available[0].id];
+      persistActiveSelection(activeWeekIds);
+    }
 
-  btnUpload?.addEventListener('click', () => openFilePicker(fileInput));
+    ensureActiveWeeks();
+
+    function updateWeekSelectionUI(){
+      const panel=document.getElementById('savedWeeksPanel');
+      const list=document.getElementById('savedWeekList');
+      const clearBtn=document.getElementById('btnClearWeeks');
+      const records=getSortedWeekRecords();
+      const hasRecords=records.length>0;
+      if(panel){
+        panel.hidden=!hasRecords;
+        panel.setAttribute('aria-hidden',hasRecords?'false':'true');
+      }
+      if(clearBtn){
+        clearBtn.disabled=!hasRecords;
+      }
+      if(!list) return;
+      list.innerHTML='';
+      if(!hasRecords){
+        return;
+      }
+      records.forEach(record=>{
+        const item=document.createElement('label');
+        item.className='saved-week-item';
+        const checkbox=document.createElement('input');
+        checkbox.type='checkbox';
+        checkbox.value=record.id;
+        checkbox.checked=activeWeekIds.includes(record.id);
+        checkbox.addEventListener('change',event=>{
+          const target=event.target;
+          if(!target || typeof target.value!=='string') return;
+          const checked=target.checked;
+          let next=activeWeekIds.slice();
+          if(checked){
+            if(!next.includes(record.id)) next.push(record.id);
+          }else{
+            next=next.filter(id=>id!==record.id);
+          }
+          setActiveWeeks(next,{persist:true});
+          ensureActiveWeeks();
+          updateWeekSelectionUI();
+          renderViews();
+        });
+        item.appendChild(checkbox);
+
+        const labelWrap=document.createElement('div');
+        labelWrap.className='saved-week-label';
+        const name=document.createElement('div');
+        name.className='saved-week-name';
+        name.textContent=record.metadata && record.metadata.label?record.metadata.label:'Saved rota';
+        labelWrap.appendChild(name);
+        const rangeText=record.metadata && record.metadata.displayRange;
+        if(rangeText){
+          const meta=document.createElement('div');
+          meta.className='saved-week-meta';
+          meta.textContent=rangeText;
+          labelWrap.appendChild(meta);
+        }
+        if(!rangeText){
+          const savedDate=new Date(record.storedAt);
+          if(!Number.isNaN(savedDate.getTime())){
+            const meta=document.createElement('div');
+            meta.className='saved-week-meta';
+            meta.textContent=`Saved ${savedDate.toLocaleDateString()}`;
+            labelWrap.appendChild(meta);
+          }
+        }
+        item.appendChild(labelWrap);
+
+        const actions=document.createElement('div');
+        actions.className='saved-week-actions';
+        const removeBtn=document.createElement('button');
+        removeBtn.type='button';
+        removeBtn.className='saved-week-remove';
+        removeBtn.textContent='Forget';
+        removeBtn.addEventListener('click',event=>{
+          event.preventDefault();
+          event.stopPropagation();
+          removeWeekRecord(record.id);
+        });
+        actions.appendChild(removeBtn);
+        item.appendChild(actions);
+
+        list.appendChild(item);
+      });
+    }
+
+    function removeWeekRecord(id){
+      const index=savedWeekRecords.findIndex(record=>record.id===id);
+      if(index===-1) return;
+      savedWeekRecords.splice(index,1);
+      rebuildWeekCache();
+      const remaining=activeWeekIds.filter(item=>item!==id);
+      setActiveWeeks(remaining,{persist:true});
+      ensureActiveWeeks();
+      updateWeekSelectionUI();
+      renderViews();
+    }
+
+    function clearAllWeeks(){
+      savedWeekRecords=[];
+      rebuildWeekCache();
+      activeWeekIds=[];
+      persistActiveSelection(activeWeekIds);
+      updateWeekSelectionUI();
+      renderViews();
+    }
+
+    // ---------- Layout & Draw ----------
+    function drawDayCard(container,label,rows,ctx={}){
+      const layout=ctx.layout || currentLayout || DEFAULT_LAYOUT;
+      const P=Math.max(0,layout.padding);
+      const W=Math.max(400,layout.chartWidth);
+      const rowH=Math.max(18,layout.rowHeight);
+      const leftAxis=Math.max(120,layout.nameColumnWidth);
+      const innerW=Math.max(100,W-leftAxis-P*2);
+      const headerHeight=Math.max(24,layout.headerHeight);
+      const showEmptyRows=!!ctx.showEmptyRows;
+      const placeholderLabel=(ctx.placeholderLabel||'No scheduled colleagues');
+      const sourceRows=Array.isArray(rows)?rows.filter(Boolean):[];
+      const visibleRows=showEmptyRows?sourceRows:sourceRows.filter(r=>r && r.range);
+      const bodyRows=visibleRows.length?visibleRows:[{name:placeholderLabel,range:null,segments:[],highlight:false}];
+      const bodyHeight=rowH*bodyRows.length;
+      const H=P+headerHeight+bodyHeight+P;
+      const svgNS='http://www.w3.org/2000/svg';
+      const svg=document.createElementNS(svgNS,'svg');
+      svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+      svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+      svg.setAttribute('font-family','Arial, "Helvetica Neue", Helvetica, sans-serif');
+
+      const style=document.createElementNS(svgNS,'style');
+      style.textContent=buildSvgStyleBlock(layout);
+      svg.appendChild(style);
+
+      const bg=document.createElementNS(svgNS,'rect');
+      bg.setAttribute('x',0);bg.setAttribute('y',0);bg.setAttribute('width',W);bg.setAttribute('height',H);bg.setAttribute('fill',layout.sheetBackground);
+      svg.appendChild(bg);
+
+      const border=document.createElementNS(svgNS,'rect');
+      border.setAttribute('x',0);border.setAttribute('y',0);border.setAttribute('width',W);border.setAttribute('height',H);
+      border.setAttribute('fill','none');border.setAttribute('stroke',layout.sheetBorder);border.setAttribute('stroke-width','1');
+      svg.appendChild(border);
+
+      const headerBand=document.createElementNS(svgNS,'rect');
+      headerBand.setAttribute('x',P);headerBand.setAttribute('y',P);
+      headerBand.setAttribute('width',W-P*2);headerBand.setAttribute('height',headerHeight);
+      headerBand.setAttribute('class','headerband');
+      svg.appendChild(headerBand);
+
+      const columnDivider=document.createElementNS(svgNS,'line');
+      columnDivider.setAttribute('x1',P+leftAxis);
+      columnDivider.setAttribute('y1',P);
+      columnDivider.setAttribute('x2',P+leftAxis);
+      columnDivider.setAttribute('y2',H-P);
+      columnDivider.setAttribute('class','divider');
+      svg.appendChild(columnDivider);
+
+      const headerLine=document.createElementNS(svgNS,'line');
+      headerLine.setAttribute('x1',P);headerLine.setAttribute('y1',P+headerHeight);
+      headerLine.setAttribute('x2',W-P);headerLine.setAttribute('y2',P+headerHeight);
+      headerLine.setAttribute('class','divider');
+      svg.appendChild(headerLine);
+
+      const headerTop=P;
+      const headerBottom=P+headerHeight;
+      const bodyTop=headerBottom;
+      const headerTextBaseline=headerTop+18;
+      const axisBaseline=headerBottom-6;
+      const axisLabelOffset=6;
+
+      const columnLabel=ctx && ctx.columnHeaderLabel?String(ctx.columnHeaderLabel):'Colleague Names';
+      const nameHeader=document.createElementNS(svgNS,'text');
+      nameHeader.setAttribute('x',P+6);nameHeader.setAttribute('y',headerTextBaseline);
+      nameHeader.setAttribute('class','colheader');
+      nameHeader.textContent=columnLabel;
+      svg.appendChild(nameHeader);
+
+      const toX=m=>P+leftAxis+(m/1440)*innerW;
+      for(let minute=0;minute<=1440;minute+=15){
+        const x=toX(minute);
+        const isHour=minute%60===0;
+
+        if(isHour && minute>0 && minute<1440){
+          const headerLine=document.createElementNS(svgNS,'line');
+          headerLine.setAttribute('x1',x);
+          headerLine.setAttribute('y1',headerTop);
+          headerLine.setAttribute('x2',x);
+          headerLine.setAttribute('y2',headerBottom);
+          headerLine.setAttribute('class','gridline');
+          svg.appendChild(headerLine);
+        }
+
+        if(minute>0 && minute<1440){
+          const vline=document.createElementNS(svgNS,'line');
+          vline.setAttribute('x1',x);
+          vline.setAttribute('y1',bodyTop);
+          vline.setAttribute('x2',x);
+          vline.setAttribute('y2',H-P);
+          vline.setAttribute('class',isHour?'gridline':'gridline-minor');
+          svg.appendChild(vline);
+        }
+
+        if(isHour && minute<1440){
+          const axisText=document.createElementNS(svgNS,'text');
+          axisText.setAttribute('x',x+axisLabelOffset);
+          axisText.setAttribute('y',axisBaseline);
+          axisText.setAttribute('text-anchor','start');
+          axisText.setAttribute('class','axislabel');
+          axisText.textContent=fmtHMDisplay(minute);
+          svg.appendChild(axisText);
+        }
+      }
+
+      bodyRows.forEach((row,idx)=>{
+        const y=bodyTop+idx*rowH;
+        if(idx>0){
+          const baseline=document.createElementNS(svgNS,'line');
+          baseline.setAttribute('x1',P);
+          baseline.setAttribute('y1',y);
+          baseline.setAttribute('x2',W-P);
+          baseline.setAttribute('y2',y);
+          baseline.setAttribute('class','gridline');
+          svg.appendChild(baseline);
+        }
+
+        const name=document.createElementNS(svgNS,'text');
+        name.setAttribute('x',P+6);
+        name.setAttribute('y',y+rowH/2);
+        name.setAttribute('class','rowlabel');
+        name.textContent=row.name;
+        svg.appendChild(name);
+
+        if(row.range){
+          const labelText=`${fmtHMDisplay(row.range.start)} - ${fmtHMDisplay(row.range.end)}`;
+          const barFill=row.highlight?SPECIAL_NAME_COLOR:(layout.barColor||DEFAULT_LAYOUT.barColor);
+          row.segments.forEach((seg,segIdx)=>{
+            const segY=y+4;
+            const segHeight=rowH-8;
+            const rect=document.createElementNS(svgNS,'rect');
+            rect.setAttribute('x',toX(seg.start));
+            rect.setAttribute('y',segY);
+            rect.setAttribute('width',Math.max(2,toX(seg.end)-toX(seg.start)));
+            rect.setAttribute('height',segHeight);
+            rect.setAttribute('class','bar');
+            rect.setAttribute('fill',barFill);
+            svg.appendChild(rect);
+
+            if(segIdx===0){
+              const label=document.createElementNS(svgNS,'text');
+              label.setAttribute('x',toX(seg.start)+4);
+              label.setAttribute('y',segY+segHeight/2+1);
+              label.setAttribute('class','barlabel');
+              label.textContent=labelText;
+              svg.appendChild(label);
+            }
+          });
+        }
+      });
+
+      const finalLine=document.createElementNS(svgNS,'line');
+      finalLine.setAttribute('x1',P);
+      finalLine.setAttribute('y1',bodyTop+bodyRows.length*rowH);
+      finalLine.setAttribute('x2',W-P);
+      finalLine.setAttribute('y2',bodyTop+bodyRows.length*rowH);
+      finalLine.setAttribute('class','divider');
+      svg.appendChild(finalLine);
+
+      const section=document.createElement('section');
+      section.className='sheet';
+
+      const header=document.createElement('header');
+      header.className='sheet-header';
+
+      const titleEl=document.createElement('div');
+      titleEl.className='sheet-title';
+      titleEl.textContent=layout.title || DEFAULT_LAYOUT.title;
+      header.appendChild(titleEl);
+
+      const rangeLabel=(ctx.dateRangeLabel || '').trim();
+      if(rangeLabel){
+        const rangeEl=document.createElement('div');
+        rangeEl.className='sheet-range';
+        rangeEl.textContent=rangeLabel;
+        header.appendChild(rangeEl);
+      }
+
+      const codeEl=document.createElement('div');
+      codeEl.className='sheet-code';
+      const resolvedCode=(ctx.staticCode || layout.staticCode || STATIC_CODE).trim();
+      codeEl.textContent=resolvedCode;
+      header.appendChild(codeEl);
+
+      const dateEl=document.createElement('div');
+      dateEl.className='sheet-date';
+      dateEl.textContent=ctx.formattedDate || formatFullDayLabel(label);
+      header.appendChild(dateEl);
+
+      section.appendChild(header);
+      section.appendChild(svg);
+
+      if(layout.footerNote){
+        const note=document.createElement('div');
+        note.className='sheet-footnote';
+        note.textContent=layout.footerNote;
+        section.appendChild(note);
+      }
+
+      const footerText=formatFooterText(layout.footerTemplate,{pageNumber:ctx.pageNumber,totalPages:ctx.totalPages,formattedDate:ctx.formattedDate,label:label});
+      if(footerText){
+        const footer=document.createElement('div');
+        footer.className='sheet-footer';
+        footer.textContent=footerText;
+        section.appendChild(footer);
+      }
+
+      container.appendChild(section);
+      return {section, svg};
+    }
+
+    // ---------- Render / Export ----------
+    let lastIndividuals=[];
+    let currentIndividualIndex=null;
+
+    function buildDisplayNameLookup(model){
+      const map=new Map();
+      if(!model || !Array.isArray(model.rows)) return map;
+      model.rows.forEach((row,idx)=>{
+        const display=getRowDisplayName(row,idx+1);
+        if(row.rawName) map.set(`raw:${row.rawName}`,display);
+        if(row.name) map.set(`clean:${row.name}`,display);
+      });
+      return map;
+    }
+
+    function resolveEntryDisplayName(entry,lookup){
+      if(!entry) return 'Colleague';
+      if(entry.rawName){
+        const rawMatch=lookup.get(`raw:${entry.rawName}`);
+        if(rawMatch) return rawMatch;
+      }
+      if(entry.name){
+        const cleanMatch=lookup.get(`clean:${entry.name}`);
+        if(cleanMatch) return cleanMatch;
+      }
+      return entry.name || 'Colleague';
+    }
+
+    function entryMatchesSelection(entry,person){
+      if(!entry || !person) return false;
+      if(person.rawName && entry.rawName && entry.rawName===person.rawName) return true;
+      if(person.name && entry.name && entry.name===person.name) return true;
+      return false;
+    }
+
+    function resolveDateRangeLabelForWeek(model,metadata,layout){
+      if(layout && typeof layout.subtitleOverride==='string' && layout.subtitleOverride.trim()){
+        return layout.subtitleOverride.trim();
+      }
+      const auto=buildDateRangeLabel(model);
+      if(auto) return auto;
+      if(metadata && metadata.displayRange) return metadata.displayRange;
+      return '';
+    }
+
+    function renderWeekSchedule(container,week,{allowIndividual=true,showHeading=true}={}){
+      if(!container || !week || !week.model) return;
+      const model=week.model;
+      const perDay=Array.isArray(week.perDay)?week.perDay:[];
+      const layout=currentLayout || DEFAULT_LAYOUT;
+      const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
+      const safeWeekId=(typeof week.id==='string'?week.id:'week').replace(/[^a-z0-9_-]+/gi,'-');
+      if(showHeading){
+        const heading=document.createElement('div');
+        heading.className='schedule-week-heading';
+        const title=document.createElement('div');
+        title.className='schedule-week-title';
+        title.textContent=week.metadata && week.metadata.label?week.metadata.label:'Saved rota';
+        heading.appendChild(title);
+        const headingRange=resolveDateRangeLabelForWeek(model,week.metadata,layout) || (week.metadata && week.metadata.displayRange) || '';
+        if(headingRange){
+          const range=document.createElement('div');
+          range.className='schedule-week-range';
+          range.textContent=headingRange;
+          heading.appendChild(range);
+        }
+        container.appendChild(heading);
+      }
+      if(!dayHeaders.length){
+        const placeholder=document.createElement('div');
+        placeholder.className='empty-state';
+        placeholder.innerHTML='<strong>No day columns found</strong>We couldn\'t detect any day headings in this CSV.';
+        container.appendChild(placeholder);
+        return;
+      }
+      const formattedDates=dayHeaders.map(formatFullDayLabel);
+      const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
+      const parsedHeaders=dayHeaders.map(parseDayHeader);
+      const fallbackYear=(()=>{
+        const withYear=parsedHeaders.find(info=>info && Number.isInteger(info.year));
+        if(withYear) return withYear.year;
+        const rangeYear=extractYearFromLabel(dateRangeLabel);
+        if(Number.isInteger(rangeYear)) return rangeYear;
+        return null;
+      })();
+      const header=document.createElement('div');
+      header.className='schedule-header';
+      const range=document.createElement('div');
+      range.className='schedule-range';
+      range.textContent=dateRangeLabel || 'Date range unavailable';
+      header.appendChild(range);
+      container.appendChild(header);
+
+      const lookup=buildDisplayNameLookup(model);
+      const perDayData=perDay;
+      const hasRows=Array.isArray(model.rows) && model.rows.length>0;
+
+      let selectedPerson=null;
+      let selectedRecord=null;
+      if(allowIndividual && Number.isInteger(currentIndividualIndex) && currentIndividualIndex>=0 && hasRows && currentIndividualIndex<model.rows.length){
+        selectedPerson=model.rows[currentIndividualIndex];
+        selectedRecord=lastIndividuals.find(rec=>rec.index===currentIndividualIndex) || null;
+      }
+
+      if(selectedPerson){
+        const displayName=(selectedRecord && selectedRecord.displayName) || getRowDisplayName(selectedPerson,currentIndividualIndex+1);
+        const focusSection=document.createElement('section');
+        focusSection.className='schedule-individual';
+        const title=document.createElement('h2');
+        title.className='schedule-individual-title';
+        title.textContent=`Shifts for ${displayName}`;
+        focusSection.appendChild(title);
+        const list=document.createElement('div');
+        list.className='individual-list';
+        dayHeaders.forEach((label,idx)=>{
+          const entries=Array.isArray(perDayData[idx])?perDayData[idx]:[];
+          const match=entries.find(entry=>entryMatchesSelection(entry,selectedPerson));
+          const item=document.createElement('article');
+          item.className='individual-item';
+          if(match && match.highlight) item.classList.add('highlight');
+          const dayEl=document.createElement('div');
+          dayEl.className='individual-item-day';
+          dayEl.textContent=formatShortDayLabel(label) || `Day ${idx+1}`;
+          item.appendChild(dayEl);
+          const timeWrap=document.createElement('div');
+          timeWrap.className='individual-item-time';
+          if(match && match.range){
+            const timeSpan=document.createElement('span');
+            timeSpan.textContent=`${fmtHMDisplay(match.range.start)} – ${fmtHMDisplay(match.range.end)}`;
+            timeWrap.appendChild(timeSpan);
+            if(match.segments && match.segments.length>1){
+              const segments=document.createElement('span');
+              segments.className='individual-item-segments';
+              segments.textContent=match.segments.map(seg=>`${fmtHMDisplay(seg.start)}–${fmtHMDisplay(seg.end)}`).join('  • ');
+              timeWrap.appendChild(segments);
+            }
+            const durationText=formatDuration((match.range.end||0)-(match.range.start||0));
+            if(durationText){
+              const duration=document.createElement('span');
+              duration.className='individual-item-duration';
+              duration.textContent=durationText;
+              timeWrap.appendChild(duration);
+            }
+          }else{
+            const off=document.createElement('span');
+            off.className='individual-item-off';
+            off.textContent='Off';
+            timeWrap.appendChild(off);
+          }
+          item.appendChild(timeWrap);
+          list.appendChild(item);
+        });
+        focusSection.appendChild(list);
+        const clearBtn=document.createElement('button');
+        clearBtn.type='button';
+        clearBtn.className='btn-clear-selection';
+        clearBtn.textContent='Show all colleagues';
+        clearBtn.addEventListener('click',()=>{
+          const select=document.getElementById('selIndividual');
+          if(select){
+            select.value='all';
+            select.dispatchEvent(new Event('change',{bubbles:true}));
+          }
+        });
+        focusSection.appendChild(clearBtn);
+        container.appendChild(focusSection);
+        return;
+      }
+
+      const scheduleDays=document.createElement('div');
+      scheduleDays.className='schedule-days';
+      container.appendChild(scheduleDays);
+      dayHeaders.forEach((label,idx)=>{
+        const entries=Array.isArray(perDayData[idx])?perDayData[idx].filter(Boolean):[];
+        const scheduledEntries=entries.filter(entry=>entry && entry.range);
+        const card=document.createElement('details');
+        card.className='schedule-day-card';
+        card.id=`${safeWeekId}-schedule-day-${idx}`;
+        const summary=document.createElement('summary');
+        const summaryText=document.createElement('div');
+        summaryText.className='schedule-day-summary-text';
+        const title=document.createElement('div');
+        title.className='schedule-day-title';
+        title.textContent=formattedDates[idx] || label || `Day ${idx+1}`;
+        summaryText.appendChild(title);
+        const subtitle=document.createElement('div');
+        subtitle.className='schedule-day-subtitle';
+        if(scheduledEntries.length){
+          const labelText=scheduledEntries.length===1?'colleague':'colleagues';
+          subtitle.textContent=`${scheduledEntries.length} ${labelText} scheduled`;
+        }else{
+          subtitle.textContent='No scheduled colleagues';
+        }
+        summaryText.appendChild(subtitle);
+        summary.appendChild(summaryText);
+        const headerInfo=parsedHeaders[idx];
+        if(isTodayDate(headerInfo,fallbackYear)){
+          card.classList.add('today');
+          const badge=document.createElement('span');
+          badge.className='schedule-day-today-badge';
+          badge.textContent='Today';
+          summary.appendChild(badge);
+          summary.setAttribute('aria-label',`${title.textContent} (Today)`);
+        }
+        card.appendChild(summary);
+
+        const content=document.createElement('div');
+        content.className='schedule-day-content';
+        const shiftList=document.createElement('div');
+        shiftList.className='schedule-shifts';
+        if(!scheduledEntries.length){
+          const empty=document.createElement('div');
+          empty.className='no-shifts';
+          empty.textContent='No scheduled colleagues';
+          shiftList.appendChild(empty);
+        }else{
+          const sorted=scheduledEntries.slice().sort((a,b)=>{
+            const aStart=a && a.range?a.range.start:Infinity;
+            const bStart=b && b.range?b.range.start:Infinity;
+            return aStart-bStart;
+          });
+          sorted.forEach(entry=>{
+            const item=document.createElement('article');
+            item.className='shift-card';
+            if(entry.highlight) item.classList.add('highlight');
+            const nameEl=document.createElement('div');
+            nameEl.className='shift-name';
+            nameEl.textContent=resolveEntryDisplayName(entry,lookup);
+            item.appendChild(nameEl);
+            const timeEl=document.createElement('div');
+            timeEl.className='shift-time';
+            const baseLabel=`${fmtHMDisplay(entry.range.start)} – ${fmtHMDisplay(entry.range.end)}`;
+            const timeSpan=document.createElement('span');
+            timeSpan.textContent=baseLabel;
+            timeEl.appendChild(timeSpan);
+            if(entry.segments && entry.segments.length>1){
+              const segmentsSpan=document.createElement('span');
+              segmentsSpan.className='shift-split';
+              segmentsSpan.textContent=entry.segments.map(seg=>`${fmtHMDisplay(seg.start)}–${fmtHMDisplay(seg.end)}`).join('  • ');
+              timeEl.appendChild(segmentsSpan);
+            }
+            const durationValue=formatDuration((entry.range.end||0)-(entry.range.start||0));
+            if(durationValue){
+              const durationSpan=document.createElement('span');
+              durationSpan.className='shift-duration';
+              durationSpan.textContent=durationValue;
+              timeEl.appendChild(durationSpan);
+            }
+            item.appendChild(timeEl);
+            shiftList.appendChild(item);
+          });
+        }
+        content.appendChild(shiftList);
+        card.appendChild(content);
+        scheduleDays.appendChild(card);
+      });
+
+      if(allowIndividual){
+        const individualSection=document.createElement('section');
+        individualSection.className='individual-summary';
+        const heading=document.createElement('h2');
+        heading.textContent='Individual rota';
+        individualSection.appendChild(heading);
+        const message=document.createElement('p');
+        message.textContent='Select a colleague in the left-hand controls to focus on their shifts above.';
+        individualSection.appendChild(message);
+        container.appendChild(individualSection);
+      }
+    }
+
+    function renderScheduleView(weeks=getActiveWeekData()){
+      const container=document.getElementById('scheduleView');
+      if(!container) return;
+      container.innerHTML='';
+      if(!weeks.length){
+        const placeholder=document.createElement('div');
+        placeholder.className='empty-state';
+        placeholder.innerHTML='<strong>Upload a rota</strong>Use the controls to load your Logile CSV and explore shifts here.';
+        container.appendChild(placeholder);
+        return;
+      }
+      const multi=weeks.length>1;
+      weeks.forEach(week=>{
+        const section=document.createElement('section');
+        section.className='schedule-week';
+        renderWeekSchedule(section,week,{allowIndividual:!multi,showHeading:true});
+        container.appendChild(section);
+      });
+    }
+
+    function renderWeekPdfPreview(sheets,week,{allowIndividual,showHeading}){
+      if(!sheets || !week || !week.model) return;
+      const layout=currentLayout || DEFAULT_LAYOUT;
+      const model=week.model;
+      const perDay=Array.isArray(week.perDay)?week.perDay:[];
+      const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
+      if(showHeading){
+        const heading=document.createElement('div');
+        heading.className='sheet-week-heading';
+        heading.textContent=week.metadata && week.metadata.label?week.metadata.label:'Saved rota';
+        sheets.appendChild(heading);
+      }
+      if(!dayHeaders.length){
+        const placeholder=document.createElement('div');
+        placeholder.className='empty-state';
+        placeholder.innerHTML='<strong>No PDF preview</strong>This rota has no detectable day headings.';
+        sheets.appendChild(placeholder);
+        return;
+      }
+      const formattedDates=dayHeaders.map(formatFullDayLabel);
+      const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
+      const totalPages=dayHeaders.length;
+      if(allowIndividual && Number.isInteger(currentIndividualIndex) && currentIndividualIndex>=0 && model.rows && currentIndividualIndex<model.rows.length){
+        const person=model.rows[currentIndividualIndex];
+        const record=lastIndividuals.find(rec=>rec.index===currentIndividualIndex);
+        const displayName=(record && record.displayName) || getRowDisplayName(person,currentIndividualIndex+1);
+        const dayRows=[];
+        dayHeaders.forEach((label,dayIdx)=>{
+          const parsed=parseDayHeader(label);
+          const dayName=(parsed && parsed.dayName) || formatShortDayLabel(label) || label || `Day ${dayIdx+1}`;
+          const entries=Array.isArray(perDay[dayIdx])?perDay[dayIdx]:[];
+          const match=entries.find(entry=>{
+            if(person.rawName && entry.rawName){
+              return entry.rawName===person.rawName;
+            }
+            return entry.name===person.name;
+          });
+          const range=match && match.range?{...match.range}:null;
+          const segments=match && Array.isArray(match.segments)?match.segments.map(seg=>({...seg})):[];
+          dayRows.push({name:dayName,rawName:match && match.rawName ? match.rawName : person.rawName || '',range,segments,highlight:!!(match && match.highlight)});
+        });
+        drawDayCard(sheets,displayName,dayRows,{
+          dateRangeLabel,
+          pageNumber:1,
+          totalPages:1,
+          formattedDate:displayName,
+          staticCode:layout.staticCode,
+          layout,
+          showEmptyRows:true,
+          placeholderLabel:`${displayName} has no scheduled shifts`,
+          columnHeaderLabel:'Day',
+        });
+        return;
+      }
+      dayHeaders.forEach((label,idx)=>{
+        const rows=perDay[idx]||[];
+        drawDayCard(sheets,label,rows,{
+          dateRangeLabel,
+          pageNumber:idx+1,
+          totalPages,
+          formattedDate:formattedDates[idx],
+          staticCode:layout.staticCode,
+          layout,
+        });
+      });
+    }
+
+    function renderPdfPreview(weeks=getActiveWeekData()){
+      const sheets=document.getElementById('sheets');
+      if(!sheets){
+        return;
+      }
+      sheets.innerHTML='';
+      if(!weeks.length){
+        const placeholder=document.createElement('div');
+        placeholder.className='empty-state';
+        placeholder.innerHTML='<strong>No PDF preview</strong>Upload a CSV to generate printable sheets.';
+        sheets.appendChild(placeholder);
+        return;
+      }
+      const multi=weeks.length>1;
+      weeks.forEach((week,idx)=>{
+        renderWeekPdfPreview(sheets,week,{allowIndividual:!multi,showHeading:multi || idx>0});
+      });
+    }
+
+    function updateIndividualControls(weeks){
+      const select=document.getElementById('selIndividual');
+      const btn=document.getElementById('btnExport');
+      const scopeControl=document.getElementById('reportScopeControl');
+      const scopeHint=document.getElementById('reportScopeHint');
+      const hasWeeks=weeks && weeks.length>0;
+      if(scopeControl){
+        scopeControl.hidden=!hasWeeks;
+        scopeControl.setAttribute('aria-hidden',hasWeeks?'false':'true');
+      }
+      if(scopeHint){
+        scopeHint.hidden=!hasWeeks;
+        scopeHint.setAttribute('aria-hidden',hasWeeks?'false':'true');
+      }
+      if(!select || !btn){
+        lastIndividuals=[];
+        currentIndividualIndex=null;
+        return;
+      }
+      lastIndividuals=[];
+      if(!hasWeeks){
+        select.innerHTML='<option value="all">All colleagues</option>';
+        select.disabled=true;
+        btn.disabled=true;
+        btn.textContent='Export PDF';
+        currentIndividualIndex=null;
+        return;
+      }
+      const multi=weeks.length>1;
+      const week=weeks[0];
+      const model=week.model;
+      if(multi){
+        select.innerHTML='<option value="all">All colleagues</option>';
+        select.disabled=true;
+        btn.disabled=false;
+        btn.textContent='Export weekly PDF';
+        currentIndividualIndex=null;
+        if(scopeHint){
+          scopeHint.textContent='Select a single week to focus the preview and export on one colleague.';
+        }
+        return;
+      }
+      if(scopeHint){
+        scopeHint.textContent='Choose a colleague to focus the preview and export.';
+      }
+      const rows=Array.isArray(model.rows)?model.rows:[];
+      const options=['<option value="all">All colleagues</option>'];
+      rows.forEach((row,idx)=>{
+        const display=getRowDisplayName(row,idx+1);
+        options.push(`<option value="${idx}">${display}</option>`);
+        lastIndividuals.push({index:idx,displayName:display,rawName:row.rawName,name:row.name});
+      });
+      select.innerHTML=options.join('');
+      select.disabled=!rows.length;
+      const previousValue=select.value || 'all';
+      const preserved=lastIndividuals.some(rec=>String(rec.index)===previousValue);
+      if(preserved){
+        select.value=previousValue;
+        currentIndividualIndex=parseInt(previousValue,10);
+      }else{
+        select.value='all';
+        currentIndividualIndex=null;
+      }
+      btn.disabled=false;
+      btn.textContent=(select.value && select.value!=='all')?'Export colleague PDF':'Export weekly PDF';
+    }
+
+    function renderViews(){
+      const weeks=getActiveWeekData();
+      setViewerTabsVisibility(weeks.length>0);
+      updateIndividualControls(weeks);
+      if(!weeks.length && activeView!=='schedule'){
+        switchView('schedule');
+      }
+      renderScheduleView(weeks);
+      renderPdfPreview(weeks);
+    }
+
+    function addOrUpdateWeekRecord(model){
+      if(!model) return;
+      const sanitized=sanitizeModelForStorage(model);
+      const metadata=deriveWeekMetadata(sanitized);
+      const record={id:metadata.id,storedAt:Date.now(),metadata,model:sanitized};
+      const existingIndex=savedWeekRecords.findIndex(item=>item.id===record.id);
+      if(existingIndex>=0){
+        savedWeekRecords[existingIndex]=record;
+      }else{
+        savedWeekRecords.push(record);
+      }
+      rebuildWeekCache();
+      const updatedSelection=[record.id,...activeWeekIds.filter(id=>id!==record.id)];
+      setActiveWeeks(updatedSelection,{persist:true});
+      ensureActiveWeeks();
+      updateWeekSelectionUI();
+      renderViews();
+    }
+
+    async function exportPDF(btn){
+      if(!btn) return;
+      const weeks=getActiveWeekData();
+      if(!weeks.length){
+        alert('No stored rotas to export.');
+        return;
+      }
+      if(!window.PDFLib){
+        alert('PDF generator failed to load. Please refresh and try again.');
+        return;
+      }
+      const originalLabel=btn.textContent;
+      btn.disabled=true;
+      btn.textContent='Exporting…';
+      try{
+        const layout=currentLayout || DEFAULT_LAYOUT;
+        const palette=buildPdfPalette(layout);
+        const {PDFDocument,rgb,StandardFonts}=window.PDFLib;
+        const pdfDoc=await PDFDocument.create();
+        const fontRegular=await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const fontBold=await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const pageSize=[842,595];
+        const totalPages=Math.max(weeks.reduce((sum,week)=>{
+          const dayCount=Array.isArray(week && week.model && week.model.dayHeaders)?week.model.dayHeaders.length:0;
+          return sum+Math.max(0,dayCount);
+        },0),1);
+        let pageNumber=1;
+        weeks.forEach(week=>{
+          const model=week.model;
+          const perDay=Array.isArray(week.perDay)?week.perDay:[];
+          const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
+          const formattedDates=dayHeaders.map(formatFullDayLabel);
+          const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
+          dayHeaders.forEach((label,idx)=>{
+            const rows=perDay[idx]||[];
+            const footerText=formatFooterText(layout.footerTemplate,{
+              pageNumber,
+              totalPages,
+              formattedDate:formattedDates[idx] || label || `Day ${idx+1}`,
+              label:label,
+            });
+            const plan=buildPdfSheetPlan(rows,layout,{
+              title:layout.title||DEFAULT_LAYOUT.title,
+              rangeLabel:dateRangeLabel,
+              code:(layout.staticCode||STATIC_CODE||'').trim(),
+              date:formattedDates[idx] || label || `Day ${idx+1}`,
+              footerText,
+              footerNote:(layout.footerNote||'').trim(),
+            },palette,{});
+            const page=pdfDoc.addPage(pageSize);
+            const pageBg=parseCssColor(layout.pageBackground);
+            if(pageBg){
+              page.drawRectangle({x:0,y:0,width:page.getWidth(),height:page.getHeight(),color:rgb(pageBg.r,pageBg.g,pageBg.b)});
+            }
+            drawPdfSheet(page,plan,{fonts:{regular:fontRegular,bold:fontBold},palette,rgb,margin:24});
+            pageNumber+=1;
+          });
+        });
+        const firstWeek=weeks[0];
+        const baseName=firstWeek && firstWeek.metadata && firstWeek.metadata.label?firstWeek.metadata.label:'rota';
+        const exportLabel=weeks.length===1?sanitizeFileName(baseName):sanitizeFileName(`rotas-${weeks.length}-weeks`);
+        const pdfBytes=await pdfDoc.save();
+        const blob=new Blob([pdfBytes],{type:'application/pdf'});
+        const url=URL.createObjectURL(blob);
+        const link=document.createElement('a');
+        link.href=url;
+        link.download=`${exportLabel||'rota'}_schedule.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),5000);
+      }catch(err){
+        console.error(err);
+        alert(`Failed to export PDF: ${err.message}`);
+      }finally{
+        btn.disabled=false;
+        btn.textContent=originalLabel;
+      }
+    }
+
+    async function exportIndividualPDF(selection,btn){
+      if(!btn) return;
+      const weeks=getActiveWeekData();
+      if(weeks.length!==1){
+        await exportPDF(btn);
+        return;
+      }
+      const idx=parseInt(selection,10);
+      if(Number.isNaN(idx)){
+        await exportPDF(btn);
+        return;
+      }
+      const week=weeks[0];
+      const model=week.model;
+      if(!model || !Array.isArray(model.rows) || idx<0 || idx>=model.rows.length){
+        alert('Select a colleague before exporting.');
+        return;
+      }
+      if(!window.PDFLib){
+        alert('PDF generator failed to load. Please refresh and try again.');
+        return;
+      }
+      const person=model.rows[idx];
+      const record=lastIndividuals.find(rec=>rec.index===idx);
+      const baseName=getRowDisplayName(person,idx+1);
+      const displayName=(record && record.displayName)||baseName;
+      const resolvedName=displayName.trim()||baseName;
+      const perDay=Array.isArray(week.perDay)?week.perDay:[];
+      const layout=currentLayout || DEFAULT_LAYOUT;
+      const palette=buildPdfPalette(layout);
+      const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
+      const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
+      const dayRows=[];
+      dayHeaders.forEach((label,dayIdx)=>{
+        const parsed=parseDayHeader(label);
+        const dayName=(parsed && parsed.dayName)||label;
+        const entries=Array.isArray(perDay[dayIdx])?perDay[dayIdx]:[];
+        const match=entries.find(entry=>{
+          if(person.rawName && entry.rawName){
+            return entry.rawName===person.rawName;
+          }
+          return entry.name===person.name;
+        });
+        const range=match && match.range?{...match.range}:null;
+        const segments=match && Array.isArray(match.segments)?match.segments.map(seg=>({...seg})):[];
+        dayRows.push({name:dayName,range,segments,highlight:!!(match && match.highlight)});
+      });
+      const footerText=formatFooterText(layout.footerTemplate,{
+        pageNumber:1,
+        totalPages:1,
+        formattedDate:resolvedName,
+        label:resolvedName,
+      });
+      const footerNote=(layout.footerNote||'').trim();
+      const plan=buildPdfSheetPlan(dayRows,layout,{
+        title:layout.title||DEFAULT_LAYOUT.title,
+        rangeLabel:dateRangeLabel,
+        code:(layout.staticCode||STATIC_CODE||'').trim(),
+        date:resolvedName,
+        footerText,
+        footerNote,
+      },palette,{preserveEmptyRows:true,columnHeaderLabel:'Day'});
+      const originalLabel=btn.textContent;
+      btn.disabled=true;
+      btn.textContent='Exporting…';
+      try{
+        const {PDFDocument,rgb,StandardFonts}=window.PDFLib;
+        const pdfDoc=await PDFDocument.create();
+        const fontRegular=await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const fontBold=await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const pageSize=[842,595];
+        const page=pdfDoc.addPage(pageSize);
+        const pageBg=parseCssColor(layout.pageBackground);
+        if(pageBg){
+          page.drawRectangle({x:0,y:0,width:page.getWidth(),height:page.getHeight(),color:rgb(pageBg.r,pageBg.g,pageBg.b)});
+        }
+        drawPdfSheet(page,plan,{fonts:{regular:fontRegular,bold:fontBold},palette,rgb,margin:24});
+        const pdfBytes=await pdfDoc.save();
+        const blob=new Blob([pdfBytes],{type:'application/pdf'});
+        const url=URL.createObjectURL(blob);
+        const link=document.createElement('a');
+        link.href=url;
+        link.download=`${sanitizeFileName(resolvedName||'schedule')}_schedule.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),5000);
+      }catch(err){
+        console.error(err);
+        alert(`Failed to export PDF: ${err.message}`);
+      }finally{
+        btn.disabled=false;
+        btn.textContent=originalLabel;
+      }
+    }
+
+    async function exportSelectedPDF(){
+      const btn=document.getElementById('btnExport');
+      if(!btn || btn.disabled) return;
+      const select=document.getElementById('selIndividual');
+      const selection=select?select.value:'all';
+      const weeks=getActiveWeekData();
+      if(selection && selection!=='all' && weeks.length===1){
+        await exportIndividualPDF(selection,btn);
+      }else{
+        await exportPDF(btn);
+      }
+    }
+
+    function drawPdfSheet(page,plan,{fonts,palette,rgb,scaleLimit=1,margin=24}){
+      const pageWidth=page.getWidth();
+      const pageHeight=page.getHeight();
+      const availableWidth=pageWidth-margin*2;
+      const availableHeight=pageHeight-margin*2;
+      const scale=Math.min(scaleLimit,availableWidth/plan.sheetWidth,availableHeight/plan.sheetHeight,1);
+      const offsetX=margin+(availableWidth-plan.sheetWidth*scale)/2;
+      const offsetY=margin+Math.max(0,availableHeight-plan.sheetHeight*scale);
+
+      const toPageX=x=>offsetX+x*scale;
+      const toPageYTop=y=>offsetY+(plan.sheetHeight-y)*scale;
+      const rectCoords=(x,y,width,height)=>({
+        x:toPageX(x),
+        y:offsetY+(plan.sheetHeight-(y+height))*scale,
+        width:width*scale,
+        height:height*scale,
+      });
+      const lineCoords=(x1,y1,x2,y2)=>({
+        start:{x:toPageX(x1),y:toPageYTop(y1)},
+        end:{x:toPageX(x2),y:toPageYTop(y2)},
+      });
+      const drawLine=(x1,y1,x2,y2,color,width,extra={})=>{
+        page.drawLine({
+          ...lineCoords(x1,y1,x2,y2),
+          thickness:Math.max(width*scale,0.25),
+          color:rgb(color.r,color.g,color.b),
+          opacity:extra.opacity,
+        });
+      };
+      const drawRect=(x,y,width,height,options={})=>{
+        page.drawRectangle({
+          ...rectCoords(x,y,width,height),
+          color:options.fill?rgb(options.fill.r,options.fill.g,options.fill.b):undefined,
+          borderColor:options.stroke?rgb(options.stroke.r,options.stroke.g,options.stroke.b):undefined,
+          borderWidth:options.strokeWidth?Math.max(options.strokeWidth*scale,0.25):undefined,
+        });
+      };
+      const drawText=(text,{x,y,size,color,fontWeight=400,align='left',baseline='alphabetic'})=>{
+        if(!text) return;
+        const font=fontWeight>=600?fonts.bold:fonts.regular;
+        const fontSize=Math.max(0.1,size*scale);
+        const width=font.widthOfTextAtSize(text,fontSize);
+        let pageX=toPageX(x);
+        if(align==='center') pageX-=width/2;
+        if(align==='right') pageX-=width;
+        let pageY=toPageYTop(y);
+        if(baseline==='top'){
+          pageY-=font.heightAtSize(fontSize);
+        }else if(baseline==='middle'){
+          pageY-=font.heightAtSize(fontSize)/2;
+        }
+        page.drawText(text,{
+          x:pageX,
+          y:pageY,
+          size:fontSize,
+          font,
+          color:rgb(color.r,color.g,color.b),
+        });
+      };
+
+      const sheetBg=palette.sheetBackground;
+      const sheetBorder=palette.sheetBorder;
+      drawRect(0,0,plan.sheetWidth,plan.sheetHeight,{fill:sheetBg});
+
+      plan.header.forEach(line=>{
+        drawText(line.text,{
+          x:plan.paddingOuter||18,
+          y:line.top,
+          size:line.size,
+          color:line.color||palette.ink,
+          fontWeight:line.weight||400,
+          baseline:'top',
+        });
+      });
+
+      const chart=plan.chart;
+      const chartLeft=chart.left;
+      const chartTop=chart.top;
+      const chartWidth=chart.width;
+      const chartHeight=chart.height;
+      const innerPadding=chart.padding;
+      const headerHeight=chart.headerHeight;
+      const leftAxis=chart.leftAxis;
+      const innerW=chart.innerWidth;
+      const rowH=chart.rowHeight;
+      const headerTop=chartTop+innerPadding;
+      const headerBottom=headerTop+headerHeight;
+      const bodyTop=headerBottom;
+      const axisBaseline=headerBottom-6;
+      const axisLabelOffset=chart.axisLabelOffset||6;
+      const axisLabelSize=chart.axisLabelSize||12;
+      drawRect(chartLeft,chartTop,chartWidth,chartHeight,{fill:sheetBg,stroke:sheetBorder,strokeWidth:1});
+      drawRect(chartLeft+innerPadding,chartTop+innerPadding,chartWidth-innerPadding*2,headerHeight,{fill:palette.headerBand});
+
+      drawLine(chartLeft+innerPadding+leftAxis,chartTop+innerPadding,chartLeft+innerPadding+leftAxis,chartTop+chartHeight-innerPadding,palette.sheetBorder,1.2);
+      drawLine(chartLeft+innerPadding,headerBottom,chartLeft+chartWidth-innerPadding,headerBottom,palette.sheetBorder,1.2);
+
+      const headerTextBaseline=headerTop+18;
+      const columnLabel=chart.columnHeaderLabel||'Colleague Names';
+      drawText(columnLabel,{
+        x:chartLeft+innerPadding+6,
+        y:headerTextBaseline,
+        size:chart.columnHeaderSize,
+        color:palette.columnHeader,
+        fontWeight:700,
+      });
+
+      const toX=minute=>chartLeft+innerPadding+leftAxis+(minute/1440)*innerW;
+      for(let minute=0;minute<=1440;minute+=15){
+        const x=toX(minute);
+        const isHour=minute%60===0;
+        const color=isHour?palette.grid:palette.minorGrid;
+        const strokeWidth=isHour?1:0.6;
+
+        if(isHour && minute>0 && minute<1440){
+          drawLine(x,headerTop,x,headerBottom,palette.grid,1);
+        }
+
+        if(minute>0 && minute<1440){
+          drawLine(x,headerBottom,x,chartTop+chartHeight-innerPadding,color,strokeWidth);
+        }
+
+        if(isHour && minute<1440){
+          drawText(fmtHMDisplay(minute),{
+            x:x+axisLabelOffset,
+            y:axisBaseline,
+            size:axisLabelSize,
+            color:palette.axis,
+          });
+        }
+      }
+
+      chart.bodyRows.forEach((row,idx)=>{
+        const rowTop=bodyTop+idx*rowH;
+        if(idx>0){
+          drawLine(chartLeft+innerPadding,rowTop,chartLeft+chartWidth-innerPadding,rowTop,palette.grid,1);
+        }
+        drawText(row.name,{
+          x:chartLeft+innerPadding+6,
+          y:rowTop+rowH/2,
+          size:chart.rowLabelSize,
+          color:palette.rowLabel,
+          baseline:'middle',
+        });
+        if(row.range){
+          const labelText=`${fmtHMDisplay(row.range.start)} - ${fmtHMDisplay(row.range.end)}`;
+          const barColor=row.highlight && palette.specialBar?palette.specialBar:palette.bar;
+          row.segments.forEach((seg,segIdx)=>{
+            const segY=rowTop+4;
+            const segHeight=rowH-8;
+            const segX=toX(seg.start);
+            const segW=Math.max(2,toX(seg.end)-segX);
+            drawRect(segX,segY,segW,segHeight,{fill:barColor});
+            if(segIdx===0){
+              drawText(labelText,{
+                x:segX+4,
+                y:segY+segHeight/2+1,
+                size:chart.barLabelSize,
+                color:palette.barLabel,
+                fontWeight:700,
+                baseline:'middle',
+              });
+            }
+          });
+        }
+      });
+
+      drawLine(chartLeft+innerPadding,bodyTop+chart.bodyRows.length*rowH,chartLeft+chartWidth-innerPadding,bodyTop+chart.bodyRows.length*rowH,palette.sheetBorder,1.2);
+
+      if(Array.isArray(plan.footerNotes)){
+        plan.footerNotes.forEach(item=>{
+          drawText(item.text,{
+            x:plan.sheetWidth-plan.paddingOuter,
+            y:item.top,
+            size:item.size,
+            color:item.color||palette.muted,
+            align:'right',
+            baseline:'top',
+          });
+        });
+      }
+
+      if(plan.pageFooter && plan.pageFooter.text){
+        const footer=plan.pageFooter;
+        const font=footer.fontWeight>=600?fonts.bold:fonts.regular;
+        const footerSize=Math.max(0.1,footer.size*scale);
+        const textWidth=font.widthOfTextAtSize(footer.text,footerSize);
+        const x=pageWidth-margin-textWidth;
+        const y=Math.max(4,margin/2);
+        page.drawText(footer.text,{
+          x,
+          y,
+          size:footerSize,
+          font,
+          color:rgb((footer.color||palette.muted).r,(footer.color||palette.muted).g,(footer.color||palette.muted).b),
+        });
+      }
+    }
+
+    function parseHexColor(color){
+      if(!color || typeof color!=='string') return null;
+      const hex=color.trim();
+      const match=hex.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+      if(!match) return null;
+      let value=match[1];
+      if(value.length===3){
+        value=value.split('').map(ch=>ch+ch).join('');
+      }
+      const int=parseInt(value,16);
+      const r=(int>>16)&255;
+      const g=(int>>8)&255;
+      const b=int&255;
+      return {r:r/255,g:g/255,b:b/255};
+    }
+
+    function parseCssColor(color){
+      if(!color || typeof color!=='string') return null;
+      const hex=parseHexColor(color);
+      if(hex) return hex;
+      const match=color.trim().match(/^rgba?\(([^)]+)\)$/i);
+      if(!match) return null;
+      const parts=match[1].split(',').map(part=>part.trim()).filter(Boolean);
+      if(parts.length<3) return null;
+      const nums=parts.slice(0,3).map(val=>{
+        if(val.endsWith('%')){
+          const pct=parseFloat(val);
+          if(!Number.isFinite(pct)) return NaN;
+          return Math.max(0,Math.min(100,pct))/100*255;
+        }
+        const num=parseFloat(val);
+        return Number.isFinite(num)?num:NaN;
+      });
+      if(nums.some(v=>!Number.isFinite(v))) return null;
+      const [r,g,b]=nums;
+      return {r:Math.max(0,Math.min(255,r))/255,g:Math.max(0,Math.min(255,g))/255,b:Math.max(0,Math.min(255,b))/255};
+    }
+
+    function buildPdfPalette(layout){
+      const computed=getComputedStyle(document.documentElement);
+      const inkRaw=(computed.getPropertyValue('--ink')||'#111111').trim()||'#111111';
+      const mutedRaw=(computed.getPropertyValue('--muted')||'#555555').trim()||'#555555';
+      const getColor=(value,def)=>parseCssColor(value)||parseCssColor(def)||{r:0,g:0,b:0};
+      return {
+        ink:getColor(inkRaw,'#111111'),
+        muted:getColor(mutedRaw,'#555555'),
+        sheetBackground:getColor(layout.sheetBackground,DEFAULT_LAYOUT.sheetBackground),
+        sheetBorder:getColor(layout.sheetBorder,DEFAULT_LAYOUT.sheetBorder),
+        headerBand:getColor(layout.headerBandColor,DEFAULT_LAYOUT.headerBandColor),
+        grid:getColor(layout.gridColor,DEFAULT_LAYOUT.gridColor),
+        minorGrid:getColor(layout.minorGridColor,DEFAULT_LAYOUT.minorGridColor),
+        axis:getColor(layout.axisColor,DEFAULT_LAYOUT.axisColor),
+        columnHeader:getColor(layout.columnHeaderColor,layout.axisColor||DEFAULT_LAYOUT.columnHeaderColor),
+        rowLabel:getColor(layout.rowLabelColor,DEFAULT_LAYOUT.rowLabelColor),
+        specialBar:getColor(SPECIAL_NAME_COLOR,DEFAULT_LAYOUT.barColor),
+        bar:getColor(layout.barColor,DEFAULT_LAYOUT.barColor),
+        barLabel:getColor(layout.barLabelColor,DEFAULT_LAYOUT.barLabelColor),
+      };
+    }
+
+      currentLayout=layout;
+      renderViews();
+    }
+
+    // ---------- Sample & Wire-up ----------
+    const hiddenInput=document.getElementById('input');
+    const fileInput=document.getElementById('fileInput');
+    const btnUpload=document.getElementById('btnUpload');
+    const btnClearWeeks=document.getElementById('btnClearWeeks');
+    const uploadLogPanel=document.getElementById('uploadLogPanel');
+    const uploadLogContainer=document.getElementById('uploadLog');
+    const btnClearLog=document.getElementById('btnClearLog');
+    const uploadLogEntries=[];
+
+    function formatFileSize(bytes){
+      if(typeof bytes!=='number' || !Number.isFinite(bytes) || bytes<0){ return ''; }
+      const units=['B','KB','MB','GB','TB'];
+      let value=bytes;
+      let unitIndex=0;
+      while(value>=1024 && unitIndex<units.length-1){
+        value/=1024;
+        unitIndex+=1;
+      }
+      const precision=value>=100?0:value>=10?1:2;
+      return `${value.toFixed(precision)} ${units[unitIndex]}`;
+    }
+
+    function normalizeLogDetail(detail){
+      if(detail===undefined || detail===null){ return ''; }
+      if(typeof detail==='string'){ return detail; }
+      if(typeof detail==='object'){
+        try{
+          return JSON.stringify(detail,null,2);
+        }catch(err){
+          return String(detail);
+        }
+      }
+      return String(detail);
+    }
+
+    function renderUploadLog(){
+      if(!uploadLogContainer) return;
+      uploadLogContainer.innerHTML='';
+      if(!uploadLogEntries.length){
+        const empty=document.createElement('p');
+        empty.className='log-empty';
+        empty.textContent='No upload activity yet.';
+        uploadLogContainer.appendChild(empty);
+      }else{
+        const fragment=document.createDocumentFragment();
+        const entries=uploadLogEntries.slice().reverse();
+        entries.forEach(entry=>{
+          const item=document.createElement('article');
+          item.className='log-entry';
+          item.dataset.level=entry.level;
+
+          const message=document.createElement('div');
+          message.className='log-entry-message';
+          message.textContent=entry.message;
+          item.appendChild(message);
+
+          if(entry.details){
+            const details=document.createElement('pre');
+            details.className='log-entry-details';
+            details.textContent=entry.details;
+            item.appendChild(details);
+          }
+
+          const meta=document.createElement('div');
+          meta.className='log-entry-meta';
+          const timestamp=entry.time;
+          const hours=String(timestamp.getHours()).padStart(2,'0');
+          const minutes=String(timestamp.getMinutes()).padStart(2,'0');
+          const seconds=String(timestamp.getSeconds()).padStart(2,'0');
+          meta.textContent=`${hours}:${minutes}:${seconds} · ${entry.level.toUpperCase()}`;
+          item.appendChild(meta);
+
+          fragment.appendChild(item);
+        });
+        uploadLogContainer.appendChild(fragment);
+      }
+      if(uploadLogPanel){
+        uploadLogPanel.classList.toggle('has-entries',uploadLogEntries.length>0);
+      }
+    }
+
+    function addUploadLog(message,level='info',detail){
+      if(!message){ message='(no message)'; }
+      const normalizedLevel=typeof level==='string'?level.toLowerCase():'info';
+      const entry={
+        message:String(message),
+        level:['success','warning','error','info'].includes(normalizedLevel)?normalizedLevel:'info',
+        details:normalizeLogDetail(detail),
+        time:new Date(),
+      };
+      uploadLogEntries.push(entry);
+      if(uploadLogEntries.length>40){
+        uploadLogEntries.shift();
+      }
+      renderUploadLog();
+      const consoleMethod=entry.level==='error'?'error':entry.level==='warning'?'warn':'info';
+      if(typeof console!=='undefined' && typeof console[consoleMethod]==='function'){
+        if(detail!==undefined){
+          console[consoleMethod](`[upload] ${entry.message}`,detail);
+        }else{
+          console[consoleMethod](`[upload] ${entry.message}`);
+        }
+      }
+    }
+
+    renderUploadLog();
+    if(btnClearLog){
+      btnClearLog.addEventListener('click',()=>{
+        uploadLogEntries.length=0;
+        addUploadLog('Upload log cleared.','info');
+      });
+    }
+
+    function withTemporarilyExposedInput(input,task){
+      if(!input || typeof task!=='function') return;
+      const previousStyle=input.getAttribute('style');
+      const hadHiddenClass=input.classList && input.classList.contains('visually-hidden');
+      if(hadHiddenClass){
+        input.classList.remove('visually-hidden');
+      }
+      input.style.position='fixed';
+      input.style.top='0';
+      input.style.left='0';
+      input.style.width='1px';
+      input.style.height='1px';
+      input.style.opacity='0';
+      input.style.pointerEvents='none';
+
+      let cleanedUp=false;
+      const cleanup=()=>{
+        if(cleanedUp) return;
+        cleanedUp=true;
+        if(previousStyle===null){
+          input.removeAttribute('style');
+        }else{
+          input.setAttribute('style',previousStyle);
+        }
+        if(hadHiddenClass){
+          input.classList.add('visually-hidden');
+        }
+      };
+
+      try{
+        const result=task();
+        if(result && typeof result.then==='function'){
+          result.then(()=>cleanup(),()=>cleanup());
+        }else{
+          cleanup();
+        }
+        return result;
+      }catch(err){
+        cleanup();
+        throw err;
+      }
+    }
+
+    function openFilePicker(input){
+      if(!input){
+        addUploadLog('File input element is missing.','error');
+        return;
+      }
+
+      addUploadLog('Opening file picker…','info');
+
+      const triggerClickFallback=()=>{
+        addUploadLog('Falling back to legacy file picker behaviour.','info');
+        try{
+          withTemporarilyExposedInput(input,()=>{ input.click(); });
+        }catch(fallbackError){
+          console.error('Unable to trigger file input',fallbackError);
+          addUploadLog('Unable to trigger legacy file input programmatically.','error',fallbackError && fallbackError.message?fallbackError.message:fallbackError);
+        }
+      };
+
+      const isEffectivelyHidden=()=>{
+        const style=getComputedStyle(input);
+        if(style.display==='none' || style.visibility==='hidden'){ return true; }
+        const rect=input.getBoundingClientRect();
+        return rect.width===0 && rect.height===0;
+      };
+
+      const canUseShowPicker=typeof input.showPicker==='function' && !isEffectivelyHidden();
+      if(canUseShowPicker){
+        try{
+          const maybePromise=withTemporarilyExposedInput(input,()=>input.showPicker());
+          if(maybePromise && typeof maybePromise.catch==='function'){
+            maybePromise.catch(err=>{
+              if(err && err.name==='AbortError') return;
+              console.error('File picker failed, falling back to click()',err);
+              addUploadLog('showPicker() failed, using legacy fallback.','warning',err && err.message?err.message:err);
+              triggerClickFallback();
+            });
+          }
+          return;
+        }catch(err){
+          if(err && err.name==='AbortError'){ return; }
+          if(err && err.name==='NotAllowedError'){
+            // Browser blocked showPicker, fall back to click() immediately.
+            addUploadLog('showPicker() blocked by browser permissions.','warning');
+            triggerClickFallback();
+            return;
+          }
+          console.error('File picker error',err);
+          addUploadLog('Unexpected error opening file picker.','error',err && err.message?err.message:err);
+          triggerClickFallback();
+          return;
+        }
+      }
+
+      triggerClickFallback();
+    }
+
+    if(btnUpload && fileInput){
+      const defaultUploadLabel=btnUpload.textContent||'Upload CSV';
+      btnUpload.addEventListener('click',()=>{ openFilePicker(fileInput); });
+      fileInput.addEventListener('change',()=>{
+        const files=fileInput.files;
+        const file=files && files.length?files[0]:null;
+        if(!file){
+          if(hiddenInput){ hiddenInput.value=''; }
+          btnUpload.textContent=defaultUploadLabel;
+          addUploadLog('File selection cancelled or no file chosen.','info');
+          return;
+        }
+        const name=file.name||'file';
+        const isCsv=name.toLowerCase().endsWith('.csv') || (file.type && file.type.toLowerCase()==='text/csv');
+        if(!isCsv){
+          alert('Please choose a CSV file.');
+          fileInput.value='';
+          if(hiddenInput){ hiddenInput.value=''; }
+          btnUpload.textContent=defaultUploadLabel;
+          addUploadLog('Rejected non-CSV file.','warning',{name,type:file.type||'unknown'});
+          return;
+        }
+        const sizeLabel=formatFileSize(file.size);
+        addUploadLog(`Selected ${name}${sizeLabel?` (${sizeLabel})`:''}.`,'info',{type:file.type||'text/csv'});
+        const reader=new FileReader();
+        reader.addEventListener('load',()=>{
+          const text=typeof reader.result==='string'?reader.result:'';
+          addUploadLog(`Finished reading ${name} (${text.length} characters).`,'success');
+          if(hiddenInput){ hiddenInput.value=text; }
+          fileInput.value='';
+          btnUpload.textContent='Replace CSV';
+          const sel=document.getElementById('selIndividual');
+          if(sel){ sel.value='all'; }
+          const exportBtn=document.getElementById('btnExport');
+          if(exportBtn){
+            exportBtn.textContent='Export PDF';
+          }
+          currentIndividualIndex=null;
+          if(!text.trim()){
+            renderViews();
+            addUploadLog('Uploaded CSV was empty after trimming whitespace.','warning');
+            return;
+          }
+          try{
+            addUploadLog('Parsing CSV data…','info');
+            const layout=getLayoutSettings();
+            applyLayoutToDocument(layout);
+            currentLayout=layout;
+            const model=parseExport(text);
+            addOrUpdateWeekRecord(model);
+            addUploadLog('CSV parsed and stored successfully.','success',`Saved weeks: ${savedWeekRecords.length}`);
+          }catch(err){
+            console.error(err);
+            alert(err && err.message?err.message:'Failed to parse the provided CSV file.');
+            btnUpload.textContent=defaultUploadLabel;
+            addUploadLog('Failed to parse uploaded CSV.','error',err && err.message?err.message:err);
+          }
+        });
+        reader.addEventListener('error',()=>{
+          const errDetail=reader.error && reader.error.message?reader.error.message:'Unknown error';
+          console.error(reader.error||new Error('Failed to read file'));
+          alert(`Failed to read ${name}: ${errDetail}`);
+          fileInput.value='';
+          if(hiddenInput){ hiddenInput.value=''; }
+          btnUpload.textContent=defaultUploadLabel;
+          addUploadLog(`FileReader error while reading ${name}.`,'error',errDetail);
+        });
+        addUploadLog(`Reading ${name}${sizeLabel?` (${sizeLabel})`:''}…`,'info');
+        reader.readAsText(file);
+      });
+    }
+
+    const exportButton=document.getElementById('btnExport');
+    if(exportButton){
+      exportButton.addEventListener('click',()=>{ exportSelectedPDF(); });
+    }
+    if(btnClearWeeks){
+      btnClearWeeks.addEventListener('click',()=>{ clearAllWeeks(); });
+    }
+    const selIndividual=document.getElementById('selIndividual');
+    if(selIndividual){
+      selIndividual.addEventListener('change',()=>{
+        const value=selIndividual.value;
+        if(value && value!=='all'){
+          const parsed=parseInt(value,10);
+          const weeks=getActiveWeekData();
+          const week=weeks.length===1?weeks[0]:null;
+          if(!Number.isNaN(parsed) && week && week.model && Array.isArray(week.model.rows) && parsed<week.model.rows.length){
+            currentIndividualIndex=parsed;
+          }else{
+            currentIndividualIndex=null;
+          }
+        }else{
+          currentIndividualIndex=null;
+        }
+        const btn=document.getElementById('btnExport');
+        if(btn){
+          btn.textContent=value && value!=='all'?'Export colleague PDF':'Export weekly PDF';
+        }
+        renderViews();
+      });
+    }
+
+    const viewerContainer=document.getElementById('viewerContainer');
+    const viewerTabsContainer=document.querySelector('.viewer-tabs');
+    const viewerTabs=Array.from(document.querySelectorAll('.viewer-tab'));
+    const viewPanels={
+      schedule:document.getElementById('viewSchedule'),
+      pdf:document.getElementById('viewPdf'),
+    };
+    let activeView='schedule';
+
+    function setViewerTabsVisibility(visible){
+      const show=!!visible;
+      if(viewerContainer){
+        viewerContainer.hidden=!show;
+        viewerContainer.setAttribute('aria-hidden',show?'false':'true');
+      }
+      if(viewerTabsContainer){
+        viewerTabsContainer.hidden=!show;
+        viewerTabsContainer.setAttribute('aria-hidden',show?'false':'true');
+      }
+      if(viewerTabs && viewerTabs.length){
+        viewerTabs.forEach(btn=>{
+          btn.disabled=!show;
+          if(!show){
+            btn.setAttribute('tabindex','-1');
+            btn.setAttribute('aria-hidden','true');
+          }else{
+            const isActive=btn.dataset.view===activeView;
+            btn.setAttribute('tabindex',isActive?'0':'-1');
+            btn.setAttribute('aria-hidden','false');
+          }
+        });
+      }
+    }
+
+    function switchView(view){
+      if(!viewPanels[view]) return;
+      activeView=view;
+      viewerTabs.forEach(btn=>{
+        const isActive=btn.dataset.view===view;
+        btn.classList.toggle('active',isActive);
+        btn.setAttribute('aria-selected',isActive?'true':'false');
+        btn.setAttribute('aria-pressed',isActive?'true':'false');
+        btn.setAttribute('tabindex',isActive?'0':'-1');
+      });
+      Object.entries(viewPanels).forEach(([key,panel])=>{
+        if(!panel) return;
+        const isActive=key===view;
+        panel.classList.toggle('active',isActive);
+        panel.setAttribute('aria-hidden',isActive?'false':'true');
+      });
+    }
+
+    if(viewerTabs.length){
+      viewerTabs.forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const view=btn.dataset.view;
+          if(view){
+            switchView(view);
+          }
+        });
+      });
+      switchView(activeView);
+    }
+
+    const layoutControlIds=[
+      'inpTitle','inpSubtitle','inpStaticCode','inpFooter','inpFooterNote','inpRowHeight','inpChartWidth','inpNameWidth','inpHeaderHeight','inpPadding','inpTitleSize','inpRangeSize','inpCodeSize','inpDateSize','inpFooterSize','inpColumnHeaderSize','inpRowLabelSize','inpBarLabelSize','inpBarColor','inpBarLabelColor','inpHeaderBandColor','inpGridColor','inpMinorGridColor','inpAxisColor','inpColumnHeaderColor','inpRowLabelColor','inpSheetBgColor','inpSheetBorderColor','inpPageBgColor'
+    ];
+    layoutControlIds.forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el) return;
+      el.addEventListener('input',handleLayoutControlChange);
+      el.addEventListener('change',handleLayoutControlChange);
+    });
+
+    // First paint
+    document.addEventListener('DOMContentLoaded',()=>{
+      if(hiddenInput){ hiddenInput.value=''; }
+      if(btnUpload){ btnUpload.textContent='Upload CSV'; }
+      addUploadLog('Ready to upload CSV files.','info');
+      const layout=getLayoutSettings();
+      applyLayoutToDocument(layout);
+      currentLayout=layout;
+      updateWeekSelectionUI();
+      renderViews();
+      switchView('schedule');
+    });
+  </script>
+</body>
+</html>
