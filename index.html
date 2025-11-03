@@ -48,6 +48,21 @@
     .controls{display:flex;flex-direction:column;gap:16px;align-items:stretch;border:1px solid var(--border);padding:26px 28px;border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);width:100%}
     .control-btn{width:100%}
     .control-hint{margin:0;font-size:12px;color:var(--muted);background:var(--surface-soft);padding:12px 14px;border-radius:12px}
+    .log-panel{display:flex;flex-direction:column;gap:12px;border:1px solid var(--border);border-radius:18px;background:var(--surface-soft);padding:16px 18px;box-shadow:0 12px 24px rgba(7,45,65,.08);max-height:260px;overflow:hidden}
+    .log-panel-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .log-panel-title{margin:0;font-size:16px;font-weight:700;color:var(--ink)}
+    .log-clear{border-radius:999px;border:1px solid transparent;background:transparent;color:var(--accent);font-weight:700;font-size:12px;padding:6px 12px;cursor:pointer;transition:all .2s ease}
+    .log-clear:hover{background:var(--accent-soft);color:var(--accent-strong)}
+    .log-clear:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+    .log-panel-body{display:flex;flex-direction:column;gap:10px;overflow:auto;padding-right:4px;max-height:180px}
+    .log-entry{border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:1.4}
+    .log-entry[data-level="success"]{border-color:#1b9e3e;background:rgba(27,158,62,.12)}
+    .log-entry[data-level="warning"]{border-color:#d69e2e;background:rgba(214,158,46,.16)}
+    .log-entry[data-level="error"]{border-color:#c53030;background:rgba(197,48,48,.14)}
+    .log-entry-message{font-weight:600;color:var(--ink)}
+    .log-entry-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);gap:8px;flex-wrap:wrap}
+    .log-entry-details{margin:0;font-family:"Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;white-space:pre-wrap;color:var(--muted);font-size:11px;background:rgba(255,255,255,.6);padding:8px 10px;border-radius:10px;border:1px solid rgba(0,0,0,.05)}
+    .log-empty{margin:0;font-size:12px;color:var(--muted);padding:8px 0}
     .panel-title{margin:0;font-size:18px;font-weight:700;color:var(--ink)}
     .saved-week-list{display:flex;flex-direction:column;gap:12px}
     .saved-week-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--surface-soft)}
@@ -228,6 +243,13 @@
         <div class="controls">
           <input type="file" id="fileInput" accept=".csv,text/csv" class="visually-hidden">
           <button class="btn control-btn" id="btnUpload" type="button">Upload CSV</button>
+          <section class="log-panel" id="uploadLogPanel" aria-label="Upload activity">
+            <div class="log-panel-header">
+              <h2 class="log-panel-title">Upload activity</h2>
+              <button class="log-clear" id="btnClearLog" type="button">Clear log</button>
+            </div>
+            <div class="log-panel-body" id="uploadLog" role="log" aria-live="polite" aria-relevant="additions"></div>
+          </section>
           <div class="panel panel-static" id="savedWeeksPanel" hidden aria-hidden="true">
             <h2 class="panel-title">Saved weeks</h2>
             <p class="control-hint">Select which weeks to preview or export. Up to four weeks are stored on this device.</p>
@@ -2216,6 +2238,114 @@
     const fileInput=document.getElementById('fileInput');
     const btnUpload=document.getElementById('btnUpload');
     const btnClearWeeks=document.getElementById('btnClearWeeks');
+    const uploadLogPanel=document.getElementById('uploadLogPanel');
+    const uploadLogContainer=document.getElementById('uploadLog');
+    const btnClearLog=document.getElementById('btnClearLog');
+    const uploadLogEntries=[];
+
+    function formatFileSize(bytes){
+      if(typeof bytes!=='number' || !Number.isFinite(bytes) || bytes<0){ return ''; }
+      const units=['B','KB','MB','GB','TB'];
+      let value=bytes;
+      let unitIndex=0;
+      while(value>=1024 && unitIndex<units.length-1){
+        value/=1024;
+        unitIndex+=1;
+      }
+      const precision=value>=100?0:value>=10?1:2;
+      return `${value.toFixed(precision)} ${units[unitIndex]}`;
+    }
+
+    function normalizeLogDetail(detail){
+      if(detail===undefined || detail===null){ return ''; }
+      if(typeof detail==='string'){ return detail; }
+      if(typeof detail==='object'){
+        try{
+          return JSON.stringify(detail,null,2);
+        }catch(err){
+          return String(detail);
+        }
+      }
+      return String(detail);
+    }
+
+    function renderUploadLog(){
+      if(!uploadLogContainer) return;
+      uploadLogContainer.innerHTML='';
+      if(!uploadLogEntries.length){
+        const empty=document.createElement('p');
+        empty.className='log-empty';
+        empty.textContent='No upload activity yet.';
+        uploadLogContainer.appendChild(empty);
+      }else{
+        const fragment=document.createDocumentFragment();
+        const entries=uploadLogEntries.slice().reverse();
+        entries.forEach(entry=>{
+          const item=document.createElement('article');
+          item.className='log-entry';
+          item.dataset.level=entry.level;
+
+          const message=document.createElement('div');
+          message.className='log-entry-message';
+          message.textContent=entry.message;
+          item.appendChild(message);
+
+          if(entry.details){
+            const details=document.createElement('pre');
+            details.className='log-entry-details';
+            details.textContent=entry.details;
+            item.appendChild(details);
+          }
+
+          const meta=document.createElement('div');
+          meta.className='log-entry-meta';
+          const timestamp=entry.time;
+          const hours=String(timestamp.getHours()).padStart(2,'0');
+          const minutes=String(timestamp.getMinutes()).padStart(2,'0');
+          const seconds=String(timestamp.getSeconds()).padStart(2,'0');
+          meta.textContent=`${hours}:${minutes}:${seconds} · ${entry.level.toUpperCase()}`;
+          item.appendChild(meta);
+
+          fragment.appendChild(item);
+        });
+        uploadLogContainer.appendChild(fragment);
+      }
+      if(uploadLogPanel){
+        uploadLogPanel.classList.toggle('has-entries',uploadLogEntries.length>0);
+      }
+    }
+
+    function addUploadLog(message,level='info',detail){
+      if(!message){ message='(no message)'; }
+      const normalizedLevel=typeof level==='string'?level.toLowerCase():'info';
+      const entry={
+        message:String(message),
+        level:['success','warning','error','info'].includes(normalizedLevel)?normalizedLevel:'info',
+        details:normalizeLogDetail(detail),
+        time:new Date(),
+      };
+      uploadLogEntries.push(entry);
+      if(uploadLogEntries.length>40){
+        uploadLogEntries.shift();
+      }
+      renderUploadLog();
+      const consoleMethod=entry.level==='error'?'error':entry.level==='warning'?'warn':'info';
+      if(typeof console!=='undefined' && typeof console[consoleMethod]==='function'){
+        if(detail!==undefined){
+          console[consoleMethod](`[upload] ${entry.message}`,detail);
+        }else{
+          console[consoleMethod](`[upload] ${entry.message}`);
+        }
+      }
+    }
+
+    renderUploadLog();
+    if(btnClearLog){
+      btnClearLog.addEventListener('click',()=>{
+        uploadLogEntries.length=0;
+        addUploadLog('Upload log cleared.','info');
+      });
+    }
 
     function withTemporarilyExposedInput(input,task){
       if(!input || typeof task!=='function') return;
@@ -2261,13 +2391,20 @@
     }
 
     function openFilePicker(input){
-      if(!input) return;
+      if(!input){
+        addUploadLog('File input element is missing.','error');
+        return;
+      }
+
+      addUploadLog('Opening file picker…','info');
 
       const triggerClickFallback=()=>{
+        addUploadLog('Falling back to legacy file picker behaviour.','info');
         try{
           withTemporarilyExposedInput(input,()=>{ input.click(); });
         }catch(fallbackError){
           console.error('Unable to trigger file input',fallbackError);
+          addUploadLog('Unable to trigger legacy file input programmatically.','error',fallbackError && fallbackError.message?fallbackError.message:fallbackError);
         }
       };
 
@@ -2286,6 +2423,7 @@
             maybePromise.catch(err=>{
               if(err && err.name==='AbortError') return;
               console.error('File picker failed, falling back to click()',err);
+              addUploadLog('showPicker() failed, using legacy fallback.','warning',err && err.message?err.message:err);
               triggerClickFallback();
             });
           }
@@ -2294,10 +2432,12 @@
           if(err && err.name==='AbortError'){ return; }
           if(err && err.name==='NotAllowedError'){
             // Browser blocked showPicker, fall back to click() immediately.
+            addUploadLog('showPicker() blocked by browser permissions.','warning');
             triggerClickFallback();
             return;
           }
           console.error('File picker error',err);
+          addUploadLog('Unexpected error opening file picker.','error',err && err.message?err.message:err);
           triggerClickFallback();
           return;
         }
@@ -2315,6 +2455,7 @@
         if(!file){
           if(hiddenInput){ hiddenInput.value=''; }
           btnUpload.textContent=defaultUploadLabel;
+          addUploadLog('File selection cancelled or no file chosen.','info');
           return;
         }
         const name=file.name||'file';
@@ -2324,11 +2465,15 @@
           fileInput.value='';
           if(hiddenInput){ hiddenInput.value=''; }
           btnUpload.textContent=defaultUploadLabel;
+          addUploadLog('Rejected non-CSV file.','warning',{name,type:file.type||'unknown'});
           return;
         }
+        const sizeLabel=formatFileSize(file.size);
+        addUploadLog(`Selected ${name}${sizeLabel?` (${sizeLabel})`:''}.`,'info',{type:file.type||'text/csv'});
         const reader=new FileReader();
         reader.addEventListener('load',()=>{
           const text=typeof reader.result==='string'?reader.result:'';
+          addUploadLog(`Finished reading ${name} (${text.length} characters).`,'success');
           if(hiddenInput){ hiddenInput.value=text; }
           fileInput.value='';
           btnUpload.textContent='Replace CSV';
@@ -2341,18 +2486,22 @@
           currentIndividualIndex=null;
           if(!text.trim()){
             renderViews();
+            addUploadLog('Uploaded CSV was empty after trimming whitespace.','warning');
             return;
           }
           try{
+            addUploadLog('Parsing CSV data…','info');
             const layout=getLayoutSettings();
             applyLayoutToDocument(layout);
             currentLayout=layout;
             const model=parseExport(text);
             addOrUpdateWeekRecord(model);
+            addUploadLog('CSV parsed and stored successfully.','success',`Saved weeks: ${savedWeekRecords.length}`);
           }catch(err){
             console.error(err);
             alert(err && err.message?err.message:'Failed to parse the provided CSV file.');
             btnUpload.textContent=defaultUploadLabel;
+            addUploadLog('Failed to parse uploaded CSV.','error',err && err.message?err.message:err);
           }
         });
         reader.addEventListener('error',()=>{
@@ -2362,7 +2511,9 @@
           fileInput.value='';
           if(hiddenInput){ hiddenInput.value=''; }
           btnUpload.textContent=defaultUploadLabel;
+          addUploadLog(`FileReader error while reading ${name}.`,'error',errDetail);
         });
+        addUploadLog(`Reading ${name}${sizeLabel?` (${sizeLabel})`:''}…`,'info');
         reader.readAsText(file);
       });
     }
@@ -2476,6 +2627,7 @@
     document.addEventListener('DOMContentLoaded',()=>{
       if(hiddenInput){ hiddenInput.value=''; }
       if(btnUpload){ btnUpload.textContent='Upload CSV'; }
+      addUploadLog('Ready to upload CSV files.','info');
       const layout=getLayoutSettings();
       applyLayoutToDocument(layout);
       currentLayout=layout;
