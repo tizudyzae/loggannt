@@ -48,32 +48,20 @@
     .controls{display:flex;flex-direction:column;gap:16px;align-items:stretch;border:1px solid var(--border);padding:26px 28px;border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);width:100%}
     .control-btn{width:100%}
     .control-hint{margin:0;font-size:12px;color:var(--muted);background:var(--surface-soft);padding:12px 14px;border-radius:12px}
-    .log-panel{display:flex;flex-direction:column;gap:12px;border:1px solid var(--border);border-radius:18px;background:var(--surface-soft);padding:16px 18px;box-shadow:0 12px 24px rgba(7,45,65,.08);max-height:260px;overflow:hidden}
-    .log-panel-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-    .log-panel-title{margin:0;font-size:16px;font-weight:700;color:var(--ink)}
-    .log-clear{border-radius:999px;border:1px solid transparent;background:transparent;color:var(--accent);font-weight:700;font-size:12px;padding:6px 12px;cursor:pointer;transition:all .2s ease}
-    .log-clear:hover{background:var(--accent-soft);color:var(--accent-strong)}
-    .log-clear:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-    .log-panel-body{display:flex;flex-direction:column;gap:10px;overflow:auto;padding-right:4px;max-height:180px}
-    .log-entry{border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:1.4}
-    .log-entry[data-level="success"]{border-color:#1b9e3e;background:rgba(27,158,62,.12)}
-    .log-entry[data-level="warning"]{border-color:#d69e2e;background:rgba(214,158,46,.16)}
-    .log-entry[data-level="error"]{border-color:#c53030;background:rgba(197,48,48,.14)}
-    .log-entry-message{font-weight:600;color:var(--ink)}
-    .log-entry-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);gap:8px;flex-wrap:wrap}
-    .log-entry-details{margin:0;font-family:"Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;white-space:pre-wrap;color:var(--muted);font-size:11px;background:rgba(255,255,255,.6);padding:8px 10px;border-radius:10px;border:1px solid rgba(0,0,0,.05)}
-    .log-empty{margin:0;font-size:12px;color:var(--muted);padding:8px 0}
+    .settings-toggle{position:fixed;top:20px;left:20px;width:48px;height:48px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;box-shadow:0 14px 30px rgba(9,42,58,.12);transition:transform .2s ease,box-shadow .2s ease,background .2s ease;color .2s ease;z-index:2000}
+    .settings-toggle:hover{transform:translateY(-1px);box-shadow:0 18px 36px rgba(9,42,58,.16);background:var(--surface-soft)}
+    .settings-toggle:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+    .settings-toggle[disabled]{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
     .panel-title{margin:0;font-size:18px;font-weight:700;color:var(--ink)}
-    .saved-week-list{display:flex;flex-direction:column;gap:12px}
-    .saved-week-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--surface-soft)}
-    .saved-week-item input[type="checkbox"]{margin-top:4px}
-    .saved-week-label{flex:1;display:flex;flex-direction:column;gap:4px}
-    .saved-week-name{font-weight:700;color:var(--ink)}
-    .saved-week-meta{font-size:12px;color:var(--muted)}
-    .saved-week-actions{display:flex;align-items:center;gap:8px}
-    .saved-week-remove{background:transparent;border:1px solid transparent;color:var(--accent);font-weight:700;cursor:pointer;font-size:12px;padding:6px 10px;border-radius:999px;transition:all .2s ease}
-    .saved-week-remove:hover{background:var(--accent-soft);color:var(--accent-strong)}
-    .saved-week-remove:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+    .settings-panel{position:fixed;top:84px;left:20px;width:320px;max-width:calc(100% - 40px);z-index:1990}
+    .settings-panel .panel-title{margin-bottom:4px}
+    .settings-panel .control-hint{background:transparent;padding:0;margin-bottom:8px}
+    .saved-week-select{display:flex;flex-direction:column;gap:6px}
+    .saved-week-select select{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;font:14px/1.5 "Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--ink);box-shadow:0 6px 12px rgba(9,42,58,.06)}
+    .saved-week-select select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,123,195,.18)}
+    .saved-week-meta{font-size:12px;color:var(--muted);margin:0}
+    .saved-week-actions{display:flex;flex-wrap:wrap;gap:8px}
+    .saved-week-actions .btn{flex:1 1 auto}
     .btn{appearance:none;border-radius:999px;padding:11px 18px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer;letter-spacing:.15px;border:1px solid var(--accent);box-shadow:0 10px 20px rgba(0,123,195,.18);transition:background .2s ease,border-color .2s ease,box-shadow .2s ease,transform .1s ease}
     .btn:hover{background:var(--accent-strong);border-color:var(--accent-strong);box-shadow:0 12px 24px rgba(0,92,145,.22)}
     .btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
@@ -232,6 +220,20 @@
   </style>
 </head>
 <body>
+  <button class="settings-toggle" id="btnToggleSettings" type="button" aria-label="Show saved weeks" aria-expanded="false">⚙️</button>
+  <div class="panel panel-static settings-panel" id="savedWeeksPanel" hidden aria-hidden="true">
+    <h2 class="panel-title">Saved weeks</h2>
+    <p class="control-hint">Select which week to preview or export. Up to four weeks are stored on this device.</p>
+    <label class="saved-week-select" for="savedWeekSelect">
+      <span>Saved week</span>
+      <select id="savedWeekSelect" disabled></select>
+    </label>
+    <p class="saved-week-meta" id="savedWeekMeta" hidden></p>
+    <div class="saved-week-actions">
+      <button class="btn btn-secondary" id="btnForgetWeek" type="button">Forget selected week</button>
+      <button class="btn btn-secondary" id="btnClearWeeks" type="button">Clear saved weeks</button>
+    </div>
+  </div>
   <div class="wrap">
     <header class="hero">
       <h1>Logile rota viewer</h1>
@@ -243,19 +245,6 @@
         <div class="controls">
           <input type="file" id="fileInput" accept=".csv,text/csv" class="visually-hidden">
           <button class="btn control-btn" id="btnUpload" type="button">Upload CSV</button>
-          <section class="log-panel" id="uploadLogPanel" aria-label="Upload activity">
-            <div class="log-panel-header">
-              <h2 class="log-panel-title">Upload activity</h2>
-              <button class="log-clear" id="btnClearLog" type="button">Clear log</button>
-            </div>
-            <div class="log-panel-body" id="uploadLog" role="log" aria-live="polite" aria-relevant="additions"></div>
-          </section>
-          <div class="panel panel-static" id="savedWeeksPanel" hidden aria-hidden="true">
-            <h2 class="panel-title">Saved weeks</h2>
-            <p class="control-hint">Select which weeks to preview or export. Up to four weeks are stored on this device.</p>
-            <div id="savedWeekList" class="saved-week-list"></div>
-            <button class="btn btn-secondary" id="btnClearWeeks" type="button">Clear saved weeks</button>
-          </div>
           <label class="ctrl" for="selIndividual" id="reportScopeControl" hidden aria-hidden="true">
             <span>Report scope</span>
             <select id="selIndividual" disabled>
@@ -925,6 +914,7 @@
     let savedWeekRecords=trimWeekRecords(loadSavedWeekRecords());
     const cachedWeeks=new Map();
     let activeWeekIds=loadSavedSelection();
+    let settingsDrawerOpen=false;
 
     function hydrateWeekRecord(record){
       if(!record || !record.model) return null;
@@ -959,7 +949,7 @@
     }
 
     function getActiveWeekData(){
-      return activeWeekIds.map(id=>cachedWeeks.get(id)).filter(Boolean);
+      return activeWeekIds.slice(0,1).map(id=>cachedWeeks.get(id)).filter(Boolean);
     }
 
     function setActiveWeeks(ids,{persist=true}={}){
@@ -969,6 +959,9 @@
         if(!cachedWeeks.has(id)) return;
         if(!unique.includes(id)) unique.push(id);
       });
+      if(unique.length>1){
+        unique.splice(1);
+      }
       activeWeekIds=unique;
       if(persist) persistActiveSelection(activeWeekIds);
     }
@@ -982,7 +975,7 @@
       }
       const valid=activeWeekIds.filter(id=>cachedWeeks.has(id));
       if(valid.length){
-        activeWeekIds=valid;
+        activeWeekIds=valid.slice(0,1);
         persistActiveSelection(activeWeekIds);
         return;
       }
@@ -992,88 +985,80 @@
 
     ensureActiveWeeks();
 
-    function updateWeekSelectionUI(){
+    function formatWeekMeta(record){
+      if(!record) return '';
+      if(record.metadata && record.metadata.displayRange){
+        return record.metadata.displayRange;
+      }
+      const savedDate=new Date(record.storedAt);
+      if(!Number.isNaN(savedDate.getTime())){
+        return `Saved ${savedDate.toLocaleDateString()}`;
+      }
+      return '';
+    }
+
+    function syncSettingsPanel(){
+      const toggle=document.getElementById('btnToggleSettings');
       const panel=document.getElementById('savedWeeksPanel');
-      const list=document.getElementById('savedWeekList');
+      const hasRecords=getSortedWeekRecords().length>0;
+      if(!hasRecords){
+        settingsDrawerOpen=false;
+      }
+      const visible=settingsDrawerOpen && hasRecords;
+      if(toggle){
+        toggle.disabled=!hasRecords;
+        toggle.setAttribute('aria-expanded',visible?'true':'false');
+        toggle.setAttribute('aria-label',visible?'Hide saved weeks':'Show saved weeks');
+      }
+      if(panel){
+        panel.hidden=!visible;
+        panel.setAttribute('aria-hidden',visible?'false':'true');
+      }
+    }
+
+    function updateWeekSelectionUI(){
+      const select=document.getElementById('savedWeekSelect');
+      const meta=document.getElementById('savedWeekMeta');
       const clearBtn=document.getElementById('btnClearWeeks');
+      const forgetBtn=document.getElementById('btnForgetWeek');
       const records=getSortedWeekRecords();
       const hasRecords=records.length>0;
-      if(panel){
-        panel.hidden=!hasRecords;
-        panel.setAttribute('aria-hidden',hasRecords?'false':'true');
-      }
       if(clearBtn){
         clearBtn.disabled=!hasRecords;
       }
-      if(!list) return;
-      list.innerHTML='';
-      if(!hasRecords){
-        return;
+      if(forgetBtn){
+        forgetBtn.disabled=!hasRecords;
       }
-      records.forEach(record=>{
-        const item=document.createElement('label');
-        item.className='saved-week-item';
-        const checkbox=document.createElement('input');
-        checkbox.type='checkbox';
-        checkbox.value=record.id;
-        checkbox.checked=activeWeekIds.includes(record.id);
-        checkbox.addEventListener('change',event=>{
-          const target=event.target;
-          if(!target || typeof target.value!=='string') return;
-          const checked=target.checked;
-          let next=activeWeekIds.slice();
-          if(checked){
-            if(!next.includes(record.id)) next.push(record.id);
-          }else{
-            next=next.filter(id=>id!==record.id);
+      if(select){
+        select.innerHTML='';
+        if(hasRecords){
+          records.forEach(record=>{
+            const option=document.createElement('option');
+            option.value=record.id;
+            option.textContent=record.metadata && record.metadata.label?record.metadata.label:'Saved rota';
+            select.appendChild(option);
+          });
+          let activeId=activeWeekIds[0];
+          if(!activeId || !records.some(record=>record.id===activeId)){
+            activeId=records[0].id;
+            setActiveWeeks([activeId],{persist:true});
           }
-          setActiveWeeks(next,{persist:true});
-          ensureActiveWeeks();
-          updateWeekSelectionUI();
-          renderViews();
-        });
-        item.appendChild(checkbox);
-
-        const labelWrap=document.createElement('div');
-        labelWrap.className='saved-week-label';
-        const name=document.createElement('div');
-        name.className='saved-week-name';
-        name.textContent=record.metadata && record.metadata.label?record.metadata.label:'Saved rota';
-        labelWrap.appendChild(name);
-        const rangeText=record.metadata && record.metadata.displayRange;
-        if(rangeText){
-          const meta=document.createElement('div');
-          meta.className='saved-week-meta';
-          meta.textContent=rangeText;
-          labelWrap.appendChild(meta);
+          select.disabled=false;
+          select.value=activeId;
+        }else{
+          select.disabled=true;
+          select.value='';
+          setActiveWeeks([],{persist:true});
         }
-        if(!rangeText){
-          const savedDate=new Date(record.storedAt);
-          if(!Number.isNaN(savedDate.getTime())){
-            const meta=document.createElement('div');
-            meta.className='saved-week-meta';
-            meta.textContent=`Saved ${savedDate.toLocaleDateString()}`;
-            labelWrap.appendChild(meta);
-          }
-        }
-        item.appendChild(labelWrap);
-
-        const actions=document.createElement('div');
-        actions.className='saved-week-actions';
-        const removeBtn=document.createElement('button');
-        removeBtn.type='button';
-        removeBtn.className='saved-week-remove';
-        removeBtn.textContent='Forget';
-        removeBtn.addEventListener('click',event=>{
-          event.preventDefault();
-          event.stopPropagation();
-          removeWeekRecord(record.id);
-        });
-        actions.appendChild(removeBtn);
-        item.appendChild(actions);
-
-        list.appendChild(item);
-      });
+      }
+      if(meta){
+        const activeId=activeWeekIds[0];
+        const record=records.find(item=>item.id===activeId);
+        const text=record?formatWeekMeta(record):'';
+        meta.textContent=text;
+        meta.hidden=!text;
+      }
+      syncSettingsPanel();
     }
 
     function removeWeekRecord(id){
@@ -1093,6 +1078,7 @@
       rebuildWeekCache();
       activeWeekIds=[];
       persistActiveSelection(activeWeekIds);
+      settingsDrawerOpen=false;
       updateWeekSelectionUI();
       renderViews();
     }
@@ -1589,13 +1575,11 @@
         container.appendChild(placeholder);
         return;
       }
-      const multi=weeks.length>1;
-      weeks.forEach(week=>{
-        const section=document.createElement('section');
-        section.className='schedule-week';
-        renderWeekSchedule(section,week,{allowIndividual:!multi,showHeading:true});
-        container.appendChild(section);
-      });
+      const week=weeks[0];
+      const section=document.createElement('section');
+      section.className='schedule-week';
+      renderWeekSchedule(section,week,{allowIndividual:true,showHeading:true});
+      container.appendChild(section);
     }
 
     function renderWeekPdfPreview(sheets,week,{allowIndividual,showHeading}){
@@ -1678,10 +1662,8 @@
         sheets.appendChild(placeholder);
         return;
       }
-      const multi=weeks.length>1;
-      weeks.forEach((week,idx)=>{
-        renderWeekPdfPreview(sheets,week,{allowIndividual:!multi,showHeading:multi || idx>0});
-      });
+      const week=weeks[0];
+      renderWeekPdfPreview(sheets,week,{allowIndividual:true,showHeading:false});
     }
 
     function updateIndividualControls(weeks){
@@ -1712,20 +1694,8 @@
         currentIndividualIndex=null;
         return;
       }
-      const multi=weeks.length>1;
       const week=weeks[0];
       const model=week.model;
-      if(multi){
-        select.innerHTML='<option value="all">All colleagues</option>';
-        select.disabled=true;
-        btn.disabled=false;
-        btn.textContent='Export weekly PDF';
-        currentIndividualIndex=null;
-        if(scopeHint){
-          scopeHint.textContent='Select a single week to focus the preview and export on one colleague.';
-        }
-        return;
-      }
       if(scopeHint){
         scopeHint.textContent='Choose a colleague to focus the preview and export.';
       }
@@ -1774,8 +1744,7 @@
         savedWeekRecords.push(record);
       }
       rebuildWeekCache();
-      const updatedSelection=[record.id,...activeWeekIds.filter(id=>id!==record.id)];
-      setActiveWeeks(updatedSelection,{persist:true});
+      setActiveWeeks([record.id],{persist:true});
       ensureActiveWeeks();
       updateWeekSelectionUI();
       renderViews();
@@ -1786,6 +1755,11 @@
       const weeks=getActiveWeekData();
       if(!weeks.length){
         alert('No stored rotas to export.');
+        return;
+      }
+      const week=weeks[0];
+      if(!week || !week.model){
+        alert('The selected week is unavailable.');
         return;
       }
       if(!window.PDFLib){
@@ -1803,45 +1777,39 @@
         const fontRegular=await pdfDoc.embedFont(StandardFonts.Helvetica);
         const fontBold=await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         const pageSize=[842,595];
-        const totalPages=Math.max(weeks.reduce((sum,week)=>{
-          const dayCount=Array.isArray(week && week.model && week.model.dayHeaders)?week.model.dayHeaders.length:0;
-          return sum+Math.max(0,dayCount);
-        },0),1);
+        const model=week.model;
+        const perDay=Array.isArray(week.perDay)?week.perDay:[];
+        const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
+        const totalPages=Math.max(dayHeaders.length,1);
         let pageNumber=1;
-        weeks.forEach(week=>{
-          const model=week.model;
-          const perDay=Array.isArray(week.perDay)?week.perDay:[];
-          const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
-          const formattedDates=dayHeaders.map(formatFullDayLabel);
-          const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
-          dayHeaders.forEach((label,idx)=>{
-            const rows=perDay[idx]||[];
-            const footerText=formatFooterText(layout.footerTemplate,{
-              pageNumber,
-              totalPages,
-              formattedDate:formattedDates[idx] || label || `Day ${idx+1}`,
-              label:label,
-            });
-            const plan=buildPdfSheetPlan(rows,layout,{
-              title:layout.title||DEFAULT_LAYOUT.title,
-              rangeLabel:dateRangeLabel,
-              code:(layout.staticCode||STATIC_CODE||'').trim(),
-              date:formattedDates[idx] || label || `Day ${idx+1}`,
-              footerText,
-              footerNote:(layout.footerNote||'').trim(),
-            },palette,{});
-            const page=pdfDoc.addPage(pageSize);
-            const pageBg=parseCssColor(layout.pageBackground);
-            if(pageBg){
-              page.drawRectangle({x:0,y:0,width:page.getWidth(),height:page.getHeight(),color:rgb(pageBg.r,pageBg.g,pageBg.b)});
-            }
-            drawPdfSheet(page,plan,{fonts:{regular:fontRegular,bold:fontBold},palette,rgb,margin:24});
-            pageNumber+=1;
+        const formattedDates=dayHeaders.map(formatFullDayLabel);
+        const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
+        dayHeaders.forEach((label,idx)=>{
+          const rows=perDay[idx]||[];
+          const footerText=formatFooterText(layout.footerTemplate,{
+            pageNumber,
+            totalPages,
+            formattedDate:formattedDates[idx] || label || `Day ${idx+1}`,
+            label:label,
           });
+          const plan=buildPdfSheetPlan(rows,layout,{
+            title:layout.title||DEFAULT_LAYOUT.title,
+            rangeLabel:dateRangeLabel,
+            code:(layout.staticCode||STATIC_CODE||'').trim(),
+            date:formattedDates[idx] || label || `Day ${idx+1}`,
+            footerText,
+            footerNote:(layout.footerNote||'').trim(),
+          },palette,{});
+          const page=pdfDoc.addPage(pageSize);
+          const pageBg=parseCssColor(layout.pageBackground);
+          if(pageBg){
+            page.drawRectangle({x:0,y:0,width:page.getWidth(),height:page.getHeight(),color:rgb(pageBg.r,pageBg.g,pageBg.b)});
+          }
+          drawPdfSheet(page,plan,{fonts:{regular:fontRegular,bold:fontBold},palette,rgb,margin:24});
+          pageNumber+=1;
         });
-        const firstWeek=weeks[0];
-        const baseName=firstWeek && firstWeek.metadata && firstWeek.metadata.label?firstWeek.metadata.label:'rota';
-        const exportLabel=weeks.length===1?sanitizeFileName(baseName):sanitizeFileName(`rotas-${weeks.length}-weeks`);
+        const baseName=week.metadata && week.metadata.label?week.metadata.label:'rota';
+        const exportLabel=sanitizeFileName(baseName);
         const pdfBytes=await pdfDoc.save();
         const blob=new Blob([pdfBytes],{type:'application/pdf'});
         const url=URL.createObjectURL(blob);
@@ -2454,6 +2422,47 @@
     if(btnClearWeeks){
       btnClearWeeks.addEventListener('click',()=>{ clearAllWeeks(); });
     }
+
+    const savedWeekSelect=document.getElementById('savedWeekSelect');
+    if(savedWeekSelect){
+      savedWeekSelect.addEventListener('change',()=>{
+        const value=savedWeekSelect.value;
+        setActiveWeeks(value?[value]:[],{persist:true});
+        ensureActiveWeeks();
+        updateWeekSelectionUI();
+        renderViews();
+      });
+    }
+
+    const btnForgetWeek=document.getElementById('btnForgetWeek');
+    if(btnForgetWeek){
+      btnForgetWeek.addEventListener('click',()=>{
+        const value=savedWeekSelect?savedWeekSelect.value:'';
+        if(value){
+          removeWeekRecord(value);
+        }
+      });
+    }
+
+    const btnToggleSettings=document.getElementById('btnToggleSettings');
+    if(btnToggleSettings){
+      btnToggleSettings.addEventListener('click',event=>{
+        event.preventDefault();
+        event.stopPropagation();
+        settingsDrawerOpen=!settingsDrawerOpen;
+        syncSettingsPanel();
+      });
+    }
+
+    document.addEventListener('click',event=>{
+      if(!settingsDrawerOpen) return;
+      const panel=document.getElementById('savedWeeksPanel');
+      const toggle=document.getElementById('btnToggleSettings');
+      if(panel && panel.contains(event.target)) return;
+      if(toggle && toggle.contains(event.target)) return;
+      settingsDrawerOpen=false;
+      syncSettingsPanel();
+    });
     const selIndividual=document.getElementById('selIndividual');
     if(selIndividual){
       selIndividual.addEventListener('change',()=>{
