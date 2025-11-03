@@ -220,10 +220,14 @@
   </style>
 </head>
 <body>
-  <button class="settings-toggle" id="btnToggleSettings" type="button" aria-label="Show saved weeks" aria-expanded="false">⚙️</button>
+  <button class="settings-toggle" id="btnToggleSettings" type="button" aria-label="Show settings panel" aria-expanded="false">⚙️</button>
   <div class="panel panel-static settings-panel" id="savedWeeksPanel" hidden aria-hidden="true">
     <h2 class="panel-title">Saved weeks</h2>
-    <p class="control-hint">Manage the saved weeks stored on this device.</p>
+    <p class="control-hint">Upload new schedules and manage the saved weeks stored on this device.</p>
+    <input type="file" id="fileInput" accept=".csv,text/csv" class="visually-hidden">
+    <div class="saved-week-actions">
+      <button class="btn btn-secondary" id="btnUpload" type="button">Upload CSV</button>
+    </div>
     <div class="saved-week-actions">
       <button class="btn btn-secondary" id="btnForgetWeek" type="button">Forget selected week</button>
       <button class="btn btn-secondary" id="btnClearWeeks" type="button">Clear saved weeks</button>
@@ -238,8 +242,6 @@
     <div class="layout">
       <aside class="side-panel">
         <div class="controls">
-          <input type="file" id="fileInput" accept=".csv,text/csv" class="visually-hidden">
-          <button class="btn control-btn" id="btnUpload" type="button">Upload CSV</button>
           <label class="saved-week-select" for="savedWeekSelect">
             <span>Saved week</span>
             <select id="savedWeekSelect" disabled></select>
@@ -966,6 +968,24 @@
       if(persist) persistActiveSelection(activeWeekIds);
     }
 
+    function recordCoversIsoDate(record,iso){
+      if(!record || !record.metadata || !iso) return false;
+      const {startIso,endIso}=record.metadata;
+      const isIso=value=>typeof value==='string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+      const hasStart=isIso(startIso);
+      const hasEnd=isIso(endIso);
+      if(hasStart && hasEnd){
+        return startIso<=iso && iso<=endIso;
+      }
+      if(hasStart){
+        return startIso<=iso;
+      }
+      if(hasEnd){
+        return iso<=endIso;
+      }
+      return false;
+    }
+
     function ensureActiveWeeks(){
       const available=getSortedWeekRecords();
       if(!available.length){
@@ -979,11 +999,18 @@
         persistActiveSelection(activeWeekIds);
         return;
       }
-      activeWeekIds=[available[0].id];
+      const todayIso=new Date().toISOString().slice(0,10);
+      const preferred=available.find(record=>recordCoversIsoDate(record,todayIso));
+      const target=preferred||available[0]||null;
+      activeWeekIds=target?[target.id]:[];
       persistActiveSelection(activeWeekIds);
     }
 
     ensureActiveWeeks();
+
+    if(!getSortedWeekRecords().length){
+      settingsDrawerOpen=true;
+    }
 
     function formatWeekMeta(record){
       if(!record) return '';
@@ -1000,15 +1027,11 @@
     function syncSettingsPanel(){
       const toggle=document.getElementById('btnToggleSettings');
       const panel=document.getElementById('savedWeeksPanel');
-      const hasRecords=getSortedWeekRecords().length>0;
-      if(!hasRecords){
-        settingsDrawerOpen=false;
-      }
-      const visible=settingsDrawerOpen && hasRecords;
+      const visible=settingsDrawerOpen;
       if(toggle){
-        toggle.disabled=!hasRecords;
+        toggle.disabled=false;
         toggle.setAttribute('aria-expanded',visible?'true':'false');
-        toggle.setAttribute('aria-label',visible?'Hide saved weeks':'Show saved weeks');
+        toggle.setAttribute('aria-label',visible?'Hide settings panel':'Show settings panel');
       }
       if(panel){
         panel.hidden=!visible;
@@ -1936,6 +1959,164 @@
       }else{
         await exportPDF(btn);
       }
+    }
+
+    function buildPdfSheetPlan(rows,layout,meta={},palette={},options={}){
+      const safeLayout={...DEFAULT_LAYOUT,...(layout||{})};
+      const numberOr=(value,fallback)=>Number.isFinite(value)?value:fallback;
+      const normalizedPadding=Math.max(8,numberOr(safeLayout.padding,DEFAULT_LAYOUT.padding));
+      const paddingOuter=Math.max(12,normalizedPadding);
+      const chartPadding=Math.max(12,normalizedPadding);
+      const leftAxis=Math.max(120,numberOr(safeLayout.nameColumnWidth,DEFAULT_LAYOUT.nameColumnWidth));
+      let chartWidth=Math.max(leftAxis+200,numberOr(safeLayout.chartWidth,DEFAULT_LAYOUT.chartWidth));
+      const rowHeight=Math.max(18,numberOr(safeLayout.rowHeight,DEFAULT_LAYOUT.rowHeight));
+      const chartHeaderHeight=Math.max(24,numberOr(safeLayout.headerHeight,DEFAULT_LAYOUT.headerHeight));
+      const columnHeaderSize=Math.max(8,numberOr(safeLayout.columnHeaderSize,DEFAULT_LAYOUT.columnHeaderSize));
+      const rowLabelSize=Math.max(8,numberOr(safeLayout.rowLabelSize,DEFAULT_LAYOUT.rowLabelSize));
+      const barLabelSize=Math.max(6,numberOr(safeLayout.barLabelSize,DEFAULT_LAYOUT.barLabelSize));
+      const footerSize=Math.max(8,numberOr(safeLayout.footerSize,DEFAULT_LAYOUT.footerSize));
+      const axisLabelSize=Math.max(8,Math.min(16,rowLabelSize));
+      const minInnerWidth=200;
+      let innerWidth=chartWidth-chartPadding*2-leftAxis;
+      if(innerWidth<minInnerWidth){
+        innerWidth=minInnerWidth;
+        chartWidth=innerWidth+chartPadding*2+leftAxis;
+      }
+
+      const sanitizeRange=range=>{
+        if(!range || typeof range!=='object') return null;
+        const start=Number(range.start);
+        const end=Number(range.end);
+        if(!Number.isFinite(start) || !Number.isFinite(end)) return null;
+        const clampedStart=Math.max(0,Math.min(1440,start));
+        const clampedEnd=Math.max(0,Math.min(1440,end));
+        if(clampedEnd<=clampedStart) return null;
+        return {start:clampedStart,end:clampedEnd};
+      };
+
+      const sanitizeSegments=segments=>{
+        if(!Array.isArray(segments)) return [];
+        const sanitized=[];
+        segments.forEach(segment=>{
+          if(!segment) return;
+          const start=Number(segment.start);
+          const end=Number(segment.end);
+          if(!Number.isFinite(start) || !Number.isFinite(end)) return;
+          const clampedStart=Math.max(0,Math.min(1440,start));
+          const clampedEnd=Math.max(0,Math.min(1440,end));
+          if(clampedEnd<=clampedStart) return;
+          sanitized.push({start:clampedStart,end:clampedEnd});
+        });
+        sanitized.sort((a,b)=>a.start-b.start);
+        return sanitized;
+      };
+
+      const placeholderLabel=String(options.placeholderLabel||'No scheduled colleagues');
+      const preserveEmptyRows=!!options.preserveEmptyRows;
+      const columnHeaderLabel=(options && options.columnHeaderLabel)||meta.columnHeaderLabel||'Colleague Names';
+      const sourceRows=Array.isArray(rows)?rows.map((row,idx)=>{
+        if(!row) return null;
+        const name=(row.name||'').trim()||`Row ${idx+1}`;
+        const highlight=!!row.highlight;
+        const sanitizedSegments=sanitizeSegments(row.segments);
+        let sanitizedRange=sanitizeRange(row.range);
+        if(!sanitizedRange && sanitizedSegments.length){
+          const starts=sanitizedSegments.map(seg=>seg.start);
+          const ends=sanitizedSegments.map(seg=>seg.end);
+          sanitizedRange={start:Math.min(...starts),end:Math.max(...ends)};
+        }
+        return {name,range:sanitizedRange,segments:sanitizedSegments,highlight};
+      }).filter(Boolean):[];
+
+      const visibleRows=preserveEmptyRows?sourceRows:sourceRows.filter(row=>row.range);
+      const bodyRows=(visibleRows.length?visibleRows:[{name:placeholderLabel,range:null,segments:[],highlight:false}]).map(row=>({
+        name:row.name,
+        range:row.range,
+        segments:row.segments,
+        highlight:!!row.highlight,
+      }));
+
+      const inkColor=(palette && palette.ink)?palette.ink:{r:0,g:0,b:0};
+      const mutedColor=(palette && palette.muted)?palette.muted:{r:0.5,g:0.5,b:0.5};
+      const headerGap=6;
+      let headerCursor=paddingOuter;
+      const headerLines=[];
+      const pushHeaderLine=(text,size,weight,color)=>{
+        if(text===undefined || text===null) return;
+        const cleaned=String(text).trim();
+        if(!cleaned) return;
+        const fontSize=Number(size);
+        if(!Number.isFinite(fontSize) || fontSize<=0) return;
+        headerLines.push({text:cleaned,size:fontSize,weight:weight||400,color:color||inkColor,top:headerCursor});
+        headerCursor+=fontSize+headerGap;
+      };
+
+      pushHeaderLine(meta.title||safeLayout.title||DEFAULT_LAYOUT.title,numberOr(safeLayout.titleSize,DEFAULT_LAYOUT.titleSize),700,inkColor);
+      pushHeaderLine(meta.rangeLabel,numberOr(safeLayout.subtitleSize,DEFAULT_LAYOUT.subtitleSize),600,mutedColor);
+      const resolvedCode=(meta.code||safeLayout.staticCode||'').trim();
+      pushHeaderLine(resolvedCode,numberOr(safeLayout.codeSize,DEFAULT_LAYOUT.codeSize),700,inkColor);
+      pushHeaderLine(meta.date,numberOr(safeLayout.dateSize,DEFAULT_LAYOUT.dateSize),700,inkColor);
+      if(headerLines.length){
+        headerCursor-=headerGap;
+      }
+      const headerBlockEnd=headerLines.length?headerCursor:paddingOuter;
+      const chartTop=Math.max(paddingOuter,headerBlockEnd+(headerLines.length?16:0));
+
+      const chartHeight=chartPadding*2+chartHeaderHeight+rowHeight*bodyRows.length;
+      const chartLeft=paddingOuter;
+      const chart={
+        left:chartLeft,
+        top:chartTop,
+        width:chartWidth,
+        height:chartHeight,
+        padding:chartPadding,
+        headerHeight:chartHeaderHeight,
+        leftAxis,
+        innerWidth,
+        rowHeight,
+        axisLabelOffset:6,
+        axisLabelSize,
+        columnHeaderLabel,
+        columnHeaderSize,
+        rowLabelSize,
+        barLabelSize,
+        bodyRows,
+      };
+
+      let contentBottom=chartTop+chartHeight;
+      const footerNotes=[];
+      const noteLines=typeof meta.footerNote==='string'?meta.footerNote.split(/\r?\n/).map(line=>line.trim()).filter(Boolean):[];
+      if(noteLines.length){
+        let noteTop=contentBottom+12;
+        noteLines.forEach(line=>{
+          footerNotes.push({text:line,top:noteTop,size:footerSize,color:mutedColor});
+          noteTop+=footerSize+6;
+        });
+        contentBottom=footerNotes[footerNotes.length-1].top+footerSize;
+      }
+
+      const sheetWidth=chartLeft+chartWidth+paddingOuter;
+      const sheetHeight=contentBottom+paddingOuter;
+      const footerText=typeof meta.footerText==='string'?meta.footerText.trim():'';
+      const pageFooter=footerText?{text:footerText,size:footerSize,fontWeight:400,color:mutedColor}:null;
+
+      const header=headerLines.map(line=>({
+        text:line.text,
+        top:line.top,
+        size:line.size,
+        weight:line.weight,
+        color:line.color,
+      }));
+
+      return {
+        sheetWidth,
+        sheetHeight,
+        paddingOuter,
+        header,
+        chart,
+        footerNotes,
+        pageFooter,
+      };
     }
 
     function drawPdfSheet(page,plan,{fonts,palette,rgb,scaleLimit=1,margin=24}){
