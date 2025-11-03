@@ -332,6 +332,20 @@
     const DAY_NAME_MAP={sun:'Sunday',mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday'};
     const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
+    function sanitizeFileName(name,defaultName='schedule'){
+      if(typeof name!=='string') return defaultName;
+      const trimmed=name.trim();
+      if(!trimmed) return defaultName;
+      const normalized=trimmed
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^a-z0-9 _-]+/gi,'')
+        .trim()
+        .replace(/\s+/g,'_');
+      if(!normalized) return defaultName;
+      return normalized.slice(0,120);
+    }
+
     function ordinal(n){
       const rem10=n%10;
       const rem100=n%100;
