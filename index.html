@@ -2219,34 +2219,48 @@
 
     function openFilePicker(input){
       if(!input) return;
-      const invokeNativePicker=()=>{
-        if(typeof input.showPicker==='function'){
-          return input.showPicker();
+
+      const triggerClickFallback=()=>{
+        try{
+          input.click();
+        }catch(fallbackError){
+          console.error('Unable to trigger file input',fallbackError);
         }
-        input.click();
-        return null;
       };
 
-      try{
-        const maybePromise=invokeNativePicker();
-        if(maybePromise && typeof maybePromise.catch==='function'){
-          maybePromise.catch(err=>{
-            if(err && err.name==='AbortError') return;
-            console.error('File picker failed, falling back to click()',err);
-            input.click();
-          });
-        }
-      }catch(err){
-        if(err && err.name==='NotAllowedError'){
-          // Browser blocked showPicker, fall back to click() immediately.
-          try{ input.click(); }
-          catch(fallbackError){ console.error('Unable to trigger file input',fallbackError); }
+      const isEffectivelyHidden=()=>{
+        const style=getComputedStyle(input);
+        if(style.display==='none' || style.visibility==='hidden'){ return true; }
+        const rect=input.getBoundingClientRect();
+        return rect.width===0 && rect.height===0;
+      };
+
+      const canUseShowPicker=typeof input.showPicker==='function' && !isEffectivelyHidden();
+      if(canUseShowPicker){
+        try{
+          const maybePromise=input.showPicker();
+          if(maybePromise && typeof maybePromise.catch==='function'){
+            maybePromise.catch(err=>{
+              if(err && err.name==='AbortError') return;
+              console.error('File picker failed, falling back to click()',err);
+              triggerClickFallback();
+            });
+          }
+          return;
+        }catch(err){
+          if(err && err.name==='AbortError'){ return; }
+          if(err && err.name==='NotAllowedError'){
+            // Browser blocked showPicker, fall back to click() immediately.
+            triggerClickFallback();
+            return;
+          }
+          console.error('File picker error',err);
+          triggerClickFallback();
           return;
         }
-        console.error('File picker error',err);
-        try{ input.click(); }
-        catch(fallbackError){ console.error('Unable to trigger file input',fallbackError); }
       }
+
+      triggerClickFallback();
     }
 
     if(btnUpload && fileInput){
