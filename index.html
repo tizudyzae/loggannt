@@ -2347,54 +2347,9 @@
       });
     }
 
-    function openFilePicker(input){
-      if(!input) return;
-
-      const triggerClickFallback=()=>{
-        try{
-          input.click();
-        }catch(fallbackError){
-          console.error('Unable to trigger file input',fallbackError);
-        }
-      };
-
-      const isEffectivelyHidden=()=>{
-        const style=getComputedStyle(input);
-        if(style.display==='none' || style.visibility==='hidden'){ return true; }
-        const rect=input.getBoundingClientRect();
-        return rect.width===0 && rect.height===0;
-      };
-
-      const canUseShowPicker=typeof input.showPicker==='function' && !isEffectivelyHidden();
-      if(canUseShowPicker){
-        try{
-          const maybePromise=input.showPicker();
-          if(maybePromise && typeof maybePromise.catch==='function'){
-            maybePromise.catch(err=>{
-              if(err && err.name==='AbortError') return;
-              console.error('File picker failed, falling back to click()',err);
-              triggerClickFallback();
-            });
-          }
-          return;
-        }catch(err){
-          if(err && err.name==='AbortError'){ return; }
-          if(err && err.name==='NotAllowedError'){
-            triggerClickFallback();
-            return;
-          }
-          console.error('File picker error',err);
-          triggerClickFallback();
-          return;
-        }
-      }
-
-      triggerClickFallback();
-    }
-
     if(btnUpload && fileInput){
       const defaultUploadLabel=btnUpload.textContent||'Upload CSV';
-      btnUpload.addEventListener('click',()=>{ openFilePicker(fileInput); });
+      btnUpload.addEventListener('click',()=>{ fileInput.click(); });
       fileInput.addEventListener('change',()=>{
         const files=fileInput.files;
         const file=files && files.length?files[0]:null;
