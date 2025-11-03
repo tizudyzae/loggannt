@@ -2217,12 +2217,55 @@
     const btnUpload=document.getElementById('btnUpload');
     const btnClearWeeks=document.getElementById('btnClearWeeks');
 
+    function withTemporarilyExposedInput(input,task){
+      if(!input || typeof task!=='function') return;
+      const previousStyle=input.getAttribute('style');
+      const hadHiddenClass=input.classList && input.classList.contains('visually-hidden');
+      if(hadHiddenClass){
+        input.classList.remove('visually-hidden');
+      }
+      input.style.position='fixed';
+      input.style.top='0';
+      input.style.left='0';
+      input.style.width='1px';
+      input.style.height='1px';
+      input.style.opacity='0';
+      input.style.pointerEvents='none';
+
+      let cleanedUp=false;
+      const cleanup=()=>{
+        if(cleanedUp) return;
+        cleanedUp=true;
+        if(previousStyle===null){
+          input.removeAttribute('style');
+        }else{
+          input.setAttribute('style',previousStyle);
+        }
+        if(hadHiddenClass){
+          input.classList.add('visually-hidden');
+        }
+      };
+
+      try{
+        const result=task();
+        if(result && typeof result.then==='function'){
+          result.then(()=>cleanup(),()=>cleanup());
+        }else{
+          cleanup();
+        }
+        return result;
+      }catch(err){
+        cleanup();
+        throw err;
+      }
+    }
+
     function openFilePicker(input){
       if(!input) return;
 
       const triggerClickFallback=()=>{
         try{
-          input.click();
+          withTemporarilyExposedInput(input,()=>{ input.click(); });
         }catch(fallbackError){
           console.error('Unable to trigger file input',fallbackError);
         }
@@ -2238,7 +2281,7 @@
       const canUseShowPicker=typeof input.showPicker==='function' && !isEffectivelyHidden();
       if(canUseShowPicker){
         try{
-          const maybePromise=input.showPicker();
+          const maybePromise=withTemporarilyExposedInput(input,()=>input.showPicker());
           if(maybePromise && typeof maybePromise.catch==='function'){
             maybePromise.catch(err=>{
               if(err && err.name==='AbortError') return;
