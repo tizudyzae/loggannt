@@ -48,6 +48,17 @@
     .controls{display:flex;flex-direction:column;gap:16px;align-items:stretch;border:1px solid var(--border);padding:26px 28px;border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);width:100%}
     .control-btn{width:100%}
     .control-hint{margin:0;font-size:12px;color:var(--muted);background:var(--surface-soft);padding:12px 14px;border-radius:12px}
+    .panel-title{margin:0;font-size:18px;font-weight:700;color:var(--ink)}
+    .saved-week-list{display:flex;flex-direction:column;gap:12px}
+    .saved-week-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--surface-soft)}
+    .saved-week-item input[type="checkbox"]{margin-top:4px}
+    .saved-week-label{flex:1;display:flex;flex-direction:column;gap:4px}
+    .saved-week-name{font-weight:700;color:var(--ink)}
+    .saved-week-meta{font-size:12px;color:var(--muted)}
+    .saved-week-actions{display:flex;align-items:center;gap:8px}
+    .saved-week-remove{background:transparent;border:1px solid transparent;color:var(--accent);font-weight:700;cursor:pointer;font-size:12px;padding:6px 10px;border-radius:999px;transition:all .2s ease}
+    .saved-week-remove:hover{background:var(--accent-soft);color:var(--accent-strong)}
+    .saved-week-remove:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
     .btn{appearance:none;border-radius:999px;padding:11px 18px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer;letter-spacing:.15px;border:1px solid var(--accent);box-shadow:0 10px 20px rgba(0,123,195,.18);transition:background .2s ease,border-color .2s ease,box-shadow .2s ease,transform .1s ease}
     .btn:hover{background:var(--accent-strong);border-color:var(--accent-strong);box-shadow:0 12px 24px rgba(0,92,145,.22)}
     .btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
@@ -86,6 +97,10 @@
     .pdf-toolbar .btn{flex:0 0 auto}
     .pdf-toolbar-hint{margin:0;font-size:13px;color:var(--muted);max-width:480px}
     .schedule-view{display:flex;flex-direction:column;gap:24px}
+    .schedule-week{display:flex;flex-direction:column;gap:18px}
+    .schedule-week-heading{display:flex;flex-direction:column;gap:4px}
+    .schedule-week-title{font-size:20px;font-weight:700;color:var(--ink)}
+    .schedule-week-range{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
     .schedule-header{display:flex;flex-direction:column;gap:10px}
     .schedule-range{font-size:16px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
     .schedule-days{display:grid;gap:20px}
@@ -166,6 +181,7 @@
     .sheet svg{width:100%;height:auto;display:block}
     .sheet-footer{margin-top:auto;font-size:var(--sheet-footer-size);color:var(--muted);text-align:right}
     .sheet-footnote{font-size:var(--sheet-footer-size);color:var(--muted);text-align:right;white-space:pre-wrap}
+    .sheet-week-heading{font-size:18px;font-weight:700;color:var(--ink);margin:12px 0 8px}
     .axislabel{fill:#02293e;font-size:12px;font-family:"Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif}
     .colheader{fill:var(--column-header-color,#02293e);font-size:var(--column-header-size,12px);font-weight:700;font-family:"Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;text-transform:uppercase;letter-spacing:.08em}
     .rowlabel{fill:var(--row-label-color,#02293e);font-size:var(--row-label-size,12px);dominant-baseline:middle;font-family:"Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif}
@@ -212,6 +228,12 @@
         <div class="controls">
           <input type="file" id="fileInput" accept=".csv,text/csv" class="visually-hidden">
           <button class="btn control-btn" id="btnUpload" type="button">Upload CSV</button>
+          <div class="panel panel-static" id="savedWeeksPanel" hidden aria-hidden="true">
+            <h2 class="panel-title">Saved weeks</h2>
+            <p class="control-hint">Select which weeks to preview or export. Up to four weeks are stored on this device.</p>
+            <div id="savedWeekList" class="saved-week-list"></div>
+            <button class="btn btn-secondary" id="btnClearWeeks" type="button">Clear saved weeks</button>
+          </div>
           <label class="ctrl" for="selIndividual" id="reportScopeControl" hidden aria-hidden="true">
             <span>Report scope</span>
             <select id="selIndividual" disabled>
@@ -412,6 +434,107 @@
       if(!startStr && !endStr) return '';
       if(startStr && endStr) return `Date range: ${startStr} - ${endStr}`;
       return `Date range: ${startStr || endStr}`;
+    }
+
+    const STORAGE_KEY='loggannt.rotas.v1';
+    const STORAGE_SELECTION_KEY='loggannt.rotas.selection';
+    const MAX_STORED_WEEKS=4;
+
+    function sanitizeModelForStorage(model){
+      if(!model || typeof model!=='object'){
+        return {title:'',sub:'',dayHeaders:[],rows:[]};
+      }
+      const title=typeof model.title==='string'?model.title:'';
+      const sub=typeof model.sub==='string'?model.sub:'';
+      const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders.map(header=>String(header||'')):[];
+      const rows=Array.isArray(model.rows)?model.rows.map(row=>{
+        const days=Array.isArray(row && row.days)?row.days.map(cell=>String(cell||'')):[];
+        return {
+          name:row && typeof row.name==='string'?row.name:'',
+          rawName:row && typeof row.rawName==='string'?row.rawName:'',
+          days,
+        };
+      }):[];
+      return {title,sub,dayHeaders,rows};
+    }
+
+    function cloneStoredModel(model){
+      if(!model || typeof model!=='object'){
+        return {title:'',sub:'',dayHeaders:[],rows:[]};
+      }
+      return {
+        title:typeof model.title==='string'?model.title:'',
+        sub:typeof model.sub==='string'?model.sub:'',
+        dayHeaders:Array.isArray(model.dayHeaders)?model.dayHeaders.map(header=>String(header||'')):[],
+        rows:Array.isArray(model.rows)?model.rows.map(row=>({
+          name:row && typeof row.name==='string'?row.name:'',
+          rawName:row && typeof row.rawName==='string'?row.rawName:'',
+          days:Array.isArray(row && row.days)?row.days.map(cell=>String(cell||'')):[],
+        })) : [],
+      };
+    }
+
+    function hashWeekKey(value){
+      const text=String(value||'');
+      let hash=0;
+      for(let i=0;i<text.length;i++){
+        hash=(hash*31+text.charCodeAt(i))|0;
+      }
+      return `wk-${Math.abs(hash)}`;
+    }
+
+    function dateFromParts(part,fallbackYear){
+      if(!part || !Number.isInteger(part.day) || !Number.isInteger(part.month)) return null;
+      const year=Number.isInteger(part.year)?part.year:(Number.isInteger(fallbackYear)?fallbackYear:null);
+      if(year===null) return null;
+      const date=new Date(year,part.month-1,part.day);
+      if(Number.isNaN(date.getTime())) return null;
+      return date;
+    }
+
+    function resolveFallbackYear(parsedHeaders,model){
+      const withYear=parsedHeaders.find(info=>info && Number.isInteger(info.year));
+      if(withYear) return withYear.year;
+      const fromSub=extractYearFromLabel(model && model.sub);
+      if(Number.isInteger(fromSub)) return fromSub;
+      const fromTitle=extractYearFromLabel(model && model.title);
+      if(Number.isInteger(fromTitle)) return fromTitle;
+      return null;
+    }
+
+    function deriveWeekMetadata(model){
+      const dayHeaders=Array.isArray(model && model.dayHeaders)?model.dayHeaders:[];
+      const parsed=dayHeaders.map(parseDayHeader);
+      const fallbackYear=resolveFallbackYear(parsed,model||{});
+      const firstIdx=parsed.findIndex(part=>part && Number.isInteger(part.day) && Number.isInteger(part.month));
+      let lastIdx=-1;
+      for(let i=parsed.length-1;i>=0;i--){
+        const part=parsed[i];
+        if(part && Number.isInteger(part.day) && Number.isInteger(part.month)){
+          lastIdx=i;
+          break;
+        }
+      }
+      const firstPart=firstIdx>=0?parsed[firstIdx]:null;
+      const lastPart=lastIdx>=0?parsed[lastIdx]:null;
+      const startDate=dateFromParts(firstPart,fallbackYear);
+      const endDate=dateFromParts(lastPart,fallbackYear);
+      const startIso=startDate?startDate.toISOString().slice(0,10):null;
+      const endIso=endDate?endDate.toISOString().slice(0,10):null;
+      const rangeLabel=buildDateRangeLabel(model);
+      let label='';
+      if(firstIdx>=0){
+        label=`Week of ${formatFullDayLabel(dayHeaders[firstIdx])}`;
+      }else if(rangeLabel){
+        label=rangeLabel;
+      }else if(model && typeof model.title==='string' && model.title.trim()){
+        label=model.title.trim();
+      }else{
+        label='Saved rota';
+      }
+      const fingerprint=[model && model.title?model.title:'',model && model.sub?model.sub:'',dayHeaders.join('|')].join('::');
+      const id=startIso?`week-${startIso}`:hashWeekKey(fingerprint);
+      return {id,label,startIso,endIso,displayRange:rangeLabel||''};
     }
 
     const DEFAULT_LAYOUT={
@@ -683,6 +806,275 @@
       return perDay;
     }
 
+    // ---------- Week storage ----------
+    function storageAvailable(){
+      try{
+        if(typeof window==='undefined' || !window.localStorage) return false;
+        const key='loggannt-storage-test';
+        window.localStorage.setItem(key,'1');
+        window.localStorage.removeItem(key);
+        return true;
+      }catch(err){
+        console.warn('Local storage unavailable:',err);
+        return false;
+      }
+    }
+
+    const storageSupported=storageAvailable();
+
+    function loadSavedWeekRecords(){
+      if(!storageSupported) return [];
+      try{
+        const raw=window.localStorage.getItem(STORAGE_KEY);
+        if(!raw) return [];
+        const parsed=JSON.parse(raw);
+        if(!Array.isArray(parsed)) return [];
+        return parsed.map(entry=>{
+          const model=cloneStoredModel(entry && entry.model);
+          const meta=deriveWeekMetadata(model);
+          const storedAt=Number.isFinite(entry && entry.storedAt)?Number(entry.storedAt):Date.now();
+          const id=entry && typeof entry.id==='string'?entry.id:meta.id;
+          if(meta.id!==id) meta.id=id;
+          return {id,storedAt,metadata:meta,model};
+        }).filter(record=>record && record.id && record.model);
+      }catch(err){
+        console.warn('Failed to read stored weeks:',err);
+        return [];
+      }
+    }
+
+    function persistSavedWeekRecords(records){
+      if(!storageSupported) return;
+      try{
+        const payload=records.map(record=>({
+          id:record.id,
+          storedAt:record.storedAt,
+          metadata:record.metadata,
+          model:sanitizeModelForStorage(record.model),
+        }));
+        window.localStorage.setItem(STORAGE_KEY,JSON.stringify(payload));
+      }catch(err){
+        console.warn('Failed to persist weeks:',err);
+      }
+    }
+
+    function loadSavedSelection(){
+      if(!storageSupported) return [];
+      try{
+        const raw=window.localStorage.getItem(STORAGE_SELECTION_KEY);
+        if(!raw) return [];
+        const parsed=JSON.parse(raw);
+        if(!Array.isArray(parsed)) return [];
+        return parsed.filter(id=>typeof id==='string');
+      }catch(err){
+        console.warn('Failed to read week selection:',err);
+        return [];
+      }
+    }
+
+    function persistActiveSelection(ids){
+      if(!storageSupported) return;
+      try{
+        window.localStorage.setItem(STORAGE_SELECTION_KEY,JSON.stringify(ids));
+      }catch(err){
+        console.warn('Failed to store selection:',err);
+      }
+    }
+
+    function compareWeekRecords(a,b){
+      const aDate=a && a.metadata && typeof a.metadata.startIso==='string'?a.metadata.startIso:'';
+      const bDate=b && b.metadata && typeof b.metadata.startIso==='string'?b.metadata.startIso:'';
+      if(aDate && bDate && aDate!==bDate){
+        return aDate>bDate?-1:1;
+      }
+      const aStored=Number.isFinite(a && a.storedAt)?a.storedAt:0;
+      const bStored=Number.isFinite(b && b.storedAt)?b.storedAt:0;
+      return bStored-aStored;
+    }
+
+    function trimWeekRecords(records){
+      const list=records.slice().sort(compareWeekRecords);
+      while(list.length>MAX_STORED_WEEKS){
+        list.pop();
+      }
+      return list;
+    }
+
+    let savedWeekRecords=trimWeekRecords(loadSavedWeekRecords());
+    const cachedWeeks=new Map();
+    let activeWeekIds=loadSavedSelection();
+
+    function hydrateWeekRecord(record){
+      if(!record || !record.model) return null;
+      const model=cloneStoredModel(record.model);
+      const metadata=deriveWeekMetadata(model);
+      const mergedMeta={...metadata};
+      const storedAt=Number.isFinite(record.storedAt)?record.storedAt:Date.now();
+      const perDay=buildPerDay(model,{fallbackSCH:true,splitMidnight:true});
+      return {id:metadata.id,storedAt,metadata:mergedMeta,model,perDay};
+    }
+
+    function rebuildWeekCache(){
+      cachedWeeks.clear();
+      savedWeekRecords=trimWeekRecords(savedWeekRecords);
+      savedWeekRecords.forEach(record=>{
+        const hydrated=hydrateWeekRecord(record);
+        if(!hydrated) return;
+        record.id=hydrated.id;
+        record.metadata=hydrated.metadata;
+        record.storedAt=hydrated.storedAt;
+        record.model=sanitizeModelForStorage(record.model);
+        cachedWeeks.set(hydrated.id,hydrated);
+      });
+      savedWeekRecords=trimWeekRecords(savedWeekRecords);
+      persistSavedWeekRecords(savedWeekRecords);
+    }
+
+    rebuildWeekCache();
+
+    function getSortedWeekRecords(){
+      return savedWeekRecords.slice().sort(compareWeekRecords);
+    }
+
+    function getActiveWeekData(){
+      return activeWeekIds.map(id=>cachedWeeks.get(id)).filter(Boolean);
+    }
+
+    function setActiveWeeks(ids,{persist=true}={}){
+      const unique=[];
+      ids.forEach(id=>{
+        if(typeof id!=='string') return;
+        if(!cachedWeeks.has(id)) return;
+        if(!unique.includes(id)) unique.push(id);
+      });
+      activeWeekIds=unique;
+      if(persist) persistActiveSelection(activeWeekIds);
+    }
+
+    function ensureActiveWeeks(){
+      const available=getSortedWeekRecords();
+      if(!available.length){
+        activeWeekIds=[];
+        persistActiveSelection(activeWeekIds);
+        return;
+      }
+      const valid=activeWeekIds.filter(id=>cachedWeeks.has(id));
+      if(valid.length){
+        activeWeekIds=valid;
+        persistActiveSelection(activeWeekIds);
+        return;
+      }
+      activeWeekIds=[available[0].id];
+      persistActiveSelection(activeWeekIds);
+    }
+
+    ensureActiveWeeks();
+
+    function updateWeekSelectionUI(){
+      const panel=document.getElementById('savedWeeksPanel');
+      const list=document.getElementById('savedWeekList');
+      const clearBtn=document.getElementById('btnClearWeeks');
+      const records=getSortedWeekRecords();
+      const hasRecords=records.length>0;
+      if(panel){
+        panel.hidden=!hasRecords;
+        panel.setAttribute('aria-hidden',hasRecords?'false':'true');
+      }
+      if(clearBtn){
+        clearBtn.disabled=!hasRecords;
+      }
+      if(!list) return;
+      list.innerHTML='';
+      if(!hasRecords){
+        return;
+      }
+      records.forEach(record=>{
+        const item=document.createElement('label');
+        item.className='saved-week-item';
+        const checkbox=document.createElement('input');
+        checkbox.type='checkbox';
+        checkbox.value=record.id;
+        checkbox.checked=activeWeekIds.includes(record.id);
+        checkbox.addEventListener('change',event=>{
+          const target=event.target;
+          if(!target || typeof target.value!=='string') return;
+          const checked=target.checked;
+          let next=activeWeekIds.slice();
+          if(checked){
+            if(!next.includes(record.id)) next.push(record.id);
+          }else{
+            next=next.filter(id=>id!==record.id);
+          }
+          setActiveWeeks(next,{persist:true});
+          ensureActiveWeeks();
+          updateWeekSelectionUI();
+          renderViews();
+        });
+        item.appendChild(checkbox);
+
+        const labelWrap=document.createElement('div');
+        labelWrap.className='saved-week-label';
+        const name=document.createElement('div');
+        name.className='saved-week-name';
+        name.textContent=record.metadata && record.metadata.label?record.metadata.label:'Saved rota';
+        labelWrap.appendChild(name);
+        const rangeText=record.metadata && record.metadata.displayRange;
+        if(rangeText){
+          const meta=document.createElement('div');
+          meta.className='saved-week-meta';
+          meta.textContent=rangeText;
+          labelWrap.appendChild(meta);
+        }
+        if(!rangeText){
+          const savedDate=new Date(record.storedAt);
+          if(!Number.isNaN(savedDate.getTime())){
+            const meta=document.createElement('div');
+            meta.className='saved-week-meta';
+            meta.textContent=`Saved ${savedDate.toLocaleDateString()}`;
+            labelWrap.appendChild(meta);
+          }
+        }
+        item.appendChild(labelWrap);
+
+        const actions=document.createElement('div');
+        actions.className='saved-week-actions';
+        const removeBtn=document.createElement('button');
+        removeBtn.type='button';
+        removeBtn.className='saved-week-remove';
+        removeBtn.textContent='Forget';
+        removeBtn.addEventListener('click',event=>{
+          event.preventDefault();
+          event.stopPropagation();
+          removeWeekRecord(record.id);
+        });
+        actions.appendChild(removeBtn);
+        item.appendChild(actions);
+
+        list.appendChild(item);
+      });
+    }
+
+    function removeWeekRecord(id){
+      const index=savedWeekRecords.findIndex(record=>record.id===id);
+      if(index===-1) return;
+      savedWeekRecords.splice(index,1);
+      rebuildWeekCache();
+      const remaining=activeWeekIds.filter(item=>item!==id);
+      setActiveWeeks(remaining,{persist:true});
+      ensureActiveWeeks();
+      updateWeekSelectionUI();
+      renderViews();
+    }
+
+    function clearAllWeeks(){
+      savedWeekRecords=[];
+      rebuildWeekCache();
+      activeWeekIds=[];
+      persistActiveSelection(activeWeekIds);
+      updateWeekSelectionUI();
+      renderViews();
+    }
+
     // ---------- Layout & Draw ----------
     function drawDayCard(container,label,rows,ctx={}){
       const layout=ctx.layout || currentLayout || DEFAULT_LAYOUT;
@@ -895,7 +1287,6 @@
     }
 
     // ---------- Render / Export ----------
-    let lastModel=null,lastPerDay=null,lastRenderDetails=null,lastSourceText='';
     let lastIndividuals=[];
     let currentIndividualIndex=null;
 
@@ -930,20 +1321,39 @@
       return false;
     }
 
-    function renderScheduleView(){
-      const container=document.getElementById('scheduleView');
-      if(!container) return;
-      container.innerHTML='';
-      if(!lastModel || !lastPerDay){
-        const placeholder=document.createElement('div');
-        placeholder.className='empty-state';
-        placeholder.innerHTML='<strong>Upload a rota</strong>Use the controls to load your Logile CSV and explore shifts here.';
-        container.appendChild(placeholder);
-        return;
+    function resolveDateRangeLabelForWeek(model,metadata,layout){
+      if(layout && typeof layout.subtitleOverride==='string' && layout.subtitleOverride.trim()){
+        return layout.subtitleOverride.trim();
       }
-      const renderInfo=lastRenderDetails || {};
-      const layout=renderInfo.layout || currentLayout || DEFAULT_LAYOUT;
-      const dayHeaders=Array.isArray(lastModel.dayHeaders)?lastModel.dayHeaders:[];
+      const auto=buildDateRangeLabel(model);
+      if(auto) return auto;
+      if(metadata && metadata.displayRange) return metadata.displayRange;
+      return '';
+    }
+
+    function renderWeekSchedule(container,week,{allowIndividual=true,showHeading=true}={}){
+      if(!container || !week || !week.model) return;
+      const model=week.model;
+      const perDay=Array.isArray(week.perDay)?week.perDay:[];
+      const layout=currentLayout || DEFAULT_LAYOUT;
+      const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
+      const safeWeekId=(typeof week.id==='string'?week.id:'week').replace(/[^a-z0-9_-]+/gi,'-');
+      if(showHeading){
+        const heading=document.createElement('div');
+        heading.className='schedule-week-heading';
+        const title=document.createElement('div');
+        title.className='schedule-week-title';
+        title.textContent=week.metadata && week.metadata.label?week.metadata.label:'Saved rota';
+        heading.appendChild(title);
+        const headingRange=resolveDateRangeLabelForWeek(model,week.metadata,layout) || (week.metadata && week.metadata.displayRange) || '';
+        if(headingRange){
+          const range=document.createElement('div');
+          range.className='schedule-week-range';
+          range.textContent=headingRange;
+          heading.appendChild(range);
+        }
+        container.appendChild(heading);
+      }
       if(!dayHeaders.length){
         const placeholder=document.createElement('div');
         placeholder.className='empty-state';
@@ -951,16 +1361,14 @@
         container.appendChild(placeholder);
         return;
       }
-      const formattedDates=(renderInfo.formattedDates && renderInfo.formattedDates.length===dayHeaders.length)
-        ? renderInfo.formattedDates
-        : dayHeaders.map(formatFullDayLabel);
-      const dateRangeLabel=renderInfo.dateRangeLabel || layout.subtitleOverride || buildDateRangeLabel(lastModel);
+      const formattedDates=dayHeaders.map(formatFullDayLabel);
+      const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
       const parsedHeaders=dayHeaders.map(parseDayHeader);
       const fallbackYear=(()=>{
         const withYear=parsedHeaders.find(info=>info && Number.isInteger(info.year));
         if(withYear) return withYear.year;
-        const yearFromLabel=extractYearFromLabel(dateRangeLabel);
-        if(Number.isInteger(yearFromLabel)) return yearFromLabel;
+        const rangeYear=extractYearFromLabel(dateRangeLabel);
+        if(Number.isInteger(rangeYear)) return rangeYear;
         return null;
       })();
       const header=document.createElement('div');
@@ -971,13 +1379,16 @@
       header.appendChild(range);
       container.appendChild(header);
 
-      const lookup=buildDisplayNameLookup(lastModel);
-      const perDayData=Array.isArray(lastPerDay)?lastPerDay:[];
-      const hasRows=Array.isArray(lastModel.rows) && lastModel.rows.length>0;
-      const selectedPerson=(Number.isInteger(currentIndividualIndex) && currentIndividualIndex>=0 && hasRows && currentIndividualIndex<lastModel.rows.length)
-        ? lastModel.rows[currentIndividualIndex]
-        : null;
-      const selectedRecord=lastIndividuals.find(rec=>rec.index===currentIndividualIndex) || null;
+      const lookup=buildDisplayNameLookup(model);
+      const perDayData=perDay;
+      const hasRows=Array.isArray(model.rows) && model.rows.length>0;
+
+      let selectedPerson=null;
+      let selectedRecord=null;
+      if(allowIndividual && Number.isInteger(currentIndividualIndex) && currentIndividualIndex>=0 && hasRows && currentIndividualIndex<model.rows.length){
+        selectedPerson=model.rows[currentIndividualIndex];
+        selectedRecord=lastIndividuals.find(rec=>rec.index===currentIndividualIndex) || null;
+      }
 
       if(selectedPerson){
         const displayName=(selectedRecord && selectedRecord.displayName) || getRowDisplayName(selectedPerson,currentIndividualIndex+1);
@@ -1035,7 +1446,7 @@
         clearBtn.addEventListener('click',()=>{
           const select=document.getElementById('selIndividual');
           if(select){
-            select.value='';
+            select.value='all';
             select.dispatchEvent(new Event('change',{bubbles:true}));
           }
         });
@@ -1052,7 +1463,7 @@
         const scheduledEntries=entries.filter(entry=>entry && entry.range);
         const card=document.createElement('details');
         card.className='schedule-day-card';
-        card.id=`schedule-day-${idx}`;
+        card.id=`${safeWeekId}-schedule-day-${idx}`;
         const summary=document.createElement('summary');
         const summaryText=document.createElement('div');
         summaryText.className='schedule-day-summary-text';
@@ -1092,8 +1503,8 @@
           shiftList.appendChild(empty);
         }else{
           const sorted=scheduledEntries.slice().sort((a,b)=>{
-            const aStart=a && a.range? a.range.start:Infinity;
-            const bStart=b && b.range? b.range.start:Infinity;
+            const aStart=a && a.range?a.range.start:Infinity;
+            const bStart=b && b.range?b.range.start:Infinity;
             return aStart-bStart;
           });
           sorted.forEach(entry=>{
@@ -1132,64 +1543,339 @@
         scheduleDays.appendChild(card);
       });
 
-      const individualSection=document.createElement('section');
-      individualSection.className='individual-summary';
-      const heading=document.createElement('h2');
-      heading.textContent='Individual rota';
-      individualSection.appendChild(heading);
-      const message=document.createElement('p');
-      message.textContent='Select a colleague in the left-hand controls to focus on their shifts above.';
-      individualSection.appendChild(message);
-      container.appendChild(individualSection);
+      if(allowIndividual){
+        const individualSection=document.createElement('section');
+        individualSection.className='individual-summary';
+        const heading=document.createElement('h2');
+        heading.textContent='Individual rota';
+        individualSection.appendChild(heading);
+        const message=document.createElement('p');
+        message.textContent='Select a colleague in the left-hand controls to focus on their shifts above.';
+        individualSection.appendChild(message);
+        container.appendChild(individualSection);
+      }
     }
-    function renderPdfPreview(){
+
+    function renderScheduleView(weeks=getActiveWeekData()){
+      const container=document.getElementById('scheduleView');
+      if(!container) return;
+      container.innerHTML='';
+      if(!weeks.length){
+        const placeholder=document.createElement('div');
+        placeholder.className='empty-state';
+        placeholder.innerHTML='<strong>Upload a rota</strong>Use the controls to load your Logile CSV and explore shifts here.';
+        container.appendChild(placeholder);
+        return;
+      }
+      const multi=weeks.length>1;
+      weeks.forEach(week=>{
+        const section=document.createElement('section');
+        section.className='schedule-week';
+        renderWeekSchedule(section,week,{allowIndividual:!multi,showHeading:true});
+        container.appendChild(section);
+      });
+    }
+
+    function renderWeekPdfPreview(sheets,week,{allowIndividual,showHeading}){
+      if(!sheets || !week || !week.model) return;
+      const layout=currentLayout || DEFAULT_LAYOUT;
+      const model=week.model;
+      const perDay=Array.isArray(week.perDay)?week.perDay:[];
+      const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
+      if(showHeading){
+        const heading=document.createElement('div');
+        heading.className='sheet-week-heading';
+        heading.textContent=week.metadata && week.metadata.label?week.metadata.label:'Saved rota';
+        sheets.appendChild(heading);
+      }
+      if(!dayHeaders.length){
+        const placeholder=document.createElement('div');
+        placeholder.className='empty-state';
+        placeholder.innerHTML='<strong>No PDF preview</strong>This rota has no detectable day headings.';
+        sheets.appendChild(placeholder);
+        return;
+      }
+      const formattedDates=dayHeaders.map(formatFullDayLabel);
+      const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
+      const totalPages=dayHeaders.length;
+      if(allowIndividual && Number.isInteger(currentIndividualIndex) && currentIndividualIndex>=0 && model.rows && currentIndividualIndex<model.rows.length){
+        const person=model.rows[currentIndividualIndex];
+        const record=lastIndividuals.find(rec=>rec.index===currentIndividualIndex);
+        const displayName=(record && record.displayName) || getRowDisplayName(person,currentIndividualIndex+1);
+        const dayRows=[];
+        dayHeaders.forEach((label,dayIdx)=>{
+          const parsed=parseDayHeader(label);
+          const dayName=(parsed && parsed.dayName) || formatShortDayLabel(label) || label || `Day ${dayIdx+1}`;
+          const entries=Array.isArray(perDay[dayIdx])?perDay[dayIdx]:[];
+          const match=entries.find(entry=>{
+            if(person.rawName && entry.rawName){
+              return entry.rawName===person.rawName;
+            }
+            return entry.name===person.name;
+          });
+          const range=match && match.range?{...match.range}:null;
+          const segments=match && Array.isArray(match.segments)?match.segments.map(seg=>({...seg})):[];
+          dayRows.push({name:dayName,rawName:match && match.rawName ? match.rawName : person.rawName || '',range,segments,highlight:!!(match && match.highlight)});
+        });
+        drawDayCard(sheets,displayName,dayRows,{
+          dateRangeLabel,
+          pageNumber:1,
+          totalPages:1,
+          formattedDate:displayName,
+          staticCode:layout.staticCode,
+          layout,
+          showEmptyRows:true,
+          placeholderLabel:`${displayName} has no scheduled shifts`,
+          columnHeaderLabel:'Day',
+        });
+        return;
+      }
+      dayHeaders.forEach((label,idx)=>{
+        const rows=perDay[idx]||[];
+        drawDayCard(sheets,label,rows,{
+          dateRangeLabel,
+          pageNumber:idx+1,
+          totalPages,
+          formattedDate:formattedDates[idx],
+          staticCode:layout.staticCode,
+          layout,
+        });
+      });
+    }
+
+    function renderPdfPreview(weeks=getActiveWeekData()){
       const sheets=document.getElementById('sheets');
       if(!sheets){
         return;
       }
       sheets.innerHTML='';
-      if(!lastModel || !lastPerDay){
+      if(!weeks.length){
         const placeholder=document.createElement('div');
         placeholder.className='empty-state';
         placeholder.innerHTML='<strong>No PDF preview</strong>Upload a CSV to generate printable sheets.';
         sheets.appendChild(placeholder);
         return;
       }
-      const renderInfo=lastRenderDetails || {};
-      const layout=renderInfo.layout || currentLayout || DEFAULT_LAYOUT;
-      const dayHeaders=Array.isArray(lastModel.dayHeaders)?lastModel.dayHeaders:[];
-      const formattedDates=(renderInfo.formattedDates && renderInfo.formattedDates.length===dayHeaders.length)
-        ? renderInfo.formattedDates
-        : dayHeaders.map(formatFullDayLabel);
-      const totalPages=renderInfo.totalPages || dayHeaders.length || 0;
-      const dateRangeLabel=renderInfo.dateRangeLabel || layout.subtitleOverride || buildDateRangeLabel(lastModel);
+      const multi=weeks.length>1;
+      weeks.forEach((week,idx)=>{
+        renderWeekPdfPreview(sheets,week,{allowIndividual:!multi,showHeading:multi || idx>0});
+      });
+    }
 
-      const idx=currentIndividualIndex;
-      const hasIndividual=Number.isInteger(idx) && idx>=0 && lastModel.rows && idx<lastModel.rows.length;
-      if(!hasIndividual){
+    function updateIndividualControls(weeks){
+      const select=document.getElementById('selIndividual');
+      const btn=document.getElementById('btnExport');
+      const scopeControl=document.getElementById('reportScopeControl');
+      const scopeHint=document.getElementById('reportScopeHint');
+      const hasWeeks=weeks && weeks.length>0;
+      if(scopeControl){
+        scopeControl.hidden=!hasWeeks;
+        scopeControl.setAttribute('aria-hidden',hasWeeks?'false':'true');
+      }
+      if(scopeHint){
+        scopeHint.hidden=!hasWeeks;
+        scopeHint.setAttribute('aria-hidden',hasWeeks?'false':'true');
+      }
+      if(!select || !btn){
+        lastIndividuals=[];
         currentIndividualIndex=null;
-        dayHeaders.forEach((label,i)=>{
-          drawDayCard(sheets,label,lastPerDay[i],{
-            dateRangeLabel,
-            pageNumber:i+1,
-            totalPages,
-            formattedDate:formattedDates[i],
-            staticCode:layout.staticCode,
-            layout,
-          });
-        });
         return;
       }
+      lastIndividuals=[];
+      if(!hasWeeks){
+        select.innerHTML='<option value="all">All colleagues</option>';
+        select.disabled=true;
+        btn.disabled=true;
+        btn.textContent='Export PDF';
+        currentIndividualIndex=null;
+        return;
+      }
+      const multi=weeks.length>1;
+      const week=weeks[0];
+      const model=week.model;
+      if(multi){
+        select.innerHTML='<option value="all">All colleagues</option>';
+        select.disabled=true;
+        btn.disabled=false;
+        btn.textContent='Export weekly PDF';
+        currentIndividualIndex=null;
+        if(scopeHint){
+          scopeHint.textContent='Select a single week to focus the preview and export on one colleague.';
+        }
+        return;
+      }
+      if(scopeHint){
+        scopeHint.textContent='Choose a colleague to focus the preview and export.';
+      }
+      const rows=Array.isArray(model.rows)?model.rows:[];
+      const options=['<option value="all">All colleagues</option>'];
+      rows.forEach((row,idx)=>{
+        const display=getRowDisplayName(row,idx+1);
+        options.push(`<option value="${idx}">${display}</option>`);
+        lastIndividuals.push({index:idx,displayName:display,rawName:row.rawName,name:row.name});
+      });
+      select.innerHTML=options.join('');
+      select.disabled=!rows.length;
+      const previousValue=select.value || 'all';
+      const preserved=lastIndividuals.some(rec=>String(rec.index)===previousValue);
+      if(preserved){
+        select.value=previousValue;
+        currentIndividualIndex=parseInt(previousValue,10);
+      }else{
+        select.value='all';
+        currentIndividualIndex=null;
+      }
+      btn.disabled=false;
+      btn.textContent=(select.value && select.value!=='all')?'Export colleague PDF':'Export weekly PDF';
+    }
 
-      const person=lastModel.rows[idx];
+    function renderViews(){
+      const weeks=getActiveWeekData();
+      setViewerTabsVisibility(weeks.length>0);
+      updateIndividualControls(weeks);
+      if(!weeks.length && activeView!=='schedule'){
+        switchView('schedule');
+      }
+      renderScheduleView(weeks);
+      renderPdfPreview(weeks);
+    }
+
+    function addOrUpdateWeekRecord(model){
+      if(!model) return;
+      const sanitized=sanitizeModelForStorage(model);
+      const metadata=deriveWeekMetadata(sanitized);
+      const record={id:metadata.id,storedAt:Date.now(),metadata,model:sanitized};
+      const existingIndex=savedWeekRecords.findIndex(item=>item.id===record.id);
+      if(existingIndex>=0){
+        savedWeekRecords[existingIndex]=record;
+      }else{
+        savedWeekRecords.push(record);
+      }
+      rebuildWeekCache();
+      const updatedSelection=[record.id,...activeWeekIds.filter(id=>id!==record.id)];
+      setActiveWeeks(updatedSelection,{persist:true});
+      ensureActiveWeeks();
+      updateWeekSelectionUI();
+      renderViews();
+    }
+
+    async function exportPDF(btn){
+      if(!btn) return;
+      const weeks=getActiveWeekData();
+      if(!weeks.length){
+        alert('No stored rotas to export.');
+        return;
+      }
+      if(!window.PDFLib){
+        alert('PDF generator failed to load. Please refresh and try again.');
+        return;
+      }
+      const originalLabel=btn.textContent;
+      btn.disabled=true;
+      btn.textContent='Exporting…';
+      try{
+        const layout=currentLayout || DEFAULT_LAYOUT;
+        const palette=buildPdfPalette(layout);
+        const {PDFDocument,rgb,StandardFonts}=window.PDFLib;
+        const pdfDoc=await PDFDocument.create();
+        const fontRegular=await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const fontBold=await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const pageSize=[842,595];
+        const totalPages=Math.max(weeks.reduce((sum,week)=>{
+          const dayCount=Array.isArray(week && week.model && week.model.dayHeaders)?week.model.dayHeaders.length:0;
+          return sum+Math.max(0,dayCount);
+        },0),1);
+        let pageNumber=1;
+        weeks.forEach(week=>{
+          const model=week.model;
+          const perDay=Array.isArray(week.perDay)?week.perDay:[];
+          const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
+          const formattedDates=dayHeaders.map(formatFullDayLabel);
+          const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
+          dayHeaders.forEach((label,idx)=>{
+            const rows=perDay[idx]||[];
+            const footerText=formatFooterText(layout.footerTemplate,{
+              pageNumber,
+              totalPages,
+              formattedDate:formattedDates[idx] || label || `Day ${idx+1}`,
+              label:label,
+            });
+            const plan=buildPdfSheetPlan(rows,layout,{
+              title:layout.title||DEFAULT_LAYOUT.title,
+              rangeLabel:dateRangeLabel,
+              code:(layout.staticCode||STATIC_CODE||'').trim(),
+              date:formattedDates[idx] || label || `Day ${idx+1}`,
+              footerText,
+              footerNote:(layout.footerNote||'').trim(),
+            },palette,{});
+            const page=pdfDoc.addPage(pageSize);
+            const pageBg=parseCssColor(layout.pageBackground);
+            if(pageBg){
+              page.drawRectangle({x:0,y:0,width:page.getWidth(),height:page.getHeight(),color:rgb(pageBg.r,pageBg.g,pageBg.b)});
+            }
+            drawPdfSheet(page,plan,{fonts:{regular:fontRegular,bold:fontBold},palette,rgb,margin:24});
+            pageNumber+=1;
+          });
+        });
+        const firstWeek=weeks[0];
+        const baseName=firstWeek && firstWeek.metadata && firstWeek.metadata.label?firstWeek.metadata.label:'rota';
+        const exportLabel=weeks.length===1?sanitizeFileName(baseName):sanitizeFileName(`rotas-${weeks.length}-weeks`);
+        const pdfBytes=await pdfDoc.save();
+        const blob=new Blob([pdfBytes],{type:'application/pdf'});
+        const url=URL.createObjectURL(blob);
+        const link=document.createElement('a');
+        link.href=url;
+        link.download=`${exportLabel||'rota'}_schedule.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),5000);
+      }catch(err){
+        console.error(err);
+        alert(`Failed to export PDF: ${err.message}`);
+      }finally{
+        btn.disabled=false;
+        btn.textContent=originalLabel;
+      }
+    }
+
+    async function exportIndividualPDF(selection,btn){
+      if(!btn) return;
+      const weeks=getActiveWeekData();
+      if(weeks.length!==1){
+        await exportPDF(btn);
+        return;
+      }
+      const idx=parseInt(selection,10);
+      if(Number.isNaN(idx)){
+        await exportPDF(btn);
+        return;
+      }
+      const week=weeks[0];
+      const model=week.model;
+      if(!model || !Array.isArray(model.rows) || idx<0 || idx>=model.rows.length){
+        alert('Select a colleague before exporting.');
+        return;
+      }
+      if(!window.PDFLib){
+        alert('PDF generator failed to load. Please refresh and try again.');
+        return;
+      }
+      const person=model.rows[idx];
       const record=lastIndividuals.find(rec=>rec.index===idx);
-      const displayName=(record && record.displayName) || getRowDisplayName(person,idx+1);
-      const perDayData=Array.isArray(lastPerDay)?lastPerDay:[];
+      const baseName=getRowDisplayName(person,idx+1);
+      const displayName=(record && record.displayName)||baseName;
+      const resolvedName=displayName.trim()||baseName;
+      const perDay=Array.isArray(week.perDay)?week.perDay:[];
+      const layout=currentLayout || DEFAULT_LAYOUT;
+      const palette=buildPdfPalette(layout);
+      const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
+      const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
       const dayRows=[];
       dayHeaders.forEach((label,dayIdx)=>{
         const parsed=parseDayHeader(label);
-        const dayName=(parsed && parsed.dayName) || formatShortDayLabel(label) || label || `Day ${dayIdx+1}`;
-        const entries=Array.isArray(perDayData[dayIdx])?perDayData[dayIdx]:[];
+        const dayName=(parsed && parsed.dayName)||label;
+        const entries=Array.isArray(perDay[dayIdx])?perDay[dayIdx]:[];
         const match=entries.find(entry=>{
           if(person.rawName && entry.rawName){
             return entry.rawName===person.rawName;
@@ -1198,245 +1884,68 @@
         });
         const range=match && match.range?{...match.range}:null;
         const segments=match && Array.isArray(match.segments)?match.segments.map(seg=>({...seg})):[];
-        dayRows.push({
-          name:dayName,
-          rawName:match && match.rawName ? match.rawName : person.rawName || '',
-          range,
-          segments,
-          highlight:!!(match && match.highlight),
-        });
+        dayRows.push({name:dayName,range,segments,highlight:!!(match && match.highlight)});
       });
-
-      drawDayCard(sheets,displayName,dayRows,{
-        dateRangeLabel,
+      const footerText=formatFooterText(layout.footerTemplate,{
         pageNumber:1,
         totalPages:1,
-        formattedDate:displayName,
-        staticCode:layout.staticCode,
-        layout,
-        showEmptyRows:true,
-        placeholderLabel:`${displayName} has no scheduled shifts`,
-        columnHeaderLabel:'Day',
+        formattedDate:resolvedName,
+        label:resolvedName,
       });
-    }
-
-    let viewPanels=null;
-
-    function setViewerTabsVisibility(visible){
-      if(viewerContainer){
-        viewerContainer.hidden=!visible;
-        viewerContainer.setAttribute('aria-hidden',visible?'false':'true');
+      const footerNote=(layout.footerNote||'').trim();
+      const plan=buildPdfSheetPlan(dayRows,layout,{
+        title:layout.title||DEFAULT_LAYOUT.title,
+        rangeLabel:dateRangeLabel,
+        code:(layout.staticCode||STATIC_CODE||'').trim(),
+        date:resolvedName,
+        footerText,
+        footerNote,
+      },palette,{preserveEmptyRows:true,columnHeaderLabel:'Day'});
+      const originalLabel=btn.textContent;
+      btn.disabled=true;
+      btn.textContent='Exporting…';
+      try{
+        const {PDFDocument,rgb,StandardFonts}=window.PDFLib;
+        const pdfDoc=await PDFDocument.create();
+        const fontRegular=await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const fontBold=await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const pageSize=[842,595];
+        const page=pdfDoc.addPage(pageSize);
+        const pageBg=parseCssColor(layout.pageBackground);
+        if(pageBg){
+          page.drawRectangle({x:0,y:0,width:page.getWidth(),height:page.getHeight(),color:rgb(pageBg.r,pageBg.g,pageBg.b)});
+        }
+        drawPdfSheet(page,plan,{fonts:{regular:fontRegular,bold:fontBold},palette,rgb,margin:24});
+        const pdfBytes=await pdfDoc.save();
+        const blob=new Blob([pdfBytes],{type:'application/pdf'});
+        const url=URL.createObjectURL(blob);
+        const link=document.createElement('a');
+        link.href=url;
+        link.download=`${sanitizeFileName(resolvedName||'schedule')}_schedule.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),5000);
+      }catch(err){
+        console.error(err);
+        alert(`Failed to export PDF: ${err.message}`);
+      }finally{
+        btn.disabled=false;
+        btn.textContent=originalLabel;
       }
-      if(!viewerTabsContainer) return;
-      viewerTabsContainer.hidden=!visible;
-      viewerTabsContainer.setAttribute('aria-hidden',visible?'false':'true');
     }
 
-    function renderViews(){
-      const hasData=!!(lastModel && Array.isArray(lastModel.dayHeaders) && lastModel.dayHeaders.length);
-      setViewerTabsVisibility(hasData);
-      if(!hasData && activeView!=='schedule'){
-        switchView('schedule');
-      }
-      renderScheduleView();
-      renderPdfPreview();
-    }
-
-    function render(text){
-      const opts={fallbackSCH:true, splitMidnight:true};
-      const layout=getLayoutSettings();
-      applyLayoutToDocument(layout);
-      currentLayout=layout;
-      let model; try{ model=parseExport(text);}catch(e){ alert(e.message); return; }
-      lastSourceText=text;
-      const perDay=buildPerDay(model,opts);
-      lastModel=model; lastPerDay=perDay;
-      updateIndividualControls(model,perDay);
-
-      const autoRangeLabel=buildDateRangeLabel(model);
-      const resolvedRangeLabel=layout.subtitleOverride || autoRangeLabel;
-      const totalPages=model.dayHeaders.length;
-      const formattedDates=model.dayHeaders.map(formatFullDayLabel);
-      lastRenderDetails={dateRangeLabel:resolvedRangeLabel,formattedDates,totalPages,layout};
-      renderViews();
-    }
-
-    function updateIndividualControls(model,perDay){
-      const select=document.getElementById('selIndividual');
+    async function exportSelectedPDF(){
       const btn=document.getElementById('btnExport');
-      const scopeControl=document.getElementById('reportScopeControl');
-      const scopeHint=document.getElementById('reportScopeHint');
-      const hasRows=!!(model && Array.isArray(model.rows) && model.rows.length);
-      if(scopeControl){
-        scopeControl.hidden=!hasRows;
-        scopeControl.setAttribute('aria-hidden',hasRows?'false':'true');
-      }
-      if(scopeHint){
-        scopeHint.hidden=!hasRows;
-        scopeHint.setAttribute('aria-hidden',hasRows?'false':'true');
-      }
-      if(!select || !btn){
-        lastIndividuals=[];
-        return;
-      }
-      const previousValue=select.value || 'all';
-      select.innerHTML='';
-      const allOption=document.createElement('option');
-      allOption.value='all';
-      allOption.textContent='All colleagues';
-      select.appendChild(allOption);
-      lastIndividuals=[];
-      if(!hasRows){
-        select.value='all';
-        select.disabled=true;
-        btn.disabled=true;
-        btn.textContent='Export PDF';
-        currentIndividualIndex=null;
-        return;
-      }
-      const rows=model.rows;
-      const perDayData=Array.isArray(perDay)?perDay:[];
-      rows.forEach((row,idx)=>{
-        const displayName=getRowDisplayName(row,idx+1);
-        const record={
-          index:idx,
-          rawName:row.rawName||'',
-          cleanName:row.name||'',
-          displayName,
-          hasSchedule:false,
-        };
-        if(perDayData.length){
-          for(let dayIdx=0;dayIdx<perDayData.length;dayIdx++){
-            const entries=Array.isArray(perDayData[dayIdx])?perDayData[dayIdx]:[];
-            const match=entries.find(entry=>{
-              if(record.rawName && entry.rawName){
-                return entry.rawName===record.rawName;
-              }
-              return entry.name===record.cleanName;
-            });
-            if(match && match.range){
-              record.hasSchedule=true;
-              break;
-            }
-          }
-        }
-        lastIndividuals.push(record);
-        const option=document.createElement('option');
-        option.value=String(idx);
-        option.textContent=record.hasSchedule?record.displayName:`${record.displayName} (no shifts)`;
-        select.appendChild(option);
-      });
-      const preserved=lastIndividuals.some(rec=>String(rec.index)===previousValue);
-      if(preserved){
-        select.value=previousValue;
+      if(!btn || btn.disabled) return;
+      const select=document.getElementById('selIndividual');
+      const selection=select?select.value:'all';
+      const weeks=getActiveWeekData();
+      if(selection && selection!=='all' && weeks.length===1){
+        await exportIndividualPDF(selection,btn);
       }else{
-        select.value='all';
+        await exportPDF(btn);
       }
-      select.disabled=false;
-      btn.disabled=false;
-      const selectedValue=select.value;
-      if(selectedValue && selectedValue!=='all'){
-        const parsed=parseInt(selectedValue,10);
-        if(!Number.isNaN(parsed) && parsed>=0 && parsed<model.rows.length){
-          currentIndividualIndex=parsed;
-        }else{
-          currentIndividualIndex=null;
-        }
-      }else{
-        currentIndividualIndex=null;
-      }
-      btn.textContent=selectedValue && selectedValue!=='all'?'Export colleague PDF':'Export weekly PDF';
-    }
-
-    function sanitizeFileName(name){
-      return name.replace(/[^\w\d\-_]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'') || 'gantt';
-    }
-
-    function buildPdfSheetPlan(rows,layout,{title,rangeLabel,code,date,footerText,footerNote},palette,options={}){
-      const preserveEmptyRows=!!options.preserveEmptyRows;
-      const columnHeaderLabel=options.columnHeaderLabel||'Colleague Names';
-      const paddingOuter=18;
-      const blockGap=12;
-      const lineGap=6;
-      const lineHeightFactor=1.2;
-      const P=Math.max(0,layout.padding);
-      const W=Math.max(400,layout.chartWidth);
-      const rowH=Math.max(18,layout.rowHeight);
-      const leftAxis=Math.max(120,layout.nameColumnWidth);
-      const innerW=Math.max(100,W-leftAxis-P*2);
-      const headerHeight=Math.max(24,layout.headerHeight);
-      const sourceRows=Array.isArray(rows)?rows:[];
-      const visibleRows=preserveEmptyRows?sourceRows:sourceRows.filter(r=>r && r.range);
-      const bodyRows=visibleRows.length
-        ? visibleRows.map(row=>({
-            name:row.name,
-            range:row.range?{...row.range}:null,
-            segments:Array.isArray(row.segments)?row.segments.map(seg=>({...seg})):[],
-            highlight:!!row.highlight,
-          }))
-        : [{name:'No scheduled colleagues',range:null,segments:[],highlight:false}];
-      const bodyHeight=rowH*bodyRows.length;
-      const chartHeight=P+headerHeight+bodyHeight+P;
-      const sheetWidth=W+paddingOuter*2;
-      const headerLines=[];
-      if(title){
-        headerLines.push({text:title,size:layout.titleSize||DEFAULT_LAYOUT.titleSize,color:palette.ink,weight:600});
-      }
-      if(rangeLabel){
-        headerLines.push({text:rangeLabel,size:layout.subtitleSize||DEFAULT_LAYOUT.subtitleSize,color:palette.muted,weight:400});
-      }
-      if(code){
-        headerLines.push({text:code,size:layout.codeSize||DEFAULT_LAYOUT.codeSize,color:palette.ink,weight:700});
-      }
-      if(date){
-        headerLines.push({text:date,size:layout.dateSize||DEFAULT_LAYOUT.dateSize,color:palette.ink,weight:600});
-      }
-      let cursorY=paddingOuter;
-      const headerPlacements=headerLines.map((line,idx)=>{
-        const top=cursorY;
-        cursorY+=line.size*lineHeightFactor;
-        if(idx<headerLines.length-1) cursorY+=lineGap;
-        return {...line,top};
-      });
-      if(headerLines.length) cursorY+=blockGap;
-      const chartTop=cursorY;
-      cursorY+=chartHeight;
-      const footerNotes=[];
-      if(footerNote){
-        cursorY+=blockGap;
-        const size=layout.footerSize||DEFAULT_LAYOUT.footerSize;
-        const top=cursorY;
-        cursorY+=size*lineHeightFactor;
-        footerNotes.push({text:footerNote,size,color:palette.muted,top});
-      }
-      const pageFooter=footerText?{text:footerText,size:layout.footerSize||DEFAULT_LAYOUT.footerSize,color:palette.muted}:null;
-      const sheetHeight=cursorY+paddingOuter;
-      return {
-        sheetWidth,
-        sheetHeight,
-        paddingOuter,
-        header:headerPlacements,
-        footerNotes,
-        pageFooter,
-        chart:{
-          left:paddingOuter,
-          top:chartTop,
-          width:W,
-          height:chartHeight,
-          padding:P,
-          headerHeight,
-          leftAxis,
-          innerWidth:innerW,
-          rowHeight:rowH,
-          bodyRows,
-          columnHeaderLabel,
-          columnHeaderSize:layout.columnHeaderSize||DEFAULT_LAYOUT.columnHeaderSize,
-          rowLabelSize:layout.rowLabelSize||DEFAULT_LAYOUT.rowLabelSize,
-          barLabelSize:layout.barLabelSize||DEFAULT_LAYOUT.barLabelSize,
-          axisLabelSize:Math.max(10,Math.round((layout.columnHeaderSize||DEFAULT_LAYOUT.columnHeaderSize)*0.9)),
-          axisLabelOffset:6,
-        },
-      };
     }
 
     function drawPdfSheet(page,plan,{fonts,palette,rgb,scaleLimit=1,margin=24}){
@@ -1698,220 +2207,15 @@
       };
     }
 
-    async function exportPDF(btnOverride){
-      const btn=btnOverride || document.getElementById('btnExport');
-      if(!btn || btn.disabled) return;
-      if(!lastModel){
-        const t=(hiddenInput?hiddenInput.value:'').trim();
-        if(!t) return;
-        render(t);
-        if(!lastModel) return;
-      }
-      if(!window.PDFLib){
-        alert('PDF generator failed to load. Please refresh and try again.');
-        return;
-      }
-      const originalLabel=btn.textContent;
-      btn.disabled=true;
-      btn.textContent='Exporting…';
-      try{
-        const {PDFDocument, rgb, StandardFonts}=window.PDFLib;
-        const pdfDoc=await PDFDocument.create();
-        const fontRegular=await pdfDoc.embedFont(StandardFonts.Helvetica);
-        const fontBold=await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-        const margin=24;
-        const pageSize=[842,595];
-        const renderInfo=lastRenderDetails || {};
-        const layout=renderInfo.layout || currentLayout || DEFAULT_LAYOUT;
-        const palette=buildPdfPalette(layout);
-        const pageBg=parseCssColor(layout.pageBackground);
-        const formattedDates=(renderInfo.formattedDates && renderInfo.formattedDates.length?renderInfo.formattedDates:lastModel.dayHeaders.map(formatFullDayLabel));
-        const totalPages=renderInfo.totalPages || lastModel.dayHeaders.length;
-        const dateRangeLabel=renderInfo.dateRangeLabel || layout.subtitleOverride || buildDateRangeLabel(lastModel);
-        for(let i=0;i<lastModel.dayHeaders.length;i++){
-          const label=lastModel.dayHeaders[i];
-          const rowsForDay=Array.isArray(lastPerDay[i])?lastPerDay[i]:[];
-          const resolvedCode=(layout.staticCode||STATIC_CODE||'').trim();
-          const footerText=formatFooterText(layout.footerTemplate,{
-            pageNumber:i+1,
-            totalPages,
-            formattedDate:formattedDates[i],
-            label,
-          });
-          const footerNote=(layout.footerNote||'').trim();
-          const plan=buildPdfSheetPlan(rowsForDay,layout,{
-            title:layout.title||DEFAULT_LAYOUT.title,
-            rangeLabel:dateRangeLabel,
-            code:resolvedCode,
-            date:formattedDates[i],
-            footerText,
-            footerNote,
-          },palette);
-          const page=pdfDoc.addPage(pageSize);
-          const pageWidth=page.getWidth();
-          const pageHeight=page.getHeight();
-          if(pageBg){
-            page.drawRectangle({x:0,y:0,width:pageWidth,height:pageHeight,color:rgb(pageBg.r,pageBg.g,pageBg.b)});
-          }
-          drawPdfSheet(page,plan,{
-            fonts:{regular:fontRegular,bold:fontBold},
-            palette,
-            rgb,
-            margin,
-          });
-        }
-        const pdfBytes=await pdfDoc.save();
-        const blob=new Blob([pdfBytes],{type:'application/pdf'});
-        const url=URL.createObjectURL(blob);
-        const link=document.createElement('a');
-        link.href=url;
-        link.download=`${sanitizeFileName(dateRangeLabel || 'schedule')}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(()=>URL.revokeObjectURL(url),5000);
-      }catch(err){
-        console.error(err);
-        alert(`Failed to export PDF: ${err.message}`);
-      }finally{
-        btn.disabled=false;
-        btn.textContent=originalLabel;
-      }
-    }
-
-    async function exportIndividualPDF(indexValue,btnOverride){
-      const btn=btnOverride || document.getElementById('btnExport');
-      if(!btn || btn.disabled) return;
-      const selectedValue=typeof indexValue==='number'?String(indexValue):String(indexValue||'');
-      if(!selectedValue || selectedValue==='all'){
-        alert('Select a colleague before exporting.');
-        return;
-      }
-      if(!lastModel){
-        const t=(hiddenInput?hiddenInput.value:'').trim();
-        if(t) render(t);
-      }
-      if(!lastModel || !lastPerDay){
-        alert('Render the schedule before exporting an individual PDF.');
-        return;
-      }
-      const idx=parseInt(selectedValue,10);
-      if(Number.isNaN(idx) || idx<0 || idx>=lastModel.rows.length){
-        alert('Select a colleague before exporting.');
-        return;
-      }
-      if(!window.PDFLib){
-        alert('PDF generator failed to load. Please refresh and try again.');
-        return;
-      }
-      const record=lastIndividuals.find(rec=>rec.index===idx);
-      const person=lastModel.rows[idx];
-      const baseName=getRowDisplayName(person,idx+1);
-      const displayName=(record && record.displayName)||baseName;
-      const resolvedName=displayName.trim()||baseName;
-      const dayRows=[];
-      const dayHeaders=Array.isArray(lastModel.dayHeaders)?lastModel.dayHeaders:[];
-      for(let dayIdx=0;dayIdx<dayHeaders.length;dayIdx++){
-        const label=dayHeaders[dayIdx];
-        const parsed=parseDayHeader(label);
-        const dayName=(parsed && parsed.dayName)||label;
-        const entries=Array.isArray(lastPerDay[dayIdx])?lastPerDay[dayIdx]:[];
-        const match=entries.find(entry=>{
-          if(person.rawName && entry.rawName){
-            return entry.rawName===person.rawName;
-          }
-          return entry.name===person.name;
-        });
-        const range=match && match.range?{...match.range}:null;
-        const segments=match && Array.isArray(match.segments)?match.segments.map(seg=>({...seg})):
-          [];
-        dayRows.push({name:dayName,range,segments,highlight:false});
-      }
-      const renderInfo=lastRenderDetails || {};
-      const layout=renderInfo.layout || currentLayout || DEFAULT_LAYOUT;
-      const palette=buildPdfPalette(layout);
-      const dateRangeLabel=renderInfo.dateRangeLabel || layout.subtitleOverride || buildDateRangeLabel(lastModel);
-      const footerText=formatFooterText(layout.footerTemplate,{
-        pageNumber:1,
-        totalPages:1,
-        formattedDate:resolvedName,
-        label:resolvedName,
-      });
-      const footerNote=(layout.footerNote||'').trim();
-      const plan=buildPdfSheetPlan(dayRows,layout,{
-        title:layout.title||DEFAULT_LAYOUT.title,
-        rangeLabel:dateRangeLabel,
-        code:(layout.staticCode||STATIC_CODE||'').trim(),
-        date:resolvedName,
-        footerText,
-        footerNote,
-      },palette,{preserveEmptyRows:true,columnHeaderLabel:'Day'});
-
-      const originalLabel=btn.textContent;
-      btn.disabled=true;
-      btn.textContent='Exporting…';
-      try{
-        const {PDFDocument,rgb,StandardFonts}=window.PDFLib;
-        const pdfDoc=await PDFDocument.create();
-        const fontRegular=await pdfDoc.embedFont(StandardFonts.Helvetica);
-        const fontBold=await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-        const pageSize=[842,595];
-        const page=pdfDoc.addPage(pageSize);
-        const pageBg=parseCssColor(layout.pageBackground);
-        if(pageBg){
-          page.drawRectangle({x:0,y:0,width:page.getWidth(),height:page.getHeight(),color:rgb(pageBg.r,pageBg.g,pageBg.b)});
-        }
-        drawPdfSheet(page,plan,{
-          fonts:{regular:fontRegular,bold:fontBold},
-          palette,
-          rgb,
-          margin:24,
-        });
-        const pdfBytes=await pdfDoc.save();
-        const blob=new Blob([pdfBytes],{type:'application/pdf'});
-        const url=URL.createObjectURL(blob);
-        const link=document.createElement('a');
-        link.href=url;
-        link.download=`${sanitizeFileName(resolvedName||'schedule')}_schedule.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(()=>URL.revokeObjectURL(url),5000);
-      }catch(err){
-        console.error(err);
-        alert(`Failed to export PDF: ${err.message}`);
-      }finally{
-        btn.disabled=false;
-        btn.textContent=originalLabel;
-      }
-    }
-
-    async function exportSelectedPDF(){
-      const btn=document.getElementById('btnExport');
-      if(!btn || btn.disabled) return;
-      const select=document.getElementById('selIndividual');
-      const selection=select?select.value:'all';
-      if(selection && selection!=='all'){
-        await exportIndividualPDF(selection,btn);
-      }else{
-        await exportPDF(btn);
-      }
-    }
-
-    function handleLayoutControlChange(){
-      if(lastSourceText){
-        render(lastSourceText);
-      }else{
-        const layout=getLayoutSettings();
-        applyLayoutToDocument(layout);
-        currentLayout=layout;
-      }
+      currentLayout=layout;
+      renderViews();
     }
 
     // ---------- Sample & Wire-up ----------
     const hiddenInput=document.getElementById('input');
     const fileInput=document.getElementById('fileInput');
     const btnUpload=document.getElementById('btnUpload');
+    const btnClearWeeks=document.getElementById('btnClearWeeks');
 
     function openFilePicker(input){
       if(!input) return;
@@ -1978,15 +2282,20 @@
             exportBtn.textContent='Export PDF';
           }
           currentIndividualIndex=null;
-          if(text.trim()){
-            render(text);
-          }else{
-            lastModel=null;
-            lastPerDay=null;
-            lastRenderDetails=null;
-            lastSourceText='';
-            updateIndividualControls(null,null);
+          if(!text.trim()){
             renderViews();
+            return;
+          }
+          try{
+            const layout=getLayoutSettings();
+            applyLayoutToDocument(layout);
+            currentLayout=layout;
+            const model=parseExport(text);
+            addOrUpdateWeekRecord(model);
+          }catch(err){
+            console.error(err);
+            alert(err && err.message?err.message:'Failed to parse the provided CSV file.');
+            btnUpload.textContent=defaultUploadLabel;
           }
         });
         reader.addEventListener('error',()=>{
@@ -1996,9 +2305,6 @@
           fileInput.value='';
           if(hiddenInput){ hiddenInput.value=''; }
           btnUpload.textContent=defaultUploadLabel;
-          const sel=document.getElementById('selIndividual');
-          if(sel){ sel.value='all'; }
-          updateIndividualControls(null,null);
         });
         reader.readAsText(file);
       });
@@ -2008,13 +2314,18 @@
     if(exportButton){
       exportButton.addEventListener('click',()=>{ exportSelectedPDF(); });
     }
+    if(btnClearWeeks){
+      btnClearWeeks.addEventListener('click',()=>{ clearAllWeeks(); });
+    }
     const selIndividual=document.getElementById('selIndividual');
     if(selIndividual){
       selIndividual.addEventListener('change',()=>{
         const value=selIndividual.value;
         if(value && value!=='all'){
           const parsed=parseInt(value,10);
-          if(!Number.isNaN(parsed) && lastModel && lastModel.rows && parsed<lastModel.rows.length){
+          const weeks=getActiveWeekData();
+          const week=weeks.length===1?weeks[0]:null;
+          if(!Number.isNaN(parsed) && week && week.model && Array.isArray(week.model.rows) && parsed<week.model.rows.length){
             currentIndividualIndex=parsed;
           }else{
             currentIndividualIndex=null;
@@ -2033,11 +2344,36 @@
     const viewerContainer=document.getElementById('viewerContainer');
     const viewerTabsContainer=document.querySelector('.viewer-tabs');
     const viewerTabs=Array.from(document.querySelectorAll('.viewer-tab'));
-    viewPanels={
+    const viewPanels={
       schedule:document.getElementById('viewSchedule'),
       pdf:document.getElementById('viewPdf'),
     };
     let activeView='schedule';
+
+    function setViewerTabsVisibility(visible){
+      const show=!!visible;
+      if(viewerContainer){
+        viewerContainer.hidden=!show;
+        viewerContainer.setAttribute('aria-hidden',show?'false':'true');
+      }
+      if(viewerTabsContainer){
+        viewerTabsContainer.hidden=!show;
+        viewerTabsContainer.setAttribute('aria-hidden',show?'false':'true');
+      }
+      if(viewerTabs && viewerTabs.length){
+        viewerTabs.forEach(btn=>{
+          btn.disabled=!show;
+          if(!show){
+            btn.setAttribute('tabindex','-1');
+            btn.setAttribute('aria-hidden','true');
+          }else{
+            const isActive=btn.dataset.view===activeView;
+            btn.setAttribute('tabindex',isActive?'0':'-1');
+            btn.setAttribute('aria-hidden','false');
+          }
+        });
+      }
+    }
 
     function switchView(view){
       if(!viewPanels[view]) return;
@@ -2083,8 +2419,10 @@
     document.addEventListener('DOMContentLoaded',()=>{
       if(hiddenInput){ hiddenInput.value=''; }
       if(btnUpload){ btnUpload.textContent='Upload CSV'; }
-      applyLayoutToDocument(currentLayout);
-      updateIndividualControls(null,null);
+      const layout=getLayoutSettings();
+      applyLayoutToDocument(layout);
+      currentLayout=layout;
+      updateWeekSelectionUI();
       renderViews();
       switchView('schedule');
     });
