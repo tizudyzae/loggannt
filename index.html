@@ -1000,43 +1000,27 @@
       return false;
     }
 
-    function ensureActiveWeeks({preferToday=true}={}){
+    function ensureActiveWeeks(){
       const available=getSortedWeekRecords();
       if(!available.length){
         activeWeekIds=[];
         persistActiveSelection(activeWeekIds);
         return;
       }
-      const todayIso=new Date().toISOString().slice(0,10);
       const valid=activeWeekIds.filter(id=>cachedWeeks.has(id));
-      const firstValidId=valid[0];
-      if(firstValidId){
-        const activeRecord=cachedWeeks.get(firstValidId);
-        if(activeRecord && recordCoversIsoDate(activeRecord,todayIso)){
-          activeWeekIds=[firstValidId];
-          persistActiveSelection(activeWeekIds);
-          return;
-        }
-      }
-      const preferred=available.find(record=>recordCoversIsoDate(record,todayIso) && cachedWeeks.has(record.id));
-      if(preferred){
-        activeWeekIds=[preferred.id];
+      if(valid.length){
+        activeWeekIds=valid.slice(0,1);
         persistActiveSelection(activeWeekIds);
         return;
       }
-      if(firstValidId){
-        activeWeekIds=[firstValidId];
-        persistActiveSelection(activeWeekIds);
-        return;
-      }
-      const fallback=available.find(record=>cachedWeeks.has(record.id));
-      activeWeekIds=fallback?[fallback.id]:[];
+      const todayIso=new Date().toISOString().slice(0,10);
+      const preferred=available.find(record=>recordCoversIsoDate(record,todayIso));
+      const target=preferred||available[0]||null;
+      activeWeekIds=target?[target.id]:[];
       persistActiveSelection(activeWeekIds);
     }
 
     ensureActiveWeeks();
-
-    let hasManualWeekSelection=false;
 
     if(!getSortedWeekRecords().length){
       settingsDrawerOpen=true;
@@ -1082,64 +1066,22 @@
       if(forgetBtn){
         forgetBtn.disabled=!hasRecords;
       }
-      if(hasRecords && !hasManualWeekSelection){
-        const todayIso=new Date().toISOString().slice(0,10);
-        const activeId=activeWeekIds[0];
-        const activeRecord=activeId?cachedWeeks.get(activeId):null;
-        const coversToday=activeRecord && recordCoversIsoDate(activeRecord,todayIso);
-        if(!coversToday){
-          const preferred=records.find(record=>recordCoversIsoDate(record,todayIso) && cachedWeeks.has(record.id));
-          const fallback=preferred||records.find(record=>cachedWeeks.has(record.id));
-          if(fallback){
-            setActiveWeeks([fallback.id],{persist:true});
-          }
-        }
-      }
-
-      let activeId=activeWeekIds[0];
-      if(activeId && !records.some(record=>record.id===activeId)){
-        activeId='';
-      }
-      if(!activeId && hasRecords){
-        const fallback=records.find(record=>cachedWeeks.has(record.id));
-        if(fallback){
-          activeId=fallback.id;
-          setActiveWeeks([activeId],{persist:true});
-        }
-      }
-
       if(select){
         select.innerHTML='';
         if(hasRecords){
-          const orderedRecords=records.slice().reverse();
-          orderedRecords.forEach(record=>{
+          records.forEach(record=>{
             const option=document.createElement('option');
             option.value=record.id;
             option.textContent=record.metadata && record.metadata.label?record.metadata.label:'Saved rota';
-            if(record.id===activeId){
-              option.selected=true;
-            }
             select.appendChild(option);
           });
           let activeId=activeWeekIds[0];
-          const todayIso=new Date().toISOString().slice(0,10);
-          const hasActive=activeId && records.some(record=>record.id===activeId);
-          if(hasActive){
-            const activeRecord=cachedWeeks.get(activeId);
-            if(!activeRecord || !recordCoversIsoDate(activeRecord,todayIso)){
-              activeId='';
-            }
-          }
-          if(!activeId){
-            const todayRecord=records.find(record=>recordCoversIsoDate(record,todayIso) && cachedWeeks.has(record.id));
-            const fallbackRecord=todayRecord||records[0];
-            if(fallbackRecord){
-              activeId=fallbackRecord.id;
-              setActiveWeeks([activeId],{persist:true});
-            }
+          if(!activeId || !records.some(record=>record.id===activeId)){
+            activeId=records[0].id;
+            setActiveWeeks([activeId],{persist:true});
           }
           select.disabled=false;
-          select.value=activeId||'';
+          select.value=activeId;
         }else{
           select.disabled=true;
           select.value='';
@@ -1147,7 +1089,8 @@
         }
       }
       if(meta){
-        const record=activeRecord && activeRecord.id?records.find(item=>item.id===activeRecord.id)||activeRecord:null;
+        const activeId=activeWeekIds[0];
+        const record=records.find(item=>item.id===activeId);
         const text=record?formatWeekMeta(record):'';
         meta.textContent=text;
         meta.hidden=!text;
@@ -1172,7 +1115,6 @@
       rebuildWeekCache();
       activeWeekIds=[];
       persistActiveSelection(activeWeekIds);
-      hasManualWeekSelection=false;
       settingsDrawerOpen=false;
       updateWeekSelectionUI();
       renderViews();
@@ -2680,8 +2622,8 @@
     if(savedWeekSelect){
       savedWeekSelect.addEventListener('change',()=>{
         const value=savedWeekSelect.value;
-        hasManualWeekSelection=true;
         setActiveWeeks(value?[value]:[],{persist:true});
+        ensureActiveWeeks();
         updateWeekSelectionUI();
         renderViews();
       });
