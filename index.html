@@ -1007,21 +1007,30 @@
         persistActiveSelection(activeWeekIds);
         return;
       }
+      const todayIso=new Date().toISOString().slice(0,10);
       const valid=activeWeekIds.filter(id=>cachedWeeks.has(id));
-      if(valid.length){
-        activeWeekIds=[valid[0]];
+      const firstValidId=valid[0];
+      if(firstValidId){
+        const activeRecord=cachedWeeks.get(firstValidId);
+        if(activeRecord && recordCoversIsoDate(activeRecord,todayIso)){
+          activeWeekIds=[firstValidId];
+          persistActiveSelection(activeWeekIds);
+          return;
+        }
+      }
+      const preferred=available.find(record=>recordCoversIsoDate(record,todayIso) && cachedWeeks.has(record.id));
+      if(preferred){
+        activeWeekIds=[preferred.id];
         persistActiveSelection(activeWeekIds);
         return;
       }
-      const todayIso=new Date().toISOString().slice(0,10);
-      let chosen=null;
-      if(preferToday){
-        chosen=available.find(record=>recordCoversIsoDate(record,todayIso) && cachedWeeks.has(record.id));
+      if(firstValidId){
+        activeWeekIds=[firstValidId];
+        persistActiveSelection(activeWeekIds);
+        return;
       }
-      if(!chosen){
-        chosen=available.find(record=>cachedWeeks.has(record.id));
-      }
-      activeWeekIds=chosen?[chosen.id]:[];
+      const fallback=available.find(record=>cachedWeeks.has(record.id));
+      activeWeekIds=fallback?[fallback.id]:[];
       persistActiveSelection(activeWeekIds);
     }
 
@@ -1073,40 +1082,31 @@
       if(forgetBtn){
         forgetBtn.disabled=!hasRecords;
       }
-      let activeRecord=null;
-      const validActiveId=activeWeekIds.find(id=>cachedWeeks.has(id));
-      if(validActiveId){
-        activeRecord=records.find(record=>record.id===validActiveId) || cachedWeeks.get(validActiveId) || null;
-      }
-
       if(hasRecords && !hasManualWeekSelection){
         const todayIso=new Date().toISOString().slice(0,10);
+        const activeId=activeWeekIds[0];
+        const activeRecord=activeId?cachedWeeks.get(activeId):null;
         const coversToday=activeRecord && recordCoversIsoDate(activeRecord,todayIso);
         if(!coversToday){
           const preferred=records.find(record=>recordCoversIsoDate(record,todayIso) && cachedWeeks.has(record.id));
           const fallback=preferred||records.find(record=>cachedWeeks.has(record.id));
           if(fallback){
-            activeRecord=fallback;
             setActiveWeeks([fallback.id],{persist:true});
           }
         }
       }
 
-      if((!activeRecord || !cachedWeeks.has(activeRecord.id)) && hasRecords){
-        if(hasManualWeekSelection){
-          hasManualWeekSelection=false;
-        }
+      let activeId=activeWeekIds[0];
+      if(activeId && !records.some(record=>record.id===activeId)){
+        activeId='';
+      }
+      if(!activeId && hasRecords){
         const fallback=records.find(record=>cachedWeeks.has(record.id));
         if(fallback){
-          activeRecord=fallback;
-          setActiveWeeks([fallback.id],{persist:true});
-        }else{
-          activeRecord=null;
-          setActiveWeeks([],{persist:true});
+          activeId=fallback.id;
+          setActiveWeeks([activeId],{persist:true});
         }
       }
-
-      const activeId=activeRecord && activeRecord.id?activeRecord.id:'';
 
       if(select){
         select.innerHTML='';
@@ -1121,6 +1121,23 @@
             }
             select.appendChild(option);
           });
+          let activeId=activeWeekIds[0];
+          const todayIso=new Date().toISOString().slice(0,10);
+          const hasActive=activeId && records.some(record=>record.id===activeId);
+          if(hasActive){
+            const activeRecord=cachedWeeks.get(activeId);
+            if(!activeRecord || !recordCoversIsoDate(activeRecord,todayIso)){
+              activeId='';
+            }
+          }
+          if(!activeId){
+            const todayRecord=records.find(record=>recordCoversIsoDate(record,todayIso) && cachedWeeks.has(record.id));
+            const fallbackRecord=todayRecord||records[0];
+            if(fallbackRecord){
+              activeId=fallbackRecord.id;
+              setActiveWeeks([activeId],{persist:true});
+            }
+          }
           select.disabled=false;
           select.value=activeId||'';
         }else{
