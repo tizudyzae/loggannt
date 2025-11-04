@@ -1000,7 +1000,7 @@
       return false;
     }
 
-    function ensureActiveWeeks(){
+    function ensureActiveWeeks({preferToday=true}={}){
       const available=getSortedWeekRecords();
       if(!available.length){
         activeWeekIds=[];
@@ -1009,18 +1009,25 @@
       }
       const valid=activeWeekIds.filter(id=>cachedWeeks.has(id));
       if(valid.length){
-        activeWeekIds=valid.slice(0,1);
+        activeWeekIds=[valid[0]];
         persistActiveSelection(activeWeekIds);
         return;
       }
       const todayIso=new Date().toISOString().slice(0,10);
-      const preferred=available.find(record=>recordCoversIsoDate(record,todayIso));
-      const target=preferred||available[0]||null;
-      activeWeekIds=target?[target.id]:[];
+      let chosen=null;
+      if(preferToday){
+        chosen=available.find(record=>recordCoversIsoDate(record,todayIso) && cachedWeeks.has(record.id));
+      }
+      if(!chosen){
+        chosen=available.find(record=>cachedWeeks.has(record.id));
+      }
+      activeWeekIds=chosen?[chosen.id]:[];
       persistActiveSelection(activeWeekIds);
     }
 
     ensureActiveWeeks();
+
+    let hasManualWeekSelection=false;
 
     if(!getSortedWeekRecords().length){
       settingsDrawerOpen=true;
@@ -1066,22 +1073,44 @@
       if(forgetBtn){
         forgetBtn.disabled=!hasRecords;
       }
+      if(hasRecords && !hasManualWeekSelection){
+        const todayIso=new Date().toISOString().slice(0,10);
+        const activeId=activeWeekIds[0];
+        const activeRecord=activeId?cachedWeeks.get(activeId):null;
+        const coversToday=activeRecord && recordCoversIsoDate(activeRecord,todayIso);
+        if(!coversToday){
+          const preferred=records.find(record=>recordCoversIsoDate(record,todayIso) && cachedWeeks.has(record.id));
+          const fallback=preferred||records.find(record=>cachedWeeks.has(record.id));
+          if(fallback){
+            setActiveWeeks([fallback.id],{persist:true});
+          }
+        }
+      }
+
+      let activeId=activeWeekIds[0];
+      if(activeId && !records.some(record=>record.id===activeId)){
+        activeId='';
+      }
+      if(!activeId && hasRecords){
+        const fallback=records.find(record=>cachedWeeks.has(record.id));
+        if(fallback){
+          activeId=fallback.id;
+          setActiveWeeks([activeId],{persist:true});
+        }
+      }
+
       if(select){
         select.innerHTML='';
         if(hasRecords){
-          records.forEach(record=>{
+          const orderedRecords=records.slice().reverse();
+          orderedRecords.forEach(record=>{
             const option=document.createElement('option');
             option.value=record.id;
             option.textContent=record.metadata && record.metadata.label?record.metadata.label:'Saved rota';
             select.appendChild(option);
           });
-          let activeId=activeWeekIds[0];
-          if(!activeId || !records.some(record=>record.id===activeId)){
-            activeId=records[0].id;
-            setActiveWeeks([activeId],{persist:true});
-          }
           select.disabled=false;
-          select.value=activeId;
+          select.value=activeId||'';
         }else{
           select.disabled=true;
           select.value='';
@@ -1115,6 +1144,7 @@
       rebuildWeekCache();
       activeWeekIds=[];
       persistActiveSelection(activeWeekIds);
+      hasManualWeekSelection=false;
       settingsDrawerOpen=false;
       updateWeekSelectionUI();
       renderViews();
@@ -2622,8 +2652,8 @@
     if(savedWeekSelect){
       savedWeekSelect.addEventListener('change',()=>{
         const value=savedWeekSelect.value;
+        hasManualWeekSelection=true;
         setActiveWeeks(value?[value]:[],{persist:true});
-        ensureActiveWeeks();
         updateWeekSelectionUI();
         renderViews();
       });
