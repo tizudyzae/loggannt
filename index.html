@@ -1116,6 +1116,9 @@
             const option=document.createElement('option');
             option.value=record.id;
             option.textContent=record.metadata && record.metadata.label?record.metadata.label:'Saved rota';
+            if(record.id===activeId){
+              option.selected=true;
+            }
             select.appendChild(option);
           });
           let activeId=activeWeekIds[0];
@@ -1144,8 +1147,7 @@
         }
       }
       if(meta){
-        const activeId=activeWeekIds[0];
-        const record=records.find(item=>item.id===activeId);
+        const record=activeRecord && activeRecord.id?records.find(item=>item.id===activeRecord.id)||activeRecord:null;
         const text=record?formatWeekMeta(record):'';
         meta.textContent=text;
         meta.hidden=!text;
