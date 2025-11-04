@@ -99,25 +99,40 @@
     .pdf-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-bottom:16px;padding:20px 22px;border:1px solid var(--border);border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08)}
     .pdf-toolbar .btn{flex:0 0 auto}
     .pdf-toolbar-hint{margin:0;font-size:13px;color:var(--muted);max-width:480px}
-    .schedule-view{display:flex;flex-direction:column;gap:28px;font-family:"Avenir Next","Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;color:#121212}
-    .schedule-week{display:flex;flex-direction:column;gap:20px;padding:28px;border-radius:22px;border:1px solid rgba(17,24,39,.08);background:#fff;box-shadow:0 18px 36px rgba(15,23,42,.05)}
-    .schedule-week-heading{display:flex;flex-direction:column;gap:6px}
-    .schedule-week-title{font-size:22px;font-weight:600;letter-spacing:-.01em;color:#0f172a}
-    .schedule-week-meta{font-size:14px;font-weight:500;color:#475569}
-    .schedule-week-range{font-size:13px;color:#94a3b8;letter-spacing:.05em;text-transform:uppercase}
-    .schedule-days{display:flex;flex-direction:column;gap:18px}
-    .schedule-day-wrapper{position:relative}
-    .schedule-day-wrapper+.schedule-day-wrapper::before{content:"";position:absolute;top:-9px;left:16px;right:16px;height:1px;background:#e2e8f0}
-    .schedule-day{border:1px solid #e2e8f0;border-radius:16px;background:#fff;padding:18px 22px;display:flex;flex-direction:column;gap:12px;transition:border-color .2s ease,background .2s ease}
-    .schedule-day.is-today{border-color:#0ea5e9;background:#ecfeff}
-    .schedule-day-label{display:flex;align-items:baseline;gap:8px;font-size:16px}
-    .schedule-day-name{font-weight:700;letter-spacing:.03em;color:#0f172a}
-    .schedule-day-date{font-weight:400;color:#1e293b}
-    .schedule-day-date .month{font-weight:400;color:#334155;text-transform:capitalize}
-    .schedule-day-meta{display:flex;align-items:center;justify-content:space-between;font-size:14px}
-    .schedule-day-status{font-weight:500;color:#1e293b}
-    .schedule-day-value{font-weight:500;color:#0f172a;text-align:right}
-    .schedule-day-value.schedule-day-value-empty{font-weight:400;color:#94a3b8}
+    .schedule-view{display:flex;flex-direction:column;gap:24px}
+    .schedule-week{display:flex;flex-direction:column;gap:18px}
+    .schedule-week-heading{display:flex;flex-direction:column;gap:4px}
+    .schedule-week-title{font-size:20px;font-weight:700;color:var(--ink)}
+    .schedule-week-range{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+    .schedule-header{display:flex;flex-direction:column;gap:10px}
+    .schedule-range{font-size:16px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+    .schedule-days{display:grid;gap:20px}
+    .schedule-day-card{border:1px solid var(--border);border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);overflow:hidden;transition:transform .2s ease,box-shadow .2s ease}
+    .schedule-day-card:hover{transform:translateY(-2px);box-shadow:0 22px 44px rgba(7,45,65,.12)}
+    .schedule-day-card summary{cursor:pointer;list-style:none;padding:24px 28px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:700;color:var(--ink);background:linear-gradient(90deg,var(--surface) 0%,var(--surface-soft) 100%)}
+    .schedule-day-card summary::-webkit-details-marker{display:none}
+    .schedule-day-card summary::after{content:'▾';font-size:14px;color:var(--muted);transition:transform .2s ease,color .2s ease}
+    .schedule-day-card[open] summary::after{transform:rotate(180deg);color:var(--accent)}
+    .schedule-day-summary-text{display:flex;flex-direction:column;gap:6px}
+    .schedule-day-card.today{border-color:var(--accent);box-shadow:0 24px 48px rgba(0,123,195,.12)}
+    .schedule-day-card.today summary{background:linear-gradient(90deg,var(--accent-soft) 0%,var(--surface) 100%)}
+    .schedule-day-card.today .schedule-day-title{color:var(--accent-strong)}
+    .schedule-day-card.today .schedule-day-today-badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+    .schedule-day-header{display:flex;flex-direction:column;gap:6px}
+    .schedule-day-title{font-size:22px;font-weight:700;color:var(--ink)}
+    .schedule-day-subtitle{font-size:14px;color:var(--muted)}
+    .schedule-day-content{padding:0 28px 28px;display:flex;flex-direction:column;gap:16px;background:var(--surface)}
+    .schedule-shifts{display:flex;flex-direction:column;gap:12px}
+    .shift-card{border:1px solid transparent;border-radius:16px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:16px;background:var(--surface-soft);transition:box-shadow .2s ease,border-color .2s ease,background .2s ease,transform .2s ease}
+    .shift-card:hover{transform:translateX(2px);box-shadow:0 14px 30px rgba(9,42,58,.08)}
+    .shift-card.highlight{border-color:#00b2a9;background:rgba(0,178,169,.1)}
+    .shift-card.selected{border-color:var(--accent);background:rgba(0,123,195,.12)}
+    .shift-card.highlight.selected{border-color:#008f88;background:rgba(0,178,169,.18)}
+    .shift-card .shift-name{font-weight:700;color:var(--ink);font-size:16px}
+    .shift-card .shift-time{font-size:14px;color:var(--muted);display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right}
+    .shift-card .shift-duration{font-size:13px;color:var(--muted);font-weight:600}
+    .shift-card .shift-split{font-size:12px;color:var(--muted)}
+    .no-shifts{border:1px dashed var(--border);border-radius:18px;padding:18px;color:var(--muted);text-align:center;font-size:14px;background:var(--surface-soft)}
     .empty-state{border:1px dashed var(--border);border-radius:24px;padding:32px;text-align:center;color:var(--muted);background:var(--surface);font-size:16px;box-shadow:0 18px 36px rgba(7,45,65,.08)}
     .empty-state strong{display:block;font-size:20px;color:var(--ink);margin-bottom:8px}
     .schedule-individual{border:1px solid var(--border);border-radius:24px;padding:24px 28px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);display:flex;flex-direction:column;gap:20px}
@@ -195,8 +210,10 @@
       .hero p{font-size:16px}
       .controls{padding:22px;border-radius:20px}
       .pdf-toolbar{padding:18px;border-radius:20px}
-      .schedule-week{padding:22px;border-radius:18px}
-      .schedule-day{padding:16px 18px}
+      .schedule-day-card summary{padding:20px}
+      .schedule-day-content{padding:0 20px 20px}
+      .shift-card{flex-direction:column;align-items:flex-start}
+      .shift-card .shift-time{text-align:left;align-items:flex-start}
       .individual-item{flex-direction:column;align-items:flex-start}
       .individual-item-time{text-align:left;align-items:flex-start}
     }
@@ -409,140 +426,6 @@
         parts.push(String(parsed.year));
       }
       return parts.length?parts.join(' '):(label||'');
-    }
-
-    function buildScheduleDayDisplay(part,label,fallbackYear){
-      const fallbackText=typeof label==='string'?label.trim():'';
-      const resolvedYear=part && Number.isInteger(part.year)?part.year:(Number.isInteger(fallbackYear)?fallbackYear:null);
-      const monthNum=part && Number.isInteger(part.month)?part.month:null;
-      const monthName=Number.isInteger(monthNum)?MONTH_NAMES[monthNum-1]:'';
-      const monthAbbrev=monthName?monthName.slice(0,3):'';
-      const dayNumber=part && Number.isInteger(part.day)?String(part.day):'';
-      const dayBase=part && part.dayName?part.dayName:'';
-      const abbrevSource=dayBase?dayBase.slice(0,3):fallbackText.slice(0,3);
-      const normalizedDayName=abbrevSource?`${abbrevSource.charAt(0).toUpperCase()}${abbrevSource.slice(1).toLowerCase()}`:'';
-      let iso=null;
-      if(Number.isInteger(resolvedYear) && Number.isInteger(monthNum) && Number.isInteger(part && part.day)){
-        const candidate=new Date(resolvedYear,monthNum-1,part.day);
-        if(!Number.isNaN(candidate.getTime())){
-          iso=candidate.toISOString().slice(0,10);
-        }
-      }
-      return {
-        dayName:normalizedDayName,
-        dayNumber,
-        month:monthAbbrev,
-        iso,
-      };
-    }
-
-    function parseIsoDate(value){
-      if(typeof value!=='string' || !value) return null;
-      const date=new Date(value);
-      if(Number.isNaN(date.getTime())) return null;
-      return date;
-    }
-
-    const WEEK_IN_MS=7*24*60*60*1000;
-
-    function startOfSunday(date){
-      if(!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
-      const copy=new Date(date.getFullYear(),date.getMonth(),date.getDate());
-      copy.setHours(0,0,0,0);
-      copy.setDate(copy.getDate()-copy.getDay());
-      return copy;
-    }
-
-    function formatWeekCommencingDate(date){
-      const weekStart=startOfSunday(date);
-      if(!weekStart) return '';
-      return `Week Commencing ${pad2(weekStart.getDate())}/${pad2(weekStart.getMonth()+1)}/${weekStart.getFullYear()}`;
-    }
-
-    function resolveWeekHeadingTitle(week){
-      if(!week || !week.metadata) return 'Saved rota';
-      const startDate=parseIsoDate(week.metadata.startIso);
-      if(startDate){
-        const targetWeekStart=startOfSunday(startDate);
-        const currentWeekStart=startOfSunday(new Date());
-        if(targetWeekStart && currentWeekStart){
-          const diffWeeks=Math.round((targetWeekStart.getTime()-currentWeekStart.getTime())/WEEK_IN_MS);
-          if(diffWeeks===-1) return 'Last Week';
-          if(diffWeeks===0) return 'Current Week';
-          if(diffWeeks===1) return 'Next Week';
-        }
-        const explicit=formatWeekCommencingDate(startDate);
-        if(explicit) return explicit;
-      }
-      return week.metadata.label || 'Saved rota';
-    }
-
-    function resolveWeekCommencingSubtitle(week){
-      if(!week || !week.metadata) return '';
-      const startDate=parseIsoDate(week.metadata.startIso);
-      if(!startDate) return '';
-      return formatWeekCommencingDate(startDate);
-    }
-
-    function calculateEntryMinutes(entry){
-      if(!entry) return 0;
-      if(Array.isArray(entry.segments) && entry.segments.length){
-        return entry.segments.reduce((total,segment)=>{
-          if(!segment) return total;
-          const start=Number(segment.start);
-          const end=Number(segment.end);
-          if(!Number.isFinite(start) || !Number.isFinite(end)) return total;
-          return total+Math.max(0,end-start);
-        },0);
-      }
-      if(entry.range){
-        const start=Number(entry.range.start);
-        const end=Number(entry.range.end);
-        if(Number.isFinite(start) && Number.isFinite(end)){
-          return Math.max(0,end-start);
-        }
-      }
-      return 0;
-    }
-
-    function calculateTotalScheduledMinutes(perDayData){
-      if(!Array.isArray(perDayData)) return 0;
-      return perDayData.reduce((weekTotal,dayEntries)=>{
-        if(!Array.isArray(dayEntries)) return weekTotal;
-        return weekTotal+dayEntries.reduce((dayTotal,entry)=>dayTotal+calculateEntryMinutes(entry),0);
-      },0);
-    }
-
-    function formatScheduledSummary(minutes){
-      if(!Number.isFinite(minutes) || minutes<=0) return '0h scheduled';
-      const rounded=Math.round(minutes);
-      const hours=Math.floor(rounded/60);
-      const remainder=rounded%60;
-      const pieces=[];
-      if(hours>0) pieces.push(`${hours}h`);
-      if(remainder>0) pieces.push(`${remainder}m`);
-      if(!pieces.length) pieces.push('0h');
-      return `${pieces.join(' ')} scheduled`;
-    }
-
-    function summarizeDayEntries(entries){
-      if(!entries || !entries.length) return 'No shift';
-      const withRange=entries.filter(entry=>entry && entry.range && Number.isFinite(entry.range.start) && Number.isFinite(entry.range.end));
-      if(withRange.length===1){
-        const single=withRange[0];
-        return `${fmtHMDisplay(single.range.start)} – ${fmtHMDisplay(single.range.end)}`;
-      }
-      const totalMinutes=entries.reduce((total,entry)=>total+calculateEntryMinutes(entry),0);
-      if(withRange.length>1){
-        const durationLabel=totalMinutes>0?formatDuration(totalMinutes):'';
-        const base=`${withRange.length} shifts`;
-        return durationLabel?`${base} • ${durationLabel}`:base;
-      }
-      if(totalMinutes>0){
-        return formatDuration(totalMinutes);
-      }
-      const countLabel=entries.length===1?'1 shift':`${entries.length} shifts`;
-      return countLabel;
     }
 
     function formatDuration(mins){
@@ -1499,33 +1382,31 @@
       const perDay=Array.isArray(week.perDay)?week.perDay:[];
       const layout=currentLayout || DEFAULT_LAYOUT;
       const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
-      if(!dayHeaders.length){
-        if(showHeading){
-          const heading=document.createElement('div');
-          heading.className='schedule-week-heading';
-          const title=document.createElement('div');
-          title.className='schedule-week-title';
-          title.textContent=resolveWeekHeadingTitle(week);
-          heading.appendChild(title);
-          const meta=document.createElement('div');
-          meta.className='schedule-week-meta';
-          meta.textContent='0h scheduled';
-          heading.appendChild(meta);
-          const subtitle=resolveWeekCommencingSubtitle(week);
-          if(subtitle && subtitle!==title.textContent){
-            const rangeEl=document.createElement('div');
-            rangeEl.className='schedule-week-range';
-            rangeEl.textContent=subtitle;
-            heading.appendChild(rangeEl);
-          }
-          container.appendChild(heading);
+      const safeWeekId=(typeof week.id==='string'?week.id:'week').replace(/[^a-z0-9_-]+/gi,'-');
+      if(showHeading){
+        const heading=document.createElement('div');
+        heading.className='schedule-week-heading';
+        const title=document.createElement('div');
+        title.className='schedule-week-title';
+        title.textContent=week.metadata && week.metadata.label?week.metadata.label:'Saved rota';
+        heading.appendChild(title);
+        const headingRange=resolveDateRangeLabelForWeek(model,week.metadata,layout) || (week.metadata && week.metadata.displayRange) || '';
+        if(headingRange){
+          const range=document.createElement('div');
+          range.className='schedule-week-range';
+          range.textContent=headingRange;
+          heading.appendChild(range);
         }
+        container.appendChild(heading);
+      }
+      if(!dayHeaders.length){
         const placeholder=document.createElement('div');
         placeholder.className='empty-state';
         placeholder.innerHTML='<strong>No day columns found</strong>We couldn\'t detect any day headings in this CSV.';
         container.appendChild(placeholder);
         return;
       }
+      const formattedDates=dayHeaders.map(formatFullDayLabel);
       const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
       const parsedHeaders=dayHeaders.map(parseDayHeader);
       const fallbackYear=(()=>{
@@ -1535,31 +1416,16 @@
         if(Number.isInteger(rangeYear)) return rangeYear;
         return null;
       })();
-      const perDayData=perDay;
-      const totalMinutes=calculateTotalScheduledMinutes(perDayData);
-      let weekTitle='Saved rota';
-      if(showHeading){
-        const heading=document.createElement('div');
-        heading.className='schedule-week-heading';
-        const title=document.createElement('div');
-        title.className='schedule-week-title';
-        weekTitle=resolveWeekHeadingTitle(week);
-        title.textContent=weekTitle;
-        heading.appendChild(title);
-        const meta=document.createElement('div');
-        meta.className='schedule-week-meta';
-        meta.textContent=formatScheduledSummary(totalMinutes);
-        heading.appendChild(meta);
-        const subtitle=resolveWeekCommencingSubtitle(week);
-        if(subtitle && subtitle!==weekTitle){
-          const rangeEl=document.createElement('div');
-          rangeEl.className='schedule-week-range';
-          rangeEl.textContent=subtitle;
-          heading.appendChild(rangeEl);
-        }
-        container.appendChild(heading);
-      }
+      const header=document.createElement('div');
+      header.className='schedule-header';
+      const range=document.createElement('div');
+      range.className='schedule-range';
+      range.textContent=dateRangeLabel || 'Date range unavailable';
+      header.appendChild(range);
+      container.appendChild(header);
 
+      const lookup=buildDisplayNameLookup(model);
+      const perDayData=perDay;
       const hasRows=Array.isArray(model.rows) && model.rows.length>0;
 
       let selectedPerson=null;
@@ -1640,68 +1506,86 @@
       dayHeaders.forEach((label,idx)=>{
         const entries=Array.isArray(perDayData[idx])?perDayData[idx].filter(Boolean):[];
         const scheduledEntries=entries.filter(entry=>entry && entry.range);
-        const wrapper=document.createElement('div');
-        wrapper.className='schedule-day-wrapper';
-        const card=document.createElement('article');
-        card.className='schedule-day';
+        const card=document.createElement('details');
+        card.className='schedule-day-card';
+        card.id=`${safeWeekId}-schedule-day-${idx}`;
+        const summary=document.createElement('summary');
+        const summaryText=document.createElement('div');
+        summaryText.className='schedule-day-summary-text';
+        const title=document.createElement('div');
+        title.className='schedule-day-title';
+        title.textContent=formattedDates[idx] || label || `Day ${idx+1}`;
+        summaryText.appendChild(title);
+        const subtitle=document.createElement('div');
+        subtitle.className='schedule-day-subtitle';
+        if(scheduledEntries.length){
+          const labelText=scheduledEntries.length===1?'colleague':'colleagues';
+          subtitle.textContent=`${scheduledEntries.length} ${labelText} scheduled`;
+        }else{
+          subtitle.textContent='No scheduled colleagues';
+        }
+        summaryText.appendChild(subtitle);
+        summary.appendChild(summaryText);
         const headerInfo=parsedHeaders[idx];
         if(isTodayDate(headerInfo,fallbackYear)){
-          card.classList.add('is-today');
+          card.classList.add('today');
+          const badge=document.createElement('span');
+          badge.className='schedule-day-today-badge';
+          badge.textContent='Today';
+          summary.appendChild(badge);
+          summary.setAttribute('aria-label',`${title.textContent} (Today)`);
         }
-        const displayParts=buildScheduleDayDisplay(headerInfo,label,fallbackYear);
-        const labelRow=document.createElement('div');
-        labelRow.className='schedule-day-label';
-        const nameSpan=document.createElement('span');
-        nameSpan.className='schedule-day-name';
-        let fallbackName=(typeof label==='string' && label.trim())?label.trim().slice(0,3):`Day ${idx+1}`;
-        if(typeof fallbackName==='string' && fallbackName){
-          fallbackName=`${fallbackName.charAt(0).toUpperCase()}${fallbackName.slice(1).toLowerCase()}`;
-        }
-        const dayNameText=displayParts.dayName || fallbackName;
-        nameSpan.textContent=dayNameText;
-        labelRow.appendChild(nameSpan);
-        if(displayParts.dayNumber || displayParts.month){
-          const dateSpan=document.createElement('span');
-          dateSpan.className='schedule-day-date';
-          if(displayParts.dayNumber){
-            dateSpan.appendChild(document.createTextNode(displayParts.dayNumber));
-          }
-          if(displayParts.month){
-            if(displayParts.dayNumber){
-              dateSpan.appendChild(document.createTextNode(' '));
+        card.appendChild(summary);
+
+        const content=document.createElement('div');
+        content.className='schedule-day-content';
+        const shiftList=document.createElement('div');
+        shiftList.className='schedule-shifts';
+        if(!scheduledEntries.length){
+          const empty=document.createElement('div');
+          empty.className='no-shifts';
+          empty.textContent='No scheduled colleagues';
+          shiftList.appendChild(empty);
+        }else{
+          const sorted=scheduledEntries.slice().sort((a,b)=>{
+            const aStart=a && a.range?a.range.start:Infinity;
+            const bStart=b && b.range?b.range.start:Infinity;
+            return aStart-bStart;
+          });
+          sorted.forEach(entry=>{
+            const item=document.createElement('article');
+            item.className='shift-card';
+            if(entry.highlight) item.classList.add('highlight');
+            const nameEl=document.createElement('div');
+            nameEl.className='shift-name';
+            nameEl.textContent=resolveEntryDisplayName(entry,lookup);
+            item.appendChild(nameEl);
+            const timeEl=document.createElement('div');
+            timeEl.className='shift-time';
+            const baseLabel=`${fmtHMDisplay(entry.range.start)} – ${fmtHMDisplay(entry.range.end)}`;
+            const timeSpan=document.createElement('span');
+            timeSpan.textContent=baseLabel;
+            timeEl.appendChild(timeSpan);
+            if(entry.segments && entry.segments.length>1){
+              const segmentsSpan=document.createElement('span');
+              segmentsSpan.className='shift-split';
+              segmentsSpan.textContent=entry.segments.map(seg=>`${fmtHMDisplay(seg.start)}–${fmtHMDisplay(seg.end)}`).join('  • ');
+              timeEl.appendChild(segmentsSpan);
             }
-            const monthSpan=document.createElement('span');
-            monthSpan.className='month';
-            monthSpan.textContent=displayParts.month;
-            dateSpan.appendChild(monthSpan);
-          }
-          labelRow.appendChild(dateSpan);
-        }else if(typeof label==='string' && label.trim()){
-          const fallbackDate=document.createElement('span');
-          fallbackDate.className='schedule-day-date';
-          fallbackDate.textContent=label.trim();
-          labelRow.appendChild(fallbackDate);
+            const durationValue=formatDuration((entry.range.end||0)-(entry.range.start||0));
+            if(durationValue){
+              const durationSpan=document.createElement('span');
+              durationSpan.className='shift-duration';
+              durationSpan.textContent=durationValue;
+              timeEl.appendChild(durationSpan);
+            }
+            item.appendChild(timeEl);
+            shiftList.appendChild(item);
+          });
         }
-        card.appendChild(labelRow);
-
-        const metaRow=document.createElement('div');
-        metaRow.className='schedule-day-meta';
-        const statusSpan=document.createElement('span');
-        statusSpan.className='schedule-day-status';
-        statusSpan.textContent='Scheduled';
-        metaRow.appendChild(statusSpan);
-        const valueSpan=document.createElement('span');
-        valueSpan.className='schedule-day-value';
-        const summaryText=summarizeDayEntries(scheduledEntries);
-        if(!scheduledEntries.length || summaryText==='No shift'){
-          valueSpan.classList.add('schedule-day-value-empty');
-        }
-        valueSpan.textContent=summaryText;
-        metaRow.appendChild(valueSpan);
-        card.appendChild(metaRow);
-
-        wrapper.appendChild(card);
-        scheduleDays.appendChild(wrapper);
+        content.appendChild(shiftList);
+        card.appendChild(content);
+        scheduleDays.appendChild(card);
       });
 
       if(allowIndividual){
