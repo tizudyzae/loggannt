@@ -100,6 +100,38 @@
     .pdf-toolbar .btn{flex:0 0 auto}
     .pdf-toolbar-hint{margin:0;font-size:13px;color:var(--muted);max-width:480px}
     .schedule-view{display:flex;flex-direction:column;gap:24px}
+    .line-view{display:flex;flex-direction:column;gap:18px}
+    .line-controls{display:flex;flex-wrap:wrap;gap:14px}
+    .line-controls .ctrl{min-width:180px;flex:1 1 160px}
+    .line-controls .ctrl span{font-weight:600;color:var(--ink)}
+    .line-controls .ctrl .line-slider-value{font-size:12px;color:var(--muted)}
+    .line-slider{width:100%}
+    .line-day-summary{font-size:16px;font-weight:600;color:var(--muted)}
+    .line-chart-shell{position:relative;border:1px solid var(--border);border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);padding:24px;display:flex;flex-direction:column;gap:18px;--line-axis-height:36px;--line-label-width:160px;--line-track-gap:12px}
+    .line-chart-shell[hidden]{display:none !important}
+    .line-chart-axis{position:relative;height:var(--line-axis-height);margin-left:var(--line-label-width)}
+    .line-axis-tick{position:absolute;bottom:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap}
+    .line-axis-tick::before{content:"";width:1px;height:16px;background:var(--grid);display:block}
+    .line-axis-label{padding:2px 8px;border-radius:999px;background:var(--surface-soft);font-weight:600;color:var(--muted);box-shadow:0 6px 14px rgba(7,45,65,.08)}
+    .line-chart-rows{display:flex;flex-direction:column;gap:var(--line-track-gap)}
+    .line-row{display:grid;grid-template-columns:var(--line-label-width) 1fr;gap:14px;align-items:center}
+    .line-row-label{font-weight:700;color:var(--ink);font-size:14px}
+    .line-row.highlight .line-row-label{color:#0d9488}
+    .line-row-track{position:relative;height:52px;border:1px solid var(--border);border-radius:18px;background:var(--surface-soft);overflow:visible}
+    .line-track-marker{position:absolute;top:0;bottom:0;width:0;border-left:1px solid var(--grid);opacity:.5;pointer-events:none}
+    .line-track-marker.minor{opacity:.25}
+    .line-row-off{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;font-weight:600}
+    .line-bar{position:absolute;top:50%;transform:translateY(-50%);height:36px;border-radius:18px;background:var(--accent);display:flex;align-items:center;justify-content:center;padding:0 24px;box-shadow:0 12px 24px rgba(0,123,195,.2);color:#fff;min-width:6px}
+    .line-bar.highlight{background:#0d9488;box-shadow:0 12px 24px rgba(13,148,136,.18)}
+    .line-bar.thin{padding:0 12px}
+    .line-bar-name{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.85);color:var(--ink);padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 8px 16px rgba(9,42,58,.12)}
+    .line-bar.thin .line-bar-name{display:none}
+    .line-bar-time{position:absolute;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:#fff;padding:3px 8px;border-radius:12px;white-space:nowrap}
+    .line-bar-time.start{left:-10px;transform:translate(-100%,-50%);background:#059669}
+    .line-bar-time.end{right:-10px;transform:translate(100%,-50%);background:#dc2626}
+    .line-bar-time.clipped{opacity:.65}
+    .line-chart-empty{margin-left:var(--line-label-width);border:1px dashed var(--border);border-radius:18px;padding:18px;color:var(--muted);font-size:14px;text-align:center;background:var(--surface-soft)}
+    .line-view-placeholder{border:1px dashed var(--border);border-radius:24px;padding:28px;text-align:center;color:var(--muted);background:var(--surface);font-size:15px;box-shadow:0 18px 36px rgba(7,45,65,.08)}
     .schedule-week{display:flex;flex-direction:column;gap:18px}
     .schedule-week-heading{display:flex;flex-direction:column;gap:4px}
     .schedule-week-title{font-size:20px;font-weight:700;color:var(--ink)}
@@ -261,10 +293,39 @@
         <div class="viewer" id="viewerContainer" hidden aria-hidden="true">
           <div class="viewer-tabs" role="tablist" aria-label="Preview modes" hidden aria-hidden="true">
             <button class="viewer-tab active" id="tabSchedule" type="button" role="tab" aria-selected="true" aria-controls="viewSchedule" data-view="schedule">Schedule view</button>
+            <button class="viewer-tab" id="tabLine" type="button" role="tab" aria-selected="false" aria-controls="viewLine" data-view="line">Line view</button>
             <button class="viewer-tab" id="tabPdf" type="button" role="tab" aria-selected="false" aria-controls="viewPdf" data-view="pdf">PDF preview</button>
           </div>
           <section id="viewSchedule" class="view-panel active" role="tabpanel" aria-labelledby="tabSchedule">
             <div id="scheduleView" class="schedule-view"></div>
+          </section>
+          <section id="viewLine" class="view-panel" role="tabpanel" aria-labelledby="tabLine">
+            <div id="lineView" class="line-view">
+              <div class="line-controls" id="lineControls" role="region" aria-label="Line view controls" hidden aria-hidden="true">
+                <label class="ctrl" for="lineDaySelect">
+                  <span>Day</span>
+                  <select id="lineDaySelect" disabled></select>
+                </label>
+                <label class="ctrl" for="lineZoomInput">
+                  <span>Visible window</span>
+                  <input type="range" id="lineZoomInput" class="line-slider" min="60" max="1440" step="15" value="720" disabled>
+                  <span class="line-slider-value" id="lineZoomValue">12h</span>
+                </label>
+                <label class="ctrl" for="linePanInput">
+                  <span>Window start</span>
+                  <input type="range" id="linePanInput" class="line-slider" min="0" max="1380" step="15" value="480" disabled>
+                  <span class="line-slider-value" id="linePanValue">08:00 – 20:00</span>
+                </label>
+              </div>
+              <div class="line-day-summary" id="lineDaySummary" hidden></div>
+              <div class="line-chart-shell" id="lineChartShell" hidden aria-hidden="true">
+                <div class="line-chart-axis" id="lineChartAxis"></div>
+                <div class="line-chart-rows" id="lineChartRows"></div>
+              </div>
+              <div class="line-view-placeholder" id="lineViewEmpty" hidden>
+                <strong>Upload a rota</strong>Load a CSV to explore a condensed timeline of each colleague&#39;s shifts.
+              </div>
+            </div>
           </section>
           <section id="viewPdf" class="view-panel" role="tabpanel" aria-labelledby="tabPdf">
             <div class="pdf-toolbar" role="region" aria-label="PDF export options">
@@ -1335,6 +1396,32 @@
     let lastIndividuals=[];
     let currentIndividualIndex=null;
 
+    const LINE_VIEW_DEFAULT_STATE={dayIndex:0,startMinute:8*60,windowMinutes:12*60};
+    const LINE_VIEW_MIN_WINDOW=60;
+    const LINE_VIEW_MAX_WINDOW=1440;
+    const LINE_VIEW_STEP=15;
+
+    let lineViewState={...LINE_VIEW_DEFAULT_STATE};
+    let lineViewStateInitialized=false;
+    let lineViewLastWeekId=null;
+    let lineViewLastDayIndex=null;
+    let lineViewCurrentEntries=[];
+    let lineViewCurrentLookup=new Map();
+    let lineViewCurrentDayLabel='';
+
+    const lineViewContainer=document.getElementById('lineView');
+    const lineControls=document.getElementById('lineControls');
+    const lineDaySelect=document.getElementById('lineDaySelect');
+    const lineZoomInput=document.getElementById('lineZoomInput');
+    const lineZoomValue=document.getElementById('lineZoomValue');
+    const linePanInput=document.getElementById('linePanInput');
+    const linePanValue=document.getElementById('linePanValue');
+    const lineDaySummary=document.getElementById('lineDaySummary');
+    const lineChartShell=document.getElementById('lineChartShell');
+    const lineChartAxis=document.getElementById('lineChartAxis');
+    const lineChartRows=document.getElementById('lineChartRows');
+    const lineViewEmpty=document.getElementById('lineViewEmpty');
+
     function buildDisplayNameLookup(model){
       const map=new Map();
       if(!model || !Array.isArray(model.rows)) return map;
@@ -1374,6 +1461,349 @@
       if(auto) return auto;
       if(metadata && metadata.displayRange) return metadata.displayRange;
       return '';
+    }
+
+    function clampLineViewWindow(value){
+      if(!Number.isFinite(value)) return LINE_VIEW_DEFAULT_STATE.windowMinutes;
+      const clamped=Math.max(LINE_VIEW_MIN_WINDOW,Math.min(LINE_VIEW_MAX_WINDOW,value));
+      const snapped=Math.round(clamped/LINE_VIEW_STEP)*LINE_VIEW_STEP;
+      return Math.max(LINE_VIEW_MIN_WINDOW,Math.min(LINE_VIEW_MAX_WINDOW,snapped));
+    }
+
+    function clampLineViewStart(value,windowMinutes){
+      if(!Number.isFinite(value)) value=0;
+      const snapped=Math.round(value/LINE_VIEW_STEP)*LINE_VIEW_STEP;
+      const maxStart=Math.max(0,1440-windowMinutes);
+      return Math.max(0,Math.min(maxStart,snapped));
+    }
+
+    function computeLineViewDefaults(entries){
+      const defaults={startMinute:LINE_VIEW_DEFAULT_STATE.startMinute,windowMinutes:LINE_VIEW_DEFAULT_STATE.windowMinutes};
+      if(!Array.isArray(entries) || !entries.length) return defaults;
+      const segments=[];
+      entries.forEach(entry=>{
+        if(entry && Array.isArray(entry.segments)){
+          entry.segments.forEach(seg=>{
+            if(!seg) return;
+            if(Number.isFinite(seg.start) && Number.isFinite(seg.end) && seg.end>seg.start){
+              const start=Math.max(0,Math.min(1440,seg.start));
+              const end=Math.max(0,Math.min(1440,seg.end));
+              if(end>start) segments.push({start,end});
+            }
+          });
+        }else if(entry && entry.range && Number.isFinite(entry.range.start) && Number.isFinite(entry.range.end)){
+          const start=Math.max(0,Math.min(1440,entry.range.start));
+          const end=Math.max(0,Math.min(1440,entry.range.end));
+          if(end>start) segments.push({start,end});
+        }
+      });
+      if(!segments.length) return defaults;
+      const earliest=Math.min(...segments.map(seg=>seg.start));
+      const latest=Math.max(...segments.map(seg=>seg.end));
+      const padding=60;
+      const proposedStart=Math.max(0,earliest-padding);
+      const proposedEnd=Math.min(1440,latest+padding);
+      let windowMinutes=proposedEnd-proposedStart;
+      if(windowMinutes<LINE_VIEW_MIN_WINDOW) windowMinutes=LINE_VIEW_MIN_WINDOW;
+      if(windowMinutes>LINE_VIEW_MAX_WINDOW) windowMinutes=LINE_VIEW_MAX_WINDOW;
+      windowMinutes=clampLineViewWindow(windowMinutes);
+      const startMinute=clampLineViewStart(proposedStart,windowMinutes);
+      return {startMinute,windowMinutes};
+    }
+
+    function chooseLineTickSpacing(windowMinutes){
+      if(windowMinutes<=180) return {major:60,minor:15};
+      if(windowMinutes<=360) return {major:120,minor:30};
+      if(windowMinutes<=720) return {major:180,minor:60};
+      return {major:240,minor:120};
+    }
+
+    function buildLineViewTicks(startMinute,windowMinutes){
+      const ticks=[];
+      if(!Number.isFinite(startMinute) || !Number.isFinite(windowMinutes) || windowMinutes<=0) return ticks;
+      const endMinute=startMinute+windowMinutes;
+      const {major,minor}=chooseLineTickSpacing(windowMinutes);
+      const minorStep=Math.max(5,minor);
+      const majorStep=Math.max(minorStep,major);
+      const first=Math.floor(startMinute/minorStep)*minorStep;
+      for(let minute=first;minute<=endMinute+minorStep;minute+=minorStep){
+        const percent=((minute-startMinute)/windowMinutes)*100;
+        if(percent<-5 || percent>105) continue;
+        const normalized=((minute%majorStep)+majorStep)%majorStep;
+        const isMajor=normalized===0;
+        ticks.push({minute,percent,isMajor});
+      }
+      [startMinute,endMinute].forEach(minute=>{
+        const percent=((minute-startMinute)/windowMinutes)*100;
+        const existing=ticks.find(t=>Math.abs(t.percent-percent)<0.01);
+        if(!existing){
+          ticks.push({minute,percent,isMajor:true});
+        }
+      });
+      ticks.sort((a,b)=>a.minute-b.minute);
+      return ticks.filter(t=>t.percent>=-0.1 && t.percent<=100.1);
+    }
+
+    function updateLineViewRangeControls(){
+      let start=lineViewState.startMinute;
+      const window=lineViewState.windowMinutes;
+      const maxStart=Math.max(0,1440-window);
+      if(lineZoomInput){
+        lineZoomInput.min=String(LINE_VIEW_MIN_WINDOW);
+        lineZoomInput.max=String(LINE_VIEW_MAX_WINDOW);
+        lineZoomInput.step=String(LINE_VIEW_STEP);
+        lineZoomInput.value=String(window);
+        const label=formatDuration(window)||`${Math.round(window/60)}h`;
+        lineZoomInput.setAttribute('aria-valuetext',label);
+        if(lineZoomValue){
+          lineZoomValue.textContent=label;
+        }
+        lineZoomInput.disabled=false;
+      }
+      if(linePanInput){
+        linePanInput.min='0';
+        linePanInput.max=String(maxStart);
+        linePanInput.step=String(LINE_VIEW_STEP);
+        const clampedStart=clampLineViewStart(start,window);
+        lineViewState.startMinute=clampedStart;
+        start=clampedStart;
+        linePanInput.value=String(clampedStart);
+        linePanInput.disabled=maxStart<=0;
+        linePanInput.setAttribute('aria-valuetext',fmtHMDisplay(clampedStart));
+      }
+      if(linePanValue){
+        const end=start+window;
+        linePanValue.textContent=`${fmtHMDisplay(start)} – ${fmtHMDisplay(end)}`;
+      }
+    }
+
+    function syncLineViewControls(dayLabels){
+      const hasData=Array.isArray(dayLabels) && dayLabels.length>0;
+      if(lineControls){
+        lineControls.hidden=!hasData;
+        lineControls.setAttribute('aria-hidden',hasData?'false':'true');
+      }
+      if(lineViewEmpty){
+        lineViewEmpty.hidden=hasData;
+      }
+      if(!hasData){
+        if(lineChartShell){
+          lineChartShell.hidden=true;
+          lineChartShell.setAttribute('aria-hidden','true');
+        }
+        if(lineDaySummary){
+          lineDaySummary.hidden=true;
+        }
+        return;
+      }
+      if(lineDaySelect){
+        const options=dayLabels.map((label,idx)=>`<option value="${idx}">${formatShortDayLabel(label)||`Day ${idx+1}`}</option>`);
+        lineDaySelect.innerHTML=options.join('');
+        lineDaySelect.disabled=dayLabels.length<=1;
+        const desired=Math.min(Math.max(lineViewState.dayIndex||0,0),dayLabels.length-1);
+        lineViewState.dayIndex=desired;
+        lineDaySelect.value=String(desired);
+      }
+      if(lineDaySummary){
+        const label=dayLabels[lineViewState.dayIndex]||`Day ${lineViewState.dayIndex+1}`;
+        lineDaySummary.textContent=formatFullDayLabel(label)||label;
+        lineDaySummary.hidden=false;
+      }
+      if(lineChartShell){
+        lineChartShell.hidden=false;
+        lineChartShell.setAttribute('aria-hidden','false');
+      }
+      updateLineViewRangeControls();
+    }
+
+    function buildRowSortKey(entry){
+      if(!entry) return Number.POSITIVE_INFINITY;
+      if(entry.range && Number.isFinite(entry.range.start)) return entry.range.start;
+      if(Array.isArray(entry.segments) && entry.segments.length){
+        const starts=entry.segments.map(seg=>Number.isFinite(seg.start)?seg.start:Number.POSITIVE_INFINITY);
+        return Math.min(...starts);
+      }
+      return Number.POSITIVE_INFINITY;
+    }
+
+    function drawLineChart(entries,dayLabel){
+      if(!lineChartAxis || !lineChartRows){
+        return;
+      }
+      const start=lineViewState.startMinute;
+      const window=lineViewState.windowMinutes;
+      const end=start+window;
+      const ticks=buildLineViewTicks(start,window);
+      lineChartAxis.innerHTML='';
+      const axisTicks=ticks.filter(t=>t.isMajor && t.percent>=0 && t.percent<=100);
+      axisTicks.forEach(tick=>{
+        const tickEl=document.createElement('div');
+        tickEl.className='line-axis-tick';
+        tickEl.style.left=`${tick.percent}%`;
+        const label=document.createElement('span');
+        label.className='line-axis-label';
+        label.textContent=fmtHMDisplay(tick.minute);
+        tickEl.appendChild(label);
+        lineChartAxis.appendChild(tickEl);
+      });
+      lineChartRows.innerHTML='';
+      if(!Array.isArray(entries) || !entries.length){
+        const empty=document.createElement('div');
+        empty.className='line-chart-empty';
+        empty.textContent='No scheduled shifts for this day.';
+        lineChartRows.appendChild(empty);
+        return;
+      }
+      const sortedEntries=[...entries];
+      sortedEntries.sort((a,b)=>buildRowSortKey(a)-buildRowSortKey(b));
+      sortedEntries.forEach(entry=>{
+        const row=document.createElement('div');
+        row.className='line-row';
+        if(entry && entry.highlight) row.classList.add('highlight');
+        const label=document.createElement('div');
+        label.className='line-row-label';
+        label.textContent=resolveEntryDisplayName(entry,lineViewCurrentLookup);
+        row.appendChild(label);
+        const track=document.createElement('div');
+        track.className='line-row-track';
+        ticks.forEach(tick=>{
+          if(tick.percent<0 || tick.percent>100) return;
+          const marker=document.createElement('div');
+          marker.className=`line-track-marker${tick.isMajor?'':' minor'}`;
+          marker.style.left=`${tick.percent}%`;
+          track.appendChild(marker);
+        });
+        const segments=Array.isArray(entry && entry.segments)?entry.segments:[];
+        const visibleSegments=[];
+        segments.forEach(seg=>{
+          if(!seg) return;
+          const segStart=Number.isFinite(seg.start)?Math.max(0,Math.min(1440,seg.start)):null;
+          const segEnd=Number.isFinite(seg.end)?Math.max(0,Math.min(1440,seg.end)):null;
+          if(segStart===null || segEnd===null || segEnd<=segStart) return;
+          const visibleStart=Math.max(segStart,start);
+          const visibleEnd=Math.min(segEnd,end);
+          if(visibleEnd>visibleStart){
+            visibleSegments.push({segStart,segEnd,visibleStart,visibleEnd});
+          }
+        });
+        if(!visibleSegments.length){
+          const off=document.createElement('div');
+          off.className='line-row-off';
+          off.textContent=segments.length?'Outside current window':'Off';
+          track.appendChild(off);
+        }else{
+          const displayName=resolveEntryDisplayName(entry,lineViewCurrentLookup);
+          visibleSegments.forEach(segment=>{
+            const bar=document.createElement('div');
+            bar.className='line-bar';
+            if(entry && entry.highlight) bar.classList.add('highlight');
+            const left=((segment.visibleStart-start)/window)*100;
+            const width=((segment.visibleEnd-segment.visibleStart)/window)*100;
+            bar.style.left=`${left}%`;
+            bar.style.width=`${width}%`;
+            if(width<12){
+              bar.classList.add('thin');
+            }
+            const titleParts=[displayName,`${fmtHMDisplay(segment.segStart)} – ${fmtHMDisplay(segment.segEnd)}`];
+            const duration=formatDuration(segment.segEnd-segment.segStart);
+            if(duration) titleParts.push(duration);
+            bar.title=titleParts.join(' · ');
+            const startLabel=document.createElement('span');
+            startLabel.className='line-bar-time start';
+            startLabel.textContent=fmtHMDisplay(segment.segStart);
+            if(segment.segStart<start) startLabel.classList.add('clipped');
+            bar.appendChild(startLabel);
+            const nameEl=document.createElement('span');
+            nameEl.className='line-bar-name';
+            nameEl.textContent=displayName;
+            bar.appendChild(nameEl);
+            const endLabel=document.createElement('span');
+            endLabel.className='line-bar-time end';
+            endLabel.textContent=fmtHMDisplay(segment.segEnd);
+            if(segment.segEnd>end) endLabel.classList.add('clipped');
+            bar.appendChild(endLabel);
+            track.appendChild(bar);
+          });
+        }
+        row.appendChild(track);
+        lineChartRows.appendChild(row);
+      });
+    }
+
+    function drawCurrentLineChart(){
+      if(!lineChartShell || lineChartShell.hidden) return;
+      drawLineChart(lineViewCurrentEntries,lineViewCurrentDayLabel);
+    }
+
+    function renderLineView(weeks=getActiveWeekData()){
+      if(!lineViewContainer) return;
+      if(!Array.isArray(weeks) || !weeks.length){
+        if(lineControls){
+          lineControls.hidden=true;
+          lineControls.setAttribute('aria-hidden','true');
+        }
+        if(lineChartShell){
+          lineChartShell.hidden=true;
+          lineChartShell.setAttribute('aria-hidden','true');
+        }
+        if(lineDaySummary){
+          lineDaySummary.hidden=true;
+        }
+        if(lineViewEmpty){
+          lineViewEmpty.hidden=false;
+        }
+        lineViewCurrentEntries=[];
+        lineViewCurrentLookup=new Map();
+        lineViewCurrentDayLabel='';
+        lineViewStateInitialized=false;
+        lineViewLastWeekId=null;
+        lineViewLastDayIndex=null;
+        return;
+      }
+      const week=weeks[0];
+      const model=week && week.model;
+      if(!model){
+        return;
+      }
+      const perDay=Array.isArray(week.perDay)?week.perDay:[];
+      const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
+      if(!perDay.length){
+        syncLineViewControls([]);
+        return;
+      }
+      const weekId=week.id||'week';
+      if(weekId!==lineViewLastWeekId){
+        lineViewLastWeekId=weekId;
+        lineViewStateInitialized=false;
+      }
+      if(lineViewState.dayIndex>=perDay.length){
+        lineViewState.dayIndex=perDay.length-1;
+        lineViewStateInitialized=false;
+      }
+      if(lineViewState.dayIndex<0){
+        lineViewState.dayIndex=0;
+        lineViewStateInitialized=false;
+      }
+      if(lineViewLastDayIndex!==lineViewState.dayIndex){
+        lineViewLastDayIndex=lineViewState.dayIndex;
+        lineViewStateInitialized=false;
+      }
+      const dayLabels=perDay.map((_,idx)=>dayHeaders[idx]||`Day ${idx+1}`);
+      const entries=Array.isArray(perDay[lineViewState.dayIndex])?perDay[lineViewState.dayIndex]:[];
+      if(!lineViewStateInitialized){
+        const defaults=computeLineViewDefaults(entries);
+        lineViewState.startMinute=defaults.startMinute;
+        lineViewState.windowMinutes=defaults.windowMinutes;
+        lineViewStateInitialized=true;
+      }else{
+        lineViewState.windowMinutes=clampLineViewWindow(lineViewState.windowMinutes);
+        lineViewState.startMinute=clampLineViewStart(lineViewState.startMinute,lineViewState.windowMinutes);
+      }
+      lineViewCurrentEntries=entries;
+      lineViewCurrentLookup=buildDisplayNameLookup(model);
+      lineViewCurrentDayLabel=dayLabels[lineViewState.dayIndex]||`Day ${lineViewState.dayIndex+1}`;
+      syncLineViewControls(dayLabels);
+      drawLineChart(entries,lineViewCurrentDayLabel);
     }
 
     function renderWeekSchedule(container,week,{allowIndividual=true,showHeading=true}={}){
@@ -1766,6 +2196,7 @@
         switchView('schedule');
       }
       renderScheduleView(weeks);
+      renderLineView(weeks);
       renderPdfPreview(weeks);
     }
 
@@ -2687,6 +3118,7 @@
     const viewerTabs=Array.from(document.querySelectorAll('.viewer-tab'));
     const viewPanels={
       schedule:document.getElementById('viewSchedule'),
+      line:document.getElementById('viewLine'),
       pdf:document.getElementById('viewPdf'),
     };
     let activeView='schedule';
@@ -2744,6 +3176,108 @@
         });
       });
       switchView(activeView);
+    }
+
+    if(lineDaySelect){
+      lineDaySelect.addEventListener('change',()=>{
+        const value=parseInt(lineDaySelect.value,10);
+        if(!Number.isNaN(value)){
+          lineViewState.dayIndex=value;
+          lineViewStateInitialized=false;
+          renderLineView(getActiveWeekData());
+        }
+      });
+    }
+
+    const handleLineZoomChange=()=>{
+      if(!lineZoomInput) return;
+      const value=parseInt(lineZoomInput.value,10);
+      if(Number.isNaN(value)) return;
+      const windowMinutes=clampLineViewWindow(value);
+      if(windowMinutes!==lineViewState.windowMinutes){
+        lineViewState.windowMinutes=windowMinutes;
+        lineViewState.startMinute=clampLineViewStart(lineViewState.startMinute,windowMinutes);
+      }
+      updateLineViewRangeControls();
+      drawCurrentLineChart();
+    };
+
+    if(lineZoomInput){
+      lineZoomInput.addEventListener('input',handleLineZoomChange);
+      lineZoomInput.addEventListener('change',handleLineZoomChange);
+    }
+
+    const handleLinePanChange=()=>{
+      if(!linePanInput) return;
+      const value=parseInt(linePanInput.value,10);
+      if(Number.isNaN(value)) return;
+      const clamped=clampLineViewStart(value,lineViewState.windowMinutes);
+      if(clamped!==lineViewState.startMinute){
+        lineViewState.startMinute=clamped;
+      }
+      updateLineViewRangeControls();
+      drawCurrentLineChart();
+    };
+
+    if(linePanInput){
+      linePanInput.addEventListener('input',handleLinePanChange);
+      linePanInput.addEventListener('change',handleLinePanChange);
+    }
+
+    let lineViewDrag=null;
+
+    function getLineTrackMetrics(){
+      if(!lineChartRows) return null;
+      const firstTrack=lineChartRows.querySelector('.line-row-track');
+      if(!firstTrack) return null;
+      const rect=firstTrack.getBoundingClientRect();
+      if(!rect || rect.width<=0) return null;
+      return {left:rect.left,right:rect.right,width:rect.width};
+    }
+
+    function handleLinePointerDown(event){
+      if(event.button!==0) return;
+      if(!lineChartShell || lineChartShell.hidden) return;
+      const element=event.target instanceof Element?event.target:null;
+      const inTrack=element?element.closest('.line-row-track'):null;
+      const inAxis=element && lineChartAxis?lineChartAxis.contains(element):false;
+      if(!inTrack && !inAxis) return;
+      const metrics=getLineTrackMetrics();
+      if(!metrics) return;
+      lineViewDrag={pointerId:event.pointerId,startX:event.clientX,startMinute:lineViewState.startMinute,trackWidth:metrics.width};
+      lineChartShell.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    }
+
+    function handleLinePointerMove(event){
+      if(!lineViewDrag || event.pointerId!==lineViewDrag.pointerId) return;
+      if(!lineChartShell || lineChartShell.hidden) return;
+      if(!lineViewDrag.trackWidth) return;
+      const delta=event.clientX-lineViewDrag.startX;
+      const minutesDelta=(delta/lineViewDrag.trackWidth)*lineViewState.windowMinutes;
+      const newStart=clampLineViewStart(lineViewDrag.startMinute-minutesDelta,lineViewState.windowMinutes);
+      if(newStart!==lineViewState.startMinute){
+        lineViewState.startMinute=newStart;
+        updateLineViewRangeControls();
+        drawCurrentLineChart();
+      }
+      event.preventDefault();
+    }
+
+    function handleLinePointerUp(event){
+      if(!lineViewDrag || event.pointerId!==lineViewDrag.pointerId) return;
+      if(lineChartShell && lineChartShell.hasPointerCapture(event.pointerId)){
+        lineChartShell.releasePointerCapture(event.pointerId);
+      }
+      lineViewDrag=null;
+    }
+
+    if(lineChartShell){
+      lineChartShell.addEventListener('pointerdown',handleLinePointerDown);
+      lineChartShell.addEventListener('pointermove',handleLinePointerMove);
+      lineChartShell.addEventListener('pointerup',handleLinePointerUp);
+      lineChartShell.addEventListener('pointercancel',handleLinePointerUp);
+      lineChartShell.addEventListener('lostpointercapture',handleLinePointerUp);
     }
 
     const layoutControlIds=[
