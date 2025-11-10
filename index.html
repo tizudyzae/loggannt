@@ -118,15 +118,15 @@
     .line-row-track{position:relative;height:52px;border:1px solid var(--border);border-radius:18px;background:var(--surface-soft);overflow:visible}
     .line-track-marker{position:absolute;top:0;bottom:0;width:0;border-left:1px solid var(--grid);opacity:.5;pointer-events:none}
     .line-track-marker.minor{opacity:.25}
-    .line-bar{position:absolute;top:50%;transform:translateY(-50%);height:36px;border-radius:18px;background:var(--accent);display:flex;align-items:center;justify-content:center;padding:0 24px;box-shadow:0 12px 24px rgba(0,123,195,.2);color:#fff;min-width:6px}
+    .line-bar{position:absolute;top:50%;transform:translateY(-50%);height:36px;border-radius:18px;background:var(--accent);display:flex;align-items:center;justify-content:center;padding:0 24px;box-shadow:0 12px 24px rgba(0,123,195,.2);color:#fff;min-width:6px;z-index:1}
     .line-bar.highlight{background:#0d9488;box-shadow:0 12px 24px rgba(13,148,136,.18)}
     .line-bar.thin{padding:0 12px}
     .line-bar-name{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.85);color:var(--ink);padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 8px 16px rgba(9,42,58,.12)}
     .line-bar.thin .line-bar-name{display:none}
-    .line-bar-time{position:absolute;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:#fff;padding:3px 8px;border-radius:12px;white-space:nowrap;--line-time-shift:0px}
+    .line-bar-time{position:absolute;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:#fff;padding:3px 8px;border-radius:12px;white-space:nowrap;--line-time-shift:0px;z-index:2;pointer-events:none}
     .line-bar-time.start{left:-10px;transform:translate(calc(-100% + var(--line-time-shift,0px)),-50%);background:#059669}
     .line-bar-time.end{right:-10px;transform:translate(calc(100% - var(--line-time-shift,0px)),-50%);background:#dc2626}
-    .line-bar-time.clipped{opacity:.65}
+    .line-bar-time.clipped{opacity:1}
     .line-bar-time.bumped{top:-8px;transform:translateY(-100%);box-shadow:0 6px 16px rgba(9,42,58,.16)}
     .line-bar-time.start.bumped{transform:translate(calc(-100% + var(--line-time-shift,0px)),-100%)}
     .line-bar-time.end.bumped{transform:translate(calc(100% - var(--line-time-shift,0px)),-100%)}
