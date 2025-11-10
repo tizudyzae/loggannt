@@ -123,9 +123,9 @@
     .line-bar.thin{padding:0 12px}
     .line-bar-name{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.85);color:var(--ink);padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 8px 16px rgba(9,42,58,.12)}
     .line-bar.thin .line-bar-name{display:none}
-    .line-bar-time{position:absolute;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:#fff;padding:3px 8px;border-radius:12px;white-space:nowrap}
-    .line-bar-time.start{left:-10px;transform:translate(-100%,-50%);background:#059669}
-    .line-bar-time.end{right:-10px;transform:translate(100%,-50%);background:#dc2626}
+    .line-bar-time{position:absolute;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:#fff;padding:3px 8px;border-radius:12px;white-space:nowrap;--line-time-shift:0px}
+    .line-bar-time.start{left:-10px;transform:translate(calc(-100% + var(--line-time-shift,0px)),-50%);background:#059669}
+    .line-bar-time.end{right:-10px;transform:translate(calc(100% - var(--line-time-shift,0px)),-50%);background:#dc2626}
     .line-bar-time.clipped{opacity:.65}
     .line-chart-empty{border:1px dashed var(--border);border-radius:18px;padding:18px;color:var(--muted);font-size:14px;text-align:center;background:var(--surface-soft)}
     .line-view-placeholder{border:1px dashed var(--border);border-radius:24px;padding:28px;text-align:center;color:var(--muted);background:var(--surface);font-size:15px;box-shadow:0 18px 36px rgba(7,45,65,.08)}
@@ -1635,6 +1635,7 @@
         lineChartAxis.appendChild(tickEl);
       });
       lineChartRows.innerHTML='';
+      const barsNeedingAdjustment=[];
       if(!Array.isArray(entries) || !entries.length){
         const empty=document.createElement('div');
         empty.className='line-chart-empty';
@@ -1723,11 +1724,13 @@
             endLabel.textContent=fmtHMDisplay(segment.segEnd);
             if(segment.segEnd>end) endLabel.classList.add('clipped');
             bar.appendChild(endLabel);
+            barsNeedingAdjustment.push({startLabel,endLabel});
             track.appendChild(bar);
           });
           row.appendChild(track);
           lineChartRows.appendChild(row);
         });
+        adjustLineBarTimeLabels(barsNeedingAdjustment);
       }
 
       if(lineWindowHint){
@@ -1739,6 +1742,32 @@
           lineWindowHint.textContent=lineWindowHintDefault;
         }
       }
+    }
+
+    function adjustLineBarTimeLabels(bars=[]){
+      if(!Array.isArray(bars) || !bars.length || !lineChartShell){
+        return;
+      }
+      const shellRect=lineChartShell.getBoundingClientRect();
+      const safePadding=12;
+      bars.forEach(({startLabel,endLabel})=>{
+        if(startLabel){
+          startLabel.style.removeProperty('--line-time-shift');
+          const rect=startLabel.getBoundingClientRect();
+          const overflowLeft=(shellRect.left+safePadding)-rect.left;
+          if(overflowLeft>0){
+            startLabel.style.setProperty('--line-time-shift',`${overflowLeft}px`);
+          }
+        }
+        if(endLabel){
+          endLabel.style.removeProperty('--line-time-shift');
+          const rect=endLabel.getBoundingClientRect();
+          const overflowRight=rect.right-(shellRect.right-safePadding);
+          if(overflowRight>0){
+            endLabel.style.setProperty('--line-time-shift',`${overflowRight}px`);
+          }
+        }
+      });
     }
 
     function drawCurrentLineChart(){
