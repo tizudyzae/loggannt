@@ -105,6 +105,12 @@
     .line-controls .ctrl{min-width:180px;flex:1 1 160px}
     .line-controls .ctrl span{font-weight:600;color:var(--ink)}
     .line-window-hint{margin:0;font-size:12px;color:var(--muted);max-width:320px}
+    .line-presets{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .line-preset-btn{appearance:none;border-radius:999px;border:1px solid var(--border);background:var(--surface-soft);color:var(--muted);font-weight:600;padding:8px 16px;font-size:13px;cursor:pointer;transition:background .2s ease,color .2s ease,border-color .2s ease,box-shadow .2s ease}
+    .line-preset-btn:hover{background:var(--accent-soft);color:var(--accent)}
+    .line-preset-btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+    .line-preset-btn[disabled]{opacity:.5;cursor:not-allowed;box-shadow:none}
+    .line-preset-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 10px 20px rgba(0,123,195,.18)}
     .line-day-summary{font-size:16px;font-weight:600;color:var(--muted)}
     .line-chart-shell{position:relative;border:1px solid var(--border);border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);padding:24px;display:flex;flex-direction:column;gap:18px;--line-axis-height:36px;--line-track-gap:12px;touch-action:pan-y}
     .line-chart-shell[hidden]{display:none !important}
@@ -309,6 +315,11 @@
                 <p class="control-hint line-window-hint" id="lineWindowHint">Pinch to zoom the visible hours and drag the timeline to pan.</p>
               </div>
               <div class="line-day-summary" id="lineDaySummary" hidden></div>
+              <div class="line-presets" id="linePresetButtons" hidden aria-hidden="true">
+                <button class="line-preset-btn" type="button" data-start="300" data-end="870" aria-label="Show 5:00am to 2:30pm">Morning</button>
+                <button class="line-preset-btn" type="button" data-start="540" data-end="1080" aria-label="Show 9:00am to 6:00pm">Midday</button>
+                <button class="line-preset-btn" type="button" data-start="810" data-end="1380" aria-label="Show 1:30pm to 11:00pm">Evening</button>
+              </div>
               <div class="line-chart-shell" id="lineChartShell" hidden aria-hidden="true">
                 <div class="line-chart-axis" id="lineChartAxis"></div>
                 <div class="line-chart-rows" id="lineChartRows"></div>
@@ -1411,6 +1422,21 @@
     const lineChartAxis=document.getElementById('lineChartAxis');
     const lineChartRows=document.getElementById('lineChartRows');
     const lineViewEmpty=document.getElementById('lineViewEmpty');
+    const linePresetButtons=document.getElementById('linePresetButtons');
+    const linePresetButtonList=linePresetButtons?Array.from(linePresetButtons.querySelectorAll('button[data-start][data-end]')):[];
+
+    if(Array.isArray(linePresetButtonList) && linePresetButtonList.length){
+      linePresetButtonList.forEach(btn=>{
+        if(!btn) return;
+        btn.addEventListener('click',()=>{
+          const start=parseFloat(btn.dataset.start);
+          const end=parseFloat(btn.dataset.end);
+          if(Number.isFinite(start) && Number.isFinite(end) && end>start){
+            applyLineViewPresetRange(start,end);
+          }
+        });
+      });
+    }
 
     function buildDisplayNameLookup(model){
       const map=new Map();
@@ -1465,6 +1491,65 @@
       const snapped=Math.round(value/LINE_VIEW_STEP)*LINE_VIEW_STEP;
       const maxStart=Math.max(0,1440-windowMinutes);
       return Math.max(0,Math.min(maxStart,snapped));
+    }
+
+    function applyLineViewPresetRange(startMinute,endMinute){
+      if(!Number.isFinite(startMinute) || !Number.isFinite(endMinute)) return;
+      const clampedStart=Math.max(0,Math.min(1440,startMinute));
+      const clampedEnd=Math.max(0,Math.min(1440,endMinute));
+      if(clampedEnd<=clampedStart) return;
+      const span=clampedEnd-clampedStart;
+      const windowMinutes=clampLineViewWindow(span);
+      const start=clampLineViewStart(clampedStart,windowMinutes);
+      const windowChanged=Math.abs(lineViewState.windowMinutes-windowMinutes)>=0.5;
+      const startChanged=Math.abs(lineViewState.startMinute-start)>=0.5;
+      if(!windowChanged && !startChanged) return;
+      lineViewState.windowMinutes=windowMinutes;
+      lineViewState.startMinute=start;
+      lineViewBaseMinutesPerPixel=null;
+      drawCurrentLineChart();
+    }
+
+    function updateLinePresetActiveState(){
+      if(!Array.isArray(linePresetButtonList) || !linePresetButtonList.length) return;
+      linePresetButtonList.forEach(btn=>{
+        if(!btn) return;
+        if(btn.disabled){
+          btn.classList.remove('active');
+          return;
+        }
+        const start=parseFloat(btn.dataset.start);
+        const end=parseFloat(btn.dataset.end);
+        if(Number.isFinite(start) && Number.isFinite(end) && end>start){
+          const window=end-start;
+          const matches=Math.abs(lineViewState.startMinute-start)<=1 && Math.abs(lineViewState.windowMinutes-window)<=1;
+          if(matches){
+            btn.classList.add('active');
+          }else{
+            btn.classList.remove('active');
+          }
+        }else{
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    function syncLinePresetButtons(hasData){
+      if(!linePresetButtons) return;
+      const show=!!hasData;
+      linePresetButtons.hidden=!show;
+      linePresetButtons.setAttribute('aria-hidden',show?'false':'true');
+      if(!Array.isArray(linePresetButtonList)) return;
+      linePresetButtonList.forEach(btn=>{
+        if(!btn) return;
+        btn.disabled=!show;
+        if(!show){
+          btn.classList.remove('active');
+        }
+      });
+      if(show){
+        updateLinePresetActiveState();
+      }
     }
 
     function computeLineViewDefaults(entries){
@@ -1575,6 +1660,7 @@
       if(lineViewEmpty){
         lineViewEmpty.hidden=hasData;
       }
+      syncLinePresetButtons(hasData);
       if(!hasData){
         if(lineChartShell){
           lineChartShell.hidden=true;
@@ -1644,6 +1730,7 @@
       lineChartRows.innerHTML='';
       const barsNeedingAdjustment=[];
       if(!Array.isArray(entries) || !entries.length){
+        updateLinePresetActiveState();
         const empty=document.createElement('div');
         empty.className='line-chart-empty';
         empty.textContent='No scheduled shifts for this day.';
@@ -1749,6 +1836,7 @@
           lineWindowHint.textContent=lineWindowHintDefault;
         }
       }
+      updateLinePresetActiveState();
     }
 
     function adjustLineBarTimeLabels(bars=[]){
@@ -1919,9 +2007,10 @@
         if(lineDaySummary){
           lineDaySummary.hidden=true;
         }
-      if(lineViewEmpty){
-        lineViewEmpty.hidden=false;
-      }
+        syncLinePresetButtons(false);
+        if(lineViewEmpty){
+          lineViewEmpty.hidden=false;
+        }
       lineViewCurrentEntries=[];
       lineViewCurrentLookup=new Map();
       lineViewCurrentDayLabel='';
