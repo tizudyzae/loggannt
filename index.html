@@ -106,7 +106,7 @@
     .line-controls .ctrl span{font-weight:600;color:var(--ink)}
     .line-window-hint{margin:0;font-size:12px;color:var(--muted);max-width:320px}
     .line-day-summary{font-size:16px;font-weight:600;color:var(--muted)}
-    .line-chart-shell{position:relative;border:1px solid var(--border);border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);padding:24px;display:flex;flex-direction:column;gap:18px;--line-axis-height:36px;--line-track-gap:12px;touch-action:none}
+    .line-chart-shell{position:relative;border:1px solid var(--border);border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);padding:24px;display:flex;flex-direction:column;gap:18px;--line-axis-height:36px;--line-track-gap:12px;touch-action:pan-y}
     .line-chart-shell[hidden]{display:none !important}
     .line-chart-axis{position:relative;height:var(--line-axis-height)}
     .line-axis-tick{position:absolute;bottom:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap}
@@ -3226,13 +3226,15 @@
       if(!inTrack && !inAxis) return;
       const metrics=getLineTrackMetrics();
       if(!metrics) return;
-      lineViewPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+      lineViewPointers.set(event.pointerId,{x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY,ignore:false});
       lineChartShell.setPointerCapture(event.pointerId);
-      if(lineViewPointers.size===1){
-        lineViewDrag={pointerId:event.pointerId,startX:event.clientX,startMinute:lineViewState.startMinute,trackWidth:metrics.width};
+      const activeEntries=Array.from(lineViewPointers.entries()).filter(([,info])=>info && !info.ignore);
+      if(activeEntries.length===1){
+        const [activeId,info]=activeEntries[0];
+        lineViewDrag={pointerId:activeId,startX:info?info.startX:event.clientX,startY:info?info.startY:event.clientY,startMinute:lineViewState.startMinute,trackWidth:metrics.width,intent:null};
         lineViewPinch=null;
-      }else if(lineViewPointers.size>=2){
-        const pointerEntries=Array.from(lineViewPointers.entries()).slice(0,2);
+      }else if(activeEntries.length>=2){
+        const pointerEntries=activeEntries.slice(0,2);
         const firstPos=pointerEntries[0][1];
         const secondPos=pointerEntries[1][1];
         const distance=Math.hypot(secondPos.x-firstPos.x,secondPos.y-firstPos.y);
@@ -3251,19 +3253,26 @@
           lineViewDrag=null;
         }
       }
-      event.preventDefault();
     }
 
     function handleLinePointerMove(event){
       if(!lineChartShell || lineChartShell.hidden) return;
       if(lineViewPointers.has(event.pointerId)){
-        lineViewPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+        const info=lineViewPointers.get(event.pointerId);
+        if(info){
+          info.x=event.clientX;
+          info.y=event.clientY;
+        }
       }
       if(lineViewPinch){
-        const activeIds=lineViewPinch.pointerIds.filter(id=>lineViewPointers.has(id));
+        const activeIds=lineViewPinch.pointerIds.filter(id=>{
+          const info=lineViewPointers.get(id);
+          return info && !info.ignore;
+        });
         if(activeIds.length>=2 && lineViewPinch.metrics && lineViewPinch.metrics.width){
           const firstPos=lineViewPointers.get(activeIds[0]);
           const secondPos=lineViewPointers.get(activeIds[1]);
+          if(!firstPos || !secondPos) return;
           const distance=Math.hypot(secondPos.x-firstPos.x,secondPos.y-firstPos.y);
           if(distance>0){
             const scale=lineViewPinch.initialDistance/distance;
@@ -3289,8 +3298,29 @@
       }
       if(!lineViewDrag || event.pointerId!==lineViewDrag.pointerId) return;
       if(!lineViewDrag.trackWidth) return;
-      const delta=event.clientX-lineViewDrag.startX;
-      const minutesDelta=(delta/lineViewDrag.trackWidth)*lineViewState.windowMinutes;
+      const deltaX=event.clientX-lineViewDrag.startX;
+      const deltaY=event.clientY-lineViewDrag.startY;
+      const threshold=6;
+      if(!lineViewDrag.intent){
+        if(Math.abs(deltaY)>Math.abs(deltaX) && Math.abs(deltaY)>threshold){
+          const info=lineViewPointers.get(event.pointerId);
+          if(info){
+            info.ignore=true;
+          }
+          if(lineChartShell.hasPointerCapture(event.pointerId)){
+            lineChartShell.releasePointerCapture(event.pointerId);
+          }
+          lineViewDrag=null;
+          return;
+        }
+        if(Math.abs(deltaX)>threshold){
+          lineViewDrag.intent='horizontal';
+        }else{
+          return;
+        }
+      }
+      if(!lineViewDrag || lineViewDrag.intent!=='horizontal') return;
+      const minutesDelta=(deltaX/lineViewDrag.trackWidth)*lineViewState.windowMinutes;
       const newStart=clampLineViewStart(lineViewDrag.startMinute-minutesDelta,lineViewState.windowMinutes);
       if(newStart!==lineViewState.startMinute){
         lineViewState.startMinute=newStart;
@@ -3312,13 +3342,13 @@
       if(lineViewDrag && event.pointerId===lineViewDrag.pointerId){
         lineViewDrag=null;
       }
-      if(!lineViewPinch && lineViewPointers.size===1){
-        const iterator=lineViewPointers.entries().next();
-        if(iterator && iterator.value){
-          const [remainingId,pos]=iterator.value;
+      if(!lineViewPinch){
+        const activeEntries=Array.from(lineViewPointers.entries()).filter(([,info])=>info && !info.ignore);
+        if(activeEntries.length===1){
+          const [remainingId,pos]=activeEntries[0];
           const metrics=getLineTrackMetrics();
-          if(metrics){
-            lineViewDrag={pointerId:remainingId,startX:pos.x,startMinute:lineViewState.startMinute,trackWidth:metrics.width};
+          if(metrics && pos){
+            lineViewDrag={pointerId:remainingId,startX:pos.x,startY:pos.y,startMinute:lineViewState.startMinute,trackWidth:metrics.width,intent:null};
           }
         }
       }
