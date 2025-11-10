@@ -127,9 +127,9 @@
     .line-bar-time.start{left:-10px;transform:translate(calc(-100% + var(--line-time-shift,0px)),-50%);background:#059669}
     .line-bar-time.end{right:-10px;transform:translate(calc(100% - var(--line-time-shift,0px)),-50%);background:#dc2626}
     .line-bar-time.clipped{opacity:1}
-    .line-bar-time.bumped{top:-8px;transform:translateY(-100%);box-shadow:0 6px 16px rgba(9,42,58,.16)}
-    .line-bar-time.start.bumped{transform:translate(calc(-100% + var(--line-time-shift,0px)),-100%)}
-    .line-bar-time.end.bumped{transform:translate(calc(100% - var(--line-time-shift,0px)),-100%)}
+    .line-bar-time.bumped{top:50%;transform:translateY(-50%);box-shadow:0 6px 16px rgba(9,42,58,.16)}
+    .line-bar-time.start.bumped{transform:translate(calc(-100% + var(--line-time-shift,0px)),-50%)}
+    .line-bar-time.end.bumped{transform:translate(calc(100% - var(--line-time-shift,0px)),-50%)}
     .line-chart-empty{border:1px dashed var(--border);border-radius:18px;padding:18px;color:var(--muted);font-size:14px;text-align:center;background:var(--surface-soft)}
     .line-view-placeholder{border:1px dashed var(--border);border-radius:24px;padding:28px;text-align:center;color:var(--muted);background:var(--surface);font-size:15px;box-shadow:0 18px 36px rgba(7,45,65,.08)}
     .schedule-week{display:flex;flex-direction:column;gap:18px}
@@ -1757,47 +1757,144 @@
       }
       const shellRect=lineChartShell.getBoundingClientRect();
       const safePadding=12;
+      const labelGap=8;
       const bumpedClass='bumped';
       bars.forEach(({bar,startLabel,endLabel,nameEl})=>{
         const barRect=bar?bar.getBoundingClientRect():null;
         const nameRect=nameEl?nameEl.getBoundingClientRect():null;
-        if(startLabel){
+        const startCtrl=startLabel?(()=>{
           startLabel.style.removeProperty('--line-time-shift');
           startLabel.classList.remove(bumpedClass);
+          let shift=0;
           let rect=startLabel.getBoundingClientRect();
-          const overflowLeft=(shellRect.left+safePadding)-rect.left;
-          if(overflowLeft>0){
-            startLabel.style.setProperty('--line-time-shift',`${overflowLeft}px`);
+          const setShift=value=>{
+            shift=value;
+            if(Math.abs(shift)<0.01){
+              startLabel.style.removeProperty('--line-time-shift');
+            }else{
+              startLabel.style.setProperty('--line-time-shift',`${shift}px`);
+            }
             rect=startLabel.getBoundingClientRect();
-          }
-          const overlapsBar=barRect && rectsOverlap(rect,barRect);
-          const overlapsName=nameRect && rectsOverlap(rect,nameRect);
-          if(overflowLeft>0 || overlapsBar || overlapsName){
-            startLabel.classList.add(bumpedClass);
-          }
-        }
-        if(endLabel){
+          };
+          const ensureLeftBoundary=()=>{
+            const overflow=(shellRect.left+safePadding)-rect.left;
+            if(overflow>0){
+              setShift(shift+overflow);
+            }
+          };
+          ensureLeftBoundary();
+          return {
+            moveLeft:amount=>{
+              if(amount>0){
+                setShift(shift-amount);
+                ensureLeftBoundary();
+              }
+            },
+            moveRight:amount=>{
+              if(amount>0){
+                setShift(shift+amount);
+                ensureLeftBoundary();
+              }
+            },
+            get rect(){
+              return rect;
+            },
+            get label(){
+              return startLabel;
+            }
+          };
+        })():null;
+        const endCtrl=endLabel?(()=>{
           endLabel.style.removeProperty('--line-time-shift');
           endLabel.classList.remove(bumpedClass);
+          let shift=0;
           let rect=endLabel.getBoundingClientRect();
-          const overflowRight=rect.right-(shellRect.right-safePadding);
-          if(overflowRight>0){
-            endLabel.style.setProperty('--line-time-shift',`${overflowRight}px`);
+          const setShift=value=>{
+            shift=value;
+            if(Math.abs(shift)<0.01){
+              endLabel.style.removeProperty('--line-time-shift');
+            }else{
+              endLabel.style.setProperty('--line-time-shift',`${shift}px`);
+            }
             rect=endLabel.getBoundingClientRect();
+          };
+          const ensureRightBoundary=()=>{
+            const overflow=rect.right-(shellRect.right-safePadding);
+            if(overflow>0){
+              setShift(shift+overflow);
+            }
+          };
+          ensureRightBoundary();
+          return {
+            moveLeft:amount=>{
+              if(amount>0){
+                setShift(shift+amount);
+                ensureRightBoundary();
+              }
+            },
+            moveRight:amount=>{
+              if(amount>0){
+                setShift(shift-amount);
+                ensureRightBoundary();
+              }
+            },
+            get rect(){
+              return rect;
+            },
+            get label(){
+              return endLabel;
+            }
+          };
+        })():null;
+        if(startCtrl){
+          if(barRect){
+            const overlap=startCtrl.rect.right-barRect.left;
+            if(overlap>0){
+              startCtrl.moveLeft(overlap+labelGap);
+            }
           }
-          const overlapsBar=barRect && rectsOverlap(rect,barRect);
-          const overlapsName=nameRect && rectsOverlap(rect,nameRect);
-          if(overflowRight>0 || overlapsBar || overlapsName){
-            endLabel.classList.add(bumpedClass);
+          if(nameRect){
+            const overlap=startCtrl.rect.right-nameRect.left;
+            if(overlap>0){
+              startCtrl.moveLeft(overlap+labelGap);
+            }
           }
         }
-        if(startLabel && endLabel){
-          const startRect=startLabel.getBoundingClientRect();
-          const endRect=endLabel.getBoundingClientRect();
-          if(rectsOverlap(startRect,endRect)){
-            startLabel.classList.add(bumpedClass);
-            endLabel.classList.add(bumpedClass);
+        if(endCtrl){
+          if(barRect){
+            const overlap=barRect.right-endCtrl.rect.left;
+            if(overlap>0){
+              endCtrl.moveRight(overlap+labelGap);
+            }
           }
+          if(nameRect){
+            const overlap=nameRect.right-endCtrl.rect.left;
+            if(overlap>0){
+              endCtrl.moveRight(overlap+labelGap);
+            }
+          }
+        }
+        if(startCtrl && endCtrl){
+          let overlap=startCtrl.rect.right-endCtrl.rect.left;
+          if(overlap>0){
+            const offset=overlap/2+labelGap;
+            startCtrl.moveLeft(offset);
+            endCtrl.moveRight(offset);
+            overlap=startCtrl.rect.right-endCtrl.rect.left;
+            if(overlap>0){
+              const remainder=overlap+labelGap;
+              startCtrl.moveLeft(remainder);
+              endCtrl.moveRight(remainder);
+            }
+          }
+        }
+        const startRect=startCtrl?startCtrl.rect:null;
+        const endRect=endCtrl?endCtrl.rect:null;
+        if(startCtrl && ((barRect && rectsOverlap(startRect,barRect)) || (nameRect && rectsOverlap(startRect,nameRect)) || (endRect && rectsOverlap(startRect,endRect)))){
+          startCtrl.label.classList.add(bumpedClass);
+        }
+        if(endCtrl && ((barRect && rectsOverlap(endRect,barRect)) || (nameRect && rectsOverlap(endRect,nameRect)))){
+          endCtrl.label.classList.add(bumpedClass);
         }
       });
     }
