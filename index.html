@@ -127,6 +127,9 @@
     .line-bar-time.start{left:-10px;transform:translate(calc(-100% + var(--line-time-shift,0px)),-50%);background:#059669}
     .line-bar-time.end{right:-10px;transform:translate(calc(100% - var(--line-time-shift,0px)),-50%);background:#dc2626}
     .line-bar-time.clipped{opacity:.65}
+    .line-bar-time.bumped{top:-8px;transform:translateY(-100%);box-shadow:0 6px 16px rgba(9,42,58,.16)}
+    .line-bar-time.start.bumped{transform:translate(calc(-100% + var(--line-time-shift,0px)),-100%)}
+    .line-bar-time.end.bumped{transform:translate(calc(100% - var(--line-time-shift,0px)),-100%)}
     .line-chart-empty{border:1px dashed var(--border);border-radius:18px;padding:18px;color:var(--muted);font-size:14px;text-align:center;background:var(--surface-soft)}
     .line-view-placeholder{border:1px dashed var(--border);border-radius:24px;padding:28px;text-align:center;color:var(--muted);background:var(--surface);font-size:15px;box-shadow:0 18px 36px rgba(7,45,65,.08)}
     .schedule-week{display:flex;flex-direction:column;gap:18px}
@@ -1614,6 +1617,10 @@
       return Number.POSITIVE_INFINITY;
     }
 
+    function rectsOverlap(a,b){
+      return !!(a && b && a.left<b.right && a.right>b.left && a.top<b.bottom && a.bottom>b.top);
+    }
+
     function drawLineChart(entries,dayLabel){
       if(!lineChartAxis || !lineChartRows){
         return;
@@ -1724,7 +1731,7 @@
             endLabel.textContent=fmtHMDisplay(segment.segEnd);
             if(segment.segEnd>end) endLabel.classList.add('clipped');
             bar.appendChild(endLabel);
-            barsNeedingAdjustment.push({startLabel,endLabel});
+            barsNeedingAdjustment.push({bar,startLabel,endLabel,nameEl});
             track.appendChild(bar);
           });
           row.appendChild(track);
@@ -1750,21 +1757,46 @@
       }
       const shellRect=lineChartShell.getBoundingClientRect();
       const safePadding=12;
-      bars.forEach(({startLabel,endLabel})=>{
+      const bumpedClass='bumped';
+      bars.forEach(({bar,startLabel,endLabel,nameEl})=>{
+        const barRect=bar?bar.getBoundingClientRect():null;
+        const nameRect=nameEl?nameEl.getBoundingClientRect():null;
         if(startLabel){
           startLabel.style.removeProperty('--line-time-shift');
-          const rect=startLabel.getBoundingClientRect();
+          startLabel.classList.remove(bumpedClass);
+          let rect=startLabel.getBoundingClientRect();
           const overflowLeft=(shellRect.left+safePadding)-rect.left;
           if(overflowLeft>0){
             startLabel.style.setProperty('--line-time-shift',`${overflowLeft}px`);
+            rect=startLabel.getBoundingClientRect();
+          }
+          const overlapsBar=barRect && rectsOverlap(rect,barRect);
+          const overlapsName=nameRect && rectsOverlap(rect,nameRect);
+          if(overflowLeft>0 || overlapsBar || overlapsName){
+            startLabel.classList.add(bumpedClass);
           }
         }
         if(endLabel){
           endLabel.style.removeProperty('--line-time-shift');
-          const rect=endLabel.getBoundingClientRect();
+          endLabel.classList.remove(bumpedClass);
+          let rect=endLabel.getBoundingClientRect();
           const overflowRight=rect.right-(shellRect.right-safePadding);
           if(overflowRight>0){
             endLabel.style.setProperty('--line-time-shift',`${overflowRight}px`);
+            rect=endLabel.getBoundingClientRect();
+          }
+          const overlapsBar=barRect && rectsOverlap(rect,barRect);
+          const overlapsName=nameRect && rectsOverlap(rect,nameRect);
+          if(overflowRight>0 || overlapsBar || overlapsName){
+            endLabel.classList.add(bumpedClass);
+          }
+        }
+        if(startLabel && endLabel){
+          const startRect=startLabel.getBoundingClientRect();
+          const endRect=endLabel.getBoundingClientRect();
+          if(rectsOverlap(startRect,endRect)){
+            startLabel.classList.add(bumpedClass);
+            endLabel.classList.add(bumpedClass);
           }
         }
       });
