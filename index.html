@@ -592,6 +592,19 @@
       return null;
     }
 
+    function findTodayDayIndex(dayHeaders,model){
+      if(!Array.isArray(dayHeaders) || !dayHeaders.length) return -1;
+      const parsed=dayHeaders.map(parseDayHeader);
+      if(!parsed.length) return -1;
+      const fallbackYear=resolveFallbackYear(parsed,model||{});
+      for(let i=0;i<parsed.length;i+=1){
+        if(isTodayDate(parsed[i],fallbackYear)){
+          return i;
+        }
+      }
+      return -1;
+    }
+
     function deriveWeekMetadata(model){
       const dayHeaders=Array.isArray(model && model.dayHeaders)?model.dayHeaders:[];
       const parsed=dayHeaders.map(parseDayHeader);
@@ -1411,6 +1424,7 @@
     let lineViewCurrentLookup=new Map();
     let lineViewCurrentDayLabel='';
     let lineViewBaseMinutesPerPixel=null;
+    let lineViewUserSelectedDay=false;
 
     const lineViewContainer=document.getElementById('lineView');
     const lineControls=document.getElementById('lineControls');
@@ -2011,14 +2025,15 @@
         if(lineViewEmpty){
           lineViewEmpty.hidden=false;
         }
-      lineViewCurrentEntries=[];
-      lineViewCurrentLookup=new Map();
-      lineViewCurrentDayLabel='';
-      lineViewStateInitialized=false;
-      lineViewLastWeekId=null;
-      lineViewLastDayIndex=null;
-      lineViewBaseMinutesPerPixel=null;
-      return;
+        lineViewCurrentEntries=[];
+        lineViewCurrentLookup=new Map();
+        lineViewCurrentDayLabel='';
+        lineViewStateInitialized=false;
+        lineViewLastWeekId=null;
+        lineViewLastDayIndex=null;
+        lineViewBaseMinutesPerPixel=null;
+        lineViewUserSelectedDay=false;
+        return;
       }
       const week=weeks[0];
       const model=week && week.model;
@@ -2036,6 +2051,13 @@
       if(weekId!==lineViewLastWeekId){
         lineViewLastWeekId=weekId;
         lineViewStateInitialized=false;
+        lineViewUserSelectedDay=false;
+      }
+      if(!lineViewUserSelectedDay){
+        const todayIndex=findTodayDayIndex(dayHeaders,model);
+        if(todayIndex>=0){
+          lineViewState.dayIndex=todayIndex;
+        }
       }
       if(lineViewState.dayIndex>=perDay.length){
         lineViewState.dayIndex=perDay.length-1;
@@ -3444,6 +3466,7 @@
       lineDaySelect.addEventListener('change',()=>{
         const value=parseInt(lineDaySelect.value,10);
         if(!Number.isNaN(value)){
+          lineViewUserSelectedDay=true;
           lineViewState.dayIndex=value;
           lineViewStateInitialized=false;
           renderLineView(getActiveWeekData());
