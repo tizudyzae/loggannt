@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>CSV Rota Viewer — HTML Demo</title>
+  <title>CSV Rota Viewer</title>
   <style>
     :root {
       --page-bg:#0d1829;
@@ -38,17 +38,9 @@
     h1{font-size:34px;margin:0;font-weight:700;color:var(--ink);letter-spacing:-.01em}
     p{color:var(--muted);margin:8px 0 24px;font-size:16px;max-width:60ch}
     .wrap{max-width:1200px;margin:0 auto;padding:32px 36px 56px;width:100%;display:flex;flex-direction:column;gap:32px}
-    .tagline{margin:0;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:700}
     .page-header{border-radius:28px;background:var(--surface);padding:32px 36px;box-shadow:0 16px 40px rgba(6,28,46,.12);display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
     .page-header h1{font-size:clamp(28px,4vw,40px);margin:6px 0 0;color:var(--ink)}
     .page-header p{margin:12px 0 0;color:var(--muted);font-size:16px;max-width:60ch}
-    .page-header-actions{display:flex;flex-direction:column;gap:16px;min-width:220px}
-    .page-header-cta{display:flex;flex-wrap:wrap;gap:12px}
-    .page-header-note{margin:0;font-size:13px;color:var(--muted);max-width:36ch}
-    .page-header-cta .btn{flex:1 0 auto}
-    .help-button{position:fixed;top:20px;right:20px;z-index:2000;border-radius:999px;padding:10px 18px;font-weight:700;background:#fff;border:1px solid var(--border);color:var(--accent);text-decoration:none;box-shadow:0 14px 30px rgba(9,42,58,.12);transition:transform .2s ease,box-shadow .2s ease,background .2s ease}
-    .help-button:hover{transform:translateY(-1px);box-shadow:0 18px 36px rgba(9,42,58,.16);background:var(--surface-soft)}
-    .help-button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
     .layout{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px;align-items:flex-start}
     .side-panel{display:flex;flex-direction:column;gap:20px;position:sticky;top:20px}
     .main-panel{display:flex;flex-direction:column;gap:24px}
@@ -285,7 +277,6 @@
   </style>
 </head>
 <body>
-  <a class="help-button" href="help.html" target="_blank" rel="noopener">❓ Help</a>
   <button class="settings-toggle" id="btnToggleSettings" type="button" aria-label="Show settings panel" aria-expanded="false">⚙️</button>
   <div class="panel panel-static settings-panel" id="savedWeeksPanel" hidden aria-hidden="true">
     <h2 class="panel-title">Saved weeks</h2>
@@ -302,16 +293,8 @@
   <div class="wrap">
     <header class="page-header">
       <div>
-        <p class="tagline">Mobile rota cockpit</p>
-        <h1>Stay on top of the week from any smart device</h1>
-        <p>Upload your weekly export, review team coverage, and switch between schedule, line, and PDF reports without leaving the browser. Everything still happens locally for a privacy-preserving workflow.</p>
-      </div>
-      <div class="page-header-actions">
-        <div class="page-header-cta">
-          <label for="fileInput" class="btn">📤 Upload a CSV</label>
-          <button class="btn btn-secondary" type="button" aria-describedby="reportScopeHint" onclick="var ctrl=document.getElementById('reportScopeControl');if(ctrl){ctrl.scrollIntoView({behavior:'smooth',block:'center'});}">Pick colleagues</button>
-        </div>
-        <p class="page-header-note">Need the onboarding tips? Tap the floating help button for detailed guidance, screenshots, and sharing tips.</p>
+        <h1>CSV Rota Viewer</h1>
+        <p>Load an exported rota CSV to review weekly coverage, timelines, and printable PDFs—all processed locally in your browser. Start by uploading your latest file with the controls on the left.</p>
       </div>
     </header>
 
