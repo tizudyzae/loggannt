@@ -53,7 +53,7 @@
     .settings-toggle:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
     .settings-toggle[disabled]{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
     .panel-title{margin:0;font-size:18px;font-weight:700;color:var(--ink)}
-    .settings-panel{position:fixed;top:84px;left:20px;width:320px;max-width:calc(100% - 40px);z-index:1990}
+    .settings-panel{position:fixed;top:84px;left:20px;width:320px;max-width:calc(100% - 40px);z-index:1990;max-height:calc(100vh - 104px);overflow-y:auto;overscroll-behavior:contain}
     .settings-panel .panel-title{margin-bottom:4px}
     .settings-panel .control-hint{background:transparent;padding:0;margin-bottom:8px}
     .saved-week-select{display:flex;flex-direction:column;gap:6px}
