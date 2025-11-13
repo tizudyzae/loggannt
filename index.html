@@ -38,25 +38,17 @@
     h1{font-size:34px;margin:0;font-weight:700;color:var(--ink);letter-spacing:-.01em}
     p{color:var(--muted);margin:8px 0 24px;font-size:16px;max-width:60ch}
     .wrap{max-width:1200px;margin:0 auto;padding:32px 36px 56px;width:100%;display:flex;flex-direction:column;gap:32px}
-    .hero{position:relative;overflow:hidden;border-radius:36px;background:linear-gradient(135deg,#031220,#092036 45%,#003249);padding:36px;box-shadow:0 25px 60px rgba(3,16,30,.55);color:#eef7ff;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;align-items:center}
-    .hero::after{content:"";position:absolute;inset:-30% auto auto 45%;width:420px;height:420px;background:radial-gradient(circle at center,#00b6c2 0%,transparent 60%);opacity:.35;z-index:0}
-    .hero-content{position:relative;z-index:1;display:flex;flex-direction:column;gap:12px}
-    .tagline{margin:0;font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:#8adcf0;font-weight:700}
-    .hero h1{font-size:clamp(32px,4vw,42px);margin:0;color:#fff}
-    .hero p{margin:0;color:#dbe8f5;font-size:clamp(16px,3vw,18px)}
-    .hero-actions{position:relative;z-index:1;display:flex;flex-direction:column;gap:14px}
-    .hero-cta{display:flex;flex-wrap:wrap;gap:12px}
-    .hero-upload{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:15px}
-    .hero-small{font-size:14px;color:#c2d8ea;max-width:42ch}
-    .hero-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
-    .hero-stat{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:14px}
-    .hero-stat strong{display:block;font-size:24px;font-weight:700;color:#fff}
-    .hero-stat span{font-size:13px;color:#c2d8ea;text-transform:uppercase;letter-spacing:.1em}
-    .intro-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
-    .intro-card{border-radius:24px;padding:24px 26px;background:var(--surface);box-shadow:0 18px 36px rgba(6,28,46,.16);display:flex;flex-direction:column;gap:10px}
-    .intro-card h2{margin:0;font-size:18px;color:var(--ink)}
-    .intro-card p{margin:0;color:var(--muted);font-size:14px}
-    .intro-card .tag{align-self:flex-start;padding:4px 12px;border-radius:999px;background:var(--accent-soft);color:var(--accent-strong);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+    .tagline{margin:0;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:700}
+    .page-header{border-radius:28px;background:var(--surface);padding:32px 36px;box-shadow:0 16px 40px rgba(6,28,46,.12);display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+    .page-header h1{font-size:clamp(28px,4vw,40px);margin:6px 0 0;color:var(--ink)}
+    .page-header p{margin:12px 0 0;color:var(--muted);font-size:16px;max-width:60ch}
+    .page-header-actions{display:flex;flex-direction:column;gap:16px;min-width:220px}
+    .page-header-cta{display:flex;flex-wrap:wrap;gap:12px}
+    .page-header-note{margin:0;font-size:13px;color:var(--muted);max-width:36ch}
+    .page-header-cta .btn{flex:1 0 auto}
+    .help-button{position:fixed;top:20px;right:20px;z-index:2000;border-radius:999px;padding:10px 18px;font-weight:700;background:#fff;border:1px solid var(--border);color:var(--accent);text-decoration:none;box-shadow:0 14px 30px rgba(9,42,58,.12);transition:transform .2s ease,box-shadow .2s ease,background .2s ease}
+    .help-button:hover{transform:translateY(-1px);box-shadow:0 18px 36px rgba(9,42,58,.16);background:var(--surface-soft)}
+    .help-button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
     .layout{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px;align-items:flex-start}
     .side-panel{display:flex;flex-direction:column;gap:20px;position:sticky;top:20px}
     .main-panel{display:flex;flex-direction:column;gap:24px}
@@ -270,18 +262,17 @@
     .footer{margin-top:8px;color:var(--muted);font-size:13px;text-align:center}
     @media (max-width:960px){
       .wrap{padding:24px}
-      .hero{padding:28px;border-radius:28px}
-      .hero::after{display:none}
+      .page-header{padding:28px;border-radius:28px}
       .side-panel{position:static}
       .viewer-tabs{justify-content:flex-start;position:static}
     }
     @media (max-width:640px){
       body{font-size:13px}
       .wrap{padding:20px}
-      .hero{padding:24px;border-radius:24px}
-      .hero h1{font-size:30px}
-      .hero p{font-size:15px}
-      .hero-cta{flex-direction:column}
+      .page-header{padding:24px;border-radius:24px}
+      .page-header h1{font-size:28px}
+      .page-header p{font-size:15px}
+      .page-header-cta{flex-direction:column}
       .controls{padding:22px;border-radius:24px}
       .pdf-toolbar{padding:18px;border-radius:20px}
       .schedule-day-card summary{padding:20px}
@@ -294,6 +285,7 @@
   </style>
 </head>
 <body>
+  <a class="help-button" href="help.html" target="_blank" rel="noopener">❓ Help</a>
   <button class="settings-toggle" id="btnToggleSettings" type="button" aria-label="Show settings panel" aria-expanded="false">⚙️</button>
   <div class="panel panel-static settings-panel" id="savedWeeksPanel" hidden aria-hidden="true">
     <h2 class="panel-title">Saved weeks</h2>
@@ -308,43 +300,20 @@
     </div>
   </div>
   <div class="wrap">
-    <header class="hero">
-      <div class="hero-content">
+    <header class="page-header">
+      <div>
         <p class="tagline">Mobile rota cockpit</p>
         <h1>Stay on top of the week from any smart device</h1>
-        <p>Upload your weekly export, review team coverage, and create the three detailed reports your managers already trust. Everything renders beautifully on a phone—no pinching required.</p>
+        <p>Upload your weekly export, review team coverage, and switch between schedule, line, and PDF reports without leaving the browser. Everything still happens locally for a privacy-preserving workflow.</p>
       </div>
-      <div class="hero-actions">
-        <div class="hero-cta">
-          <label for="fileInput" class="btn hero-upload">📤 Upload a CSV</label>
+      <div class="page-header-actions">
+        <div class="page-header-cta">
+          <label for="fileInput" class="btn">📤 Upload a CSV</label>
           <button class="btn btn-secondary" type="button" aria-describedby="reportScopeHint" onclick="var ctrl=document.getElementById('reportScopeControl');if(ctrl){ctrl.scrollIntoView({behavior:'smooth',block:'center'});}">Pick colleagues</button>
         </div>
-        <p class="hero-small">Changes never leave your browser. Save a rota locally, switch between people, and export as polished PDFs when you are done.</p>
-        <div class="hero-stats">
-          <div class="hero-stat"><strong>3</strong><span>Report views</span></div>
-          <div class="hero-stat"><strong>100%</strong><span>Client-side</span></div>
-          <div class="hero-stat"><strong>∞</strong><span>Saved weeks</span></div>
-        </div>
+        <p class="page-header-note">Need the onboarding tips? Tap the floating help button for detailed guidance, screenshots, and sharing tips.</p>
       </div>
     </header>
-
-    <section class="intro-grid">
-      <article class="intro-card">
-        <span class="tag">Prep</span>
-        <h2>Start with a CSV drop</h2>
-        <p>Use the upload control or drag a file onto the page. We cache the week locally so you can come back later without repeating the upload.</p>
-      </article>
-      <article class="intro-card">
-        <span class="tag">Filter</span>
-        <h2>Tune the view</h2>
-        <p>Select individuals or management presets. Every report—schedule, line, and PDF—follows your scope so you only see the relevant shifts.</p>
-      </article>
-      <article class="intro-card">
-        <span class="tag">Share</span>
-        <h2>Export polished sheets</h2>
-        <p>Once you are happy, export the PDF layouts. They mirror the original reports so nothing changes for the wider team.</p>
-      </article>
-    </section>
 
     <div class="mobile-hint">
       <strong>Quick tip:</strong> Add this page to your home screen for an app-like experience. All controls stay within thumb reach and the reports stay untouched.
