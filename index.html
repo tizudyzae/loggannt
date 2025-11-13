@@ -90,8 +90,8 @@
     .ctrl-inline{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
     .row{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:13px}
     .viewer{display:flex;flex-direction:column;gap:20px}
-    .viewer-tabs{display:flex;gap:12px;flex-wrap:wrap;background:var(--surface);padding:12px;border-radius:20px;box-shadow:0 14px 30px rgba(9,42,58,.08)}
-    .viewer-tab{appearance:none;border:1px solid transparent;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:700;background:transparent;color:var(--muted);cursor:pointer;transition:all .2s ease;box-shadow:none}
+    .viewer-tabs{display:flex;gap:12px;flex-wrap:nowrap;background:var(--surface);padding:12px;border-radius:20px;box-shadow:0 14px 30px rgba(9,42,58,.08)}
+    .viewer-tab{appearance:none;border:1px solid transparent;border-radius:999px;padding:clamp(8px,1.5vw,12px) clamp(12px,3vw,20px);font-size:clamp(12px,1.8vw,14px);font-weight:700;background:transparent;color:var(--muted);cursor:pointer;transition:all .2s ease;box-shadow:none;flex:1 1 0;min-width:0;text-align:center}
     .viewer-tab:hover{color:var(--accent)}
     .viewer-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 10px 20px rgba(0,123,195,.18)}
     .view-panel{display:none}
