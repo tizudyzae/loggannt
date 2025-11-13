@@ -84,11 +84,14 @@
     .ctrl-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
     .ctrl{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
     .ctrl input,.ctrl select{padding:9px 11px;border:1px solid var(--border);border-radius:12px;font:14px/1.5 "Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;transition:border-color .2s ease,box-shadow .2s ease}
+    #selIndividual[multiple]{min-height:160px;padding:12px;border-radius:16px}
     .ctrl input:focus,.ctrl select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,123,195,.2)}
     .ctrl input[type="color"]{padding:0;height:40px;border-radius:12px;overflow:hidden}
     .ctrl small{color:var(--muted);font-size:12px}
     .ctrl-inline{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
     .row{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:13px}
+    .selection-actions{display:flex;flex-direction:column;gap:10px}
+    .selection-actions .btn{width:100%}
     .viewer{display:flex;flex-direction:column;gap:20px}
     .viewer-tabs{display:flex;gap:12px;flex-wrap:nowrap;background:var(--surface);padding:12px;border-radius:20px;box-shadow:0 14px 30px rgba(9,42,58,.08)}
     .viewer-tab{appearance:none;border:1px solid transparent;border-radius:999px;padding:clamp(8px,1.5vw,12px) clamp(12px,3vw,20px);font-size:clamp(12px,1.8vw,14px);font-weight:700;background:transparent;color:var(--muted);cursor:pointer;transition:all .2s ease;box-shadow:none;flex:1 1 0;min-width:0;text-align:center}
@@ -138,6 +141,22 @@
     .line-bar-time.end.bumped{transform:translate(calc(100% - var(--line-time-shift,0px)),-50%)}
     .line-chart-empty{border:1px dashed var(--border);border-radius:18px;padding:18px;color:var(--muted);font-size:14px;text-align:center;background:var(--surface-soft)}
     .line-view-placeholder{border:1px dashed var(--border);border-radius:24px;padding:28px;text-align:center;color:var(--muted);background:var(--surface);font-size:15px;box-shadow:0 18px 36px rgba(7,45,65,.08)}
+    .line-week-individual{border:1px solid var(--border);border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);padding:24px;display:flex;flex-direction:column;gap:16px}
+    .line-week-individual-title{margin:0;font-size:20px;font-weight:700;color:var(--ink)}
+    .line-week-individual-subtitle{margin:0;font-size:14px;color:var(--muted)}
+    .line-week-rows{display:flex;flex-direction:column;gap:14px}
+    .line-week-row{display:flex;flex-direction:column;gap:8px;border:1px solid var(--border);border-radius:18px;padding:14px 16px;background:var(--surface-soft)}
+    .line-week-row.highlight{border-color:#00b2a9;background:rgba(0,178,169,.08)}
+    .line-week-row-header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .line-week-row-day{font-weight:700;color:var(--ink);font-size:15px}
+    .line-week-row-time{font-size:13px;color:var(--muted);text-align:right}
+    .line-week-row-duration{font-size:12px;color:var(--muted);font-weight:600}
+    .line-week-row-off{font-size:13px;font-weight:700;color:#a4161a}
+    .line-week-bar-track{position:relative;height:36px;border-radius:999px;background:var(--surface);border:1px solid var(--border);overflow:hidden}
+    .line-week-bar{position:absolute;top:4px;bottom:4px;border-radius:999px;background:var(--accent);box-shadow:0 10px 20px rgba(0,123,195,.18)}
+    .line-week-bar.highlight{background:#0d9488}
+    .line-week-bar-label{position:absolute;top:50%;left:10px;transform:translateY(-50%);font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+    .line-week-track-hint{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
     .schedule-week{display:flex;flex-direction:column;gap:18px}
     .schedule-week-heading{display:flex;flex-direction:column;gap:4px}
     .schedule-week-title{font-size:20px;font-weight:700;color:var(--ink)}
@@ -287,11 +306,15 @@
           <p class="saved-week-meta" id="savedWeekMeta" hidden></p>
           <label class="ctrl" for="selIndividual" id="reportScopeControl" hidden aria-hidden="true">
             <span>Report scope</span>
-            <select id="selIndividual" disabled>
+            <select id="selIndividual" multiple disabled aria-describedby="reportScopeHint">
               <option value="all">All colleagues</option>
             </select>
           </label>
-          <p class="control-hint" id="reportScopeHint" hidden aria-hidden="true">Choose a colleague to focus the preview and export.</p>
+          <div class="selection-actions" id="selectionActions" hidden aria-hidden="true">
+            <button class="btn btn-secondary" id="btnClearSelection" type="button">Clear selection</button>
+            <button class="btn btn-secondary" id="btnManagementShortcut" type="button">Select Samantha, Elizabeth, Joshua, Laura &amp; Nathan</button>
+          </div>
+          <p class="control-hint" id="reportScopeHint" hidden aria-hidden="true">Select one or more colleagues to focus every preview and export.</p>
           <div id="appearanceControls" hidden aria-hidden="true"></div>
         </div>
       </aside>
@@ -312,11 +335,12 @@
                   <span>Day</span>
                   <select id="lineDaySelect" disabled></select>
                 </label>
-                <p class="control-hint line-window-hint" id="lineWindowHint">Pinch to zoom the visible hours and drag the timeline to pan.</p>
-              </div>
-              <div class="line-day-summary" id="lineDaySummary" hidden></div>
-              <div class="line-presets" id="linePresetButtons" hidden aria-hidden="true">
-                <button class="line-preset-btn" type="button" data-start="300" data-end="870" aria-label="Show 5:00am to 2:30pm">Morning</button>
+              <p class="control-hint line-window-hint" id="lineWindowHint">Pinch to zoom the visible hours and drag the timeline to pan.</p>
+            </div>
+            <div class="line-day-summary" id="lineDaySummary" hidden></div>
+            <div class="line-week-individual" id="lineIndividualWeek" hidden aria-hidden="true"></div>
+            <div class="line-presets" id="linePresetButtons" hidden aria-hidden="true">
+              <button class="line-preset-btn" type="button" data-start="300" data-end="870" aria-label="Show 5:00am to 2:30pm">Morning</button>
                 <button class="line-preset-btn" type="button" data-start="540" data-end="1080" aria-label="Show 9:00am to 6:00pm">Midday</button>
                 <button class="line-preset-btn" type="button" data-start="810" data-end="1380" aria-label="Show 1:30pm to 11:00pm">Evening</button>
               </div>
@@ -381,7 +405,16 @@
       return stripped||fallbackLabel;
     }
 
+    function resolveDisplayNameForIndex(model,index){
+      if(!model || !Array.isArray(model.rows) || !Number.isInteger(index)) return `Colleague ${index+1}`;
+      const record=lastIndividuals.find(rec=>rec.index===index);
+      if(record && record.displayName) return record.displayName;
+      const row=model.rows[index];
+      return getRowDisplayName(row,index+1);
+    }
+
     const SPECIAL_NAME_COLOR='#0d9488';
+    const MANAGEMENT_SHORTCUT_NAMES=['samantha','elizabeth','joshua','laura','nathan'];
 
     function isNathanName(name){
       if(!name) return false;
@@ -1409,7 +1442,7 @@
 
     // ---------- Render / Export ----------
     let lastIndividuals=[];
-    let currentIndividualIndex=null;
+    let currentIndividualSelection=[];
 
     const LINE_VIEW_DEFAULT_STATE={dayIndex:0,startMinute:8*60,windowMinutes:12*60};
     const LINE_VIEW_MIN_WINDOW=60;
@@ -1426,6 +1459,47 @@
     let lineViewBaseMinutesPerPixel=null;
     let lineViewUserSelectedDay=false;
 
+    function setCurrentIndividualSelection(indices,{suppressLineReset=false,maxIndex}={}){
+      const limit=Number.isInteger(maxIndex)?Math.max(0,maxIndex):Infinity;
+      const normalized=[];
+      const seen=new Set();
+      (Array.isArray(indices)?indices:[]).forEach(idx=>{
+        if(!Number.isInteger(idx)) return;
+        if(idx<0) return;
+        if(idx>=limit) return;
+        if(seen.has(idx)) return;
+        seen.add(idx);
+        normalized.push(idx);
+      });
+      normalized.sort((a,b)=>a-b);
+      const changed=normalized.length!==currentIndividualSelection.length || normalized.some((val,idx)=>currentIndividualSelection[idx]!==val);
+      if(changed){
+        currentIndividualSelection=normalized;
+        if(!suppressLineReset){
+          lineViewStateInitialized=false;
+          lineViewBaseMinutesPerPixel=null;
+        }
+      }
+      return changed;
+    }
+
+    function getSelectionRecords(model){
+      if(!model || !Array.isArray(model.rows)) return [];
+      const indices=currentIndividualSelection.filter(idx=>Number.isInteger(idx) && idx>=0 && idx<model.rows.length);
+      if(indices.length!==currentIndividualSelection.length){
+        setCurrentIndividualSelection(indices);
+      }
+      return indices.map(index=>({
+        index,
+        row:model.rows[index],
+        record:lastIndividuals.find(rec=>rec.index===index) || null,
+      }));
+    }
+
+    function getSelectedRows(model){
+      return getSelectionRecords(model).map(item=>item.row);
+    }
+
     const lineViewContainer=document.getElementById('lineView');
     const lineControls=document.getElementById('lineControls');
     const lineDaySelect=document.getElementById('lineDaySelect');
@@ -1438,6 +1512,10 @@
     const lineViewEmpty=document.getElementById('lineViewEmpty');
     const linePresetButtons=document.getElementById('linePresetButtons');
     const linePresetButtonList=linePresetButtons?Array.from(linePresetButtons.querySelectorAll('button[data-start][data-end]')):[];
+    const lineIndividualWeek=document.getElementById('lineIndividualWeek');
+    const selectionActions=document.getElementById('selectionActions');
+    const btnClearSelection=document.getElementById('btnClearSelection');
+    const btnManagementShortcut=document.getElementById('btnManagementShortcut');
 
     if(Array.isArray(linePresetButtonList) && linePresetButtonList.length){
       linePresetButtonList.forEach(btn=>{
@@ -1481,6 +1559,18 @@
       if(person.rawName && entry.rawName && entry.rawName===person.rawName) return true;
       if(person.name && entry.name && entry.name===person.name) return true;
       return false;
+    }
+
+    function filterEntriesBySelection(entries,selectedRows){
+      const list=Array.isArray(entries)?entries.filter(Boolean):[];
+      if(!Array.isArray(selectedRows) || !selectedRows.length) return list;
+      return list.filter(entry=>selectedRows.some(person=>entryMatchesSelection(entry,person)));
+    }
+
+    function filterPerDayEntries(perDay,selectedRows){
+      if(!Array.isArray(perDay)) return [];
+      if(!Array.isArray(selectedRows) || !selectedRows.length) return perDay;
+      return perDay.map(entries=>filterEntriesBySelection(entries,selectedRows));
     }
 
     function resolveDateRangeLabelForWeek(model,metadata,layout){
@@ -2001,6 +2091,119 @@
       });
     }
 
+    function renderLineIndividualWeekView(record,perDay,dayHeaders,dateRangeLabel){
+      if(!lineIndividualWeek) return;
+      lineIndividualWeek.innerHTML='';
+      if(!record || !record.row || !Array.isArray(dayHeaders) || !dayHeaders.length){
+        lineIndividualWeek.hidden=false;
+        lineIndividualWeek.setAttribute('aria-hidden','false');
+        const empty=document.createElement('div');
+        empty.className='line-chart-empty';
+        empty.textContent='No weekly data available for the selected colleague.';
+        lineIndividualWeek.appendChild(empty);
+        return;
+      }
+      const displayName=(record.record && record.record.displayName) || getRowDisplayName(record.row,record.index+1);
+      const title=document.createElement('h3');
+      title.className='line-week-individual-title';
+      title.textContent=`Weekly timeline for ${displayName}`;
+      lineIndividualWeek.appendChild(title);
+      if(dateRangeLabel){
+        const subtitle=document.createElement('p');
+        subtitle.className='line-week-individual-subtitle';
+        subtitle.textContent=dateRangeLabel;
+        lineIndividualWeek.appendChild(subtitle);
+      }
+      const rowsWrap=document.createElement('div');
+      rowsWrap.className='line-week-rows';
+      dayHeaders.forEach((label,idx)=>{
+        const entries=Array.isArray(perDay[idx])?perDay[idx]:[];
+        const match=entries.find(entry=>entryMatchesSelection(entry,record.row)) || entries[0] || null;
+        const row=document.createElement('article');
+        row.className='line-week-row';
+        if(match && match.highlight) row.classList.add('highlight');
+        const header=document.createElement('div');
+        header.className='line-week-row-header';
+        const dayName=document.createElement('div');
+        dayName.className='line-week-row-day';
+        dayName.textContent=formatShortDayLabel(label)||`Day ${idx+1}`;
+        header.appendChild(dayName);
+        const timeBlock=document.createElement('div');
+        timeBlock.className='line-week-row-time';
+        const segments=match && Array.isArray(match.segments)?match.segments:[];
+        let durationMinutes=null;
+        if(match && match.range && Number.isFinite(match.range.start) && Number.isFinite(match.range.end)){
+          durationMinutes=Math.max(0,(match.range.end||0)-(match.range.start||0));
+        }
+        if(match && (match.range || segments.length)){
+          const start=match.range && Number.isFinite(match.range.start)?match.range.start:segments.length?segments[0].start:null;
+          const end=match.range && Number.isFinite(match.range.end)?match.range.end:segments.length?segments[segments.length-1].end:null;
+          const labelText=(Number.isFinite(start) && Number.isFinite(end))?`${fmtHMDisplay(start)} – ${fmtHMDisplay(end)}`:'Scheduled';
+          timeBlock.textContent=labelText;
+        }else{
+          timeBlock.textContent='Off';
+          timeBlock.classList.add('line-week-row-off');
+        }
+        header.appendChild(timeBlock);
+        row.appendChild(header);
+        if(match && (match.range || segments.length)){
+          if(durationMinutes===null){
+            const total=segments.reduce((sum,seg)=>sum+Math.max(0,(seg.end||0)-(seg.start||0)),0);
+            durationMinutes=total;
+          }
+          if(durationMinutes){
+            const duration=document.createElement('div');
+            duration.className='line-week-row-duration';
+            duration.textContent=formatDuration(durationMinutes);
+            row.appendChild(duration);
+          }
+          const track=document.createElement('div');
+          track.className='line-week-bar-track';
+          const effectiveSegments=segments.length?segments:[match.range];
+          effectiveSegments.filter(Boolean).forEach((seg,segIdx)=>{
+            if(!seg) return;
+            const bar=document.createElement('div');
+            bar.className='line-week-bar';
+            if(match && match.highlight) bar.classList.add('highlight');
+            const startPercent=Math.max(0,Math.min(100,(seg.start/1440)*100));
+            const widthPercent=Math.max(0,Math.min(100,((seg.end-seg.start)/1440)*100));
+            bar.style.left=`${startPercent}%`;
+            bar.style.width=`${widthPercent}%`;
+            if(segIdx===0){
+              const labelSpan=document.createElement('span');
+              labelSpan.className='line-week-bar-label';
+              labelSpan.textContent=timeBlock.textContent;
+              bar.appendChild(labelSpan);
+            }
+            track.appendChild(bar);
+          });
+          row.appendChild(track);
+          const hint=document.createElement('div');
+          hint.className='line-week-track-hint';
+          hint.innerHTML='<span>00:00</span><span>24:00</span>';
+          row.appendChild(hint);
+        }
+        rowsWrap.appendChild(row);
+      });
+      if(!rowsWrap.children.length){
+        const empty=document.createElement('div');
+        empty.className='line-chart-empty';
+        empty.textContent='No scheduled shifts for this colleague.';
+        lineIndividualWeek.appendChild(empty);
+      }else{
+        lineIndividualWeek.appendChild(rowsWrap);
+      }
+      lineIndividualWeek.hidden=false;
+      lineIndividualWeek.setAttribute('aria-hidden','false');
+    }
+
+    function hideLineIndividualWeek(){
+      if(!lineIndividualWeek) return;
+      lineIndividualWeek.hidden=true;
+      lineIndividualWeek.setAttribute('aria-hidden','true');
+      lineIndividualWeek.innerHTML='';
+    }
+
     function drawCurrentLineChart(){
       if(!lineChartShell || lineChartShell.hidden) return;
       updateLineViewResponsiveWindow();
@@ -2010,6 +2213,7 @@
     function renderLineView(weeks=getActiveWeekData()){
       if(!lineViewContainer) return;
       if(!Array.isArray(weeks) || !weeks.length){
+        hideLineIndividualWeek();
         if(lineControls){
           lineControls.hidden=true;
           lineControls.setAttribute('aria-hidden','true');
@@ -2038,13 +2242,48 @@
       const week=weeks[0];
       const model=week && week.model;
       if(!model){
+        hideLineIndividualWeek();
         return;
       }
       const perDay=Array.isArray(week.perDay)?week.perDay:[];
       const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
+      const layout=currentLayout || DEFAULT_LAYOUT;
+      const selectionRecords=getSelectionRecords(model);
+      const selectedRows=selectionRecords.map(item=>item.row);
+      const selectionCount=selectionRecords.length;
+      const filteredPerDay=filterPerDayEntries(perDay,selectedRows);
+      const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout) || '';
+      if(selectionCount===1){
+        syncLineViewControls([]);
+        if(lineDaySummary){
+          lineDaySummary.hidden=true;
+        }
+        if(lineWindowHint){
+          lineWindowHint.hidden=true;
+        }
+        if(lineChartShell){
+          lineChartShell.hidden=true;
+          lineChartShell.setAttribute('aria-hidden','true');
+        }
+        if(lineViewEmpty){
+          lineViewEmpty.hidden=true;
+        }
+        renderLineIndividualWeekView(selectionRecords[0],filteredPerDay,dayHeaders,dateRangeLabel);
+        lineViewCurrentEntries=[];
+        lineViewCurrentLookup=new Map();
+        lineViewCurrentDayLabel='';
+        lineViewStateInitialized=false;
+        lineViewBaseMinutesPerPixel=null;
+        return;
+      }
+      hideLineIndividualWeek();
       if(!perDay.length){
         syncLineViewControls([]);
         lineViewBaseMinutesPerPixel=null;
+        if(lineWindowHint){
+          lineWindowHint.hidden=false;
+          lineWindowHint.textContent=lineWindowHintDefault;
+        }
         return;
       }
       const weekId=week.id||'week';
@@ -2072,7 +2311,7 @@
         lineViewStateInitialized=false;
       }
       const dayLabels=perDay.map((_,idx)=>dayHeaders[idx]||`Day ${idx+1}`);
-      const entries=Array.isArray(perDay[lineViewState.dayIndex])?perDay[lineViewState.dayIndex]:[];
+      const entries=Array.isArray(filteredPerDay[lineViewState.dayIndex])?filteredPerDay[lineViewState.dayIndex]:[];
       if(!lineViewStateInitialized){
         const defaults=computeLineViewDefaults(entries);
         lineViewState.startMinute=defaults.startMinute;
@@ -2087,6 +2326,22 @@
       lineViewCurrentLookup=buildDisplayNameLookup(model);
       lineViewCurrentDayLabel=dayLabels[lineViewState.dayIndex]||`Day ${lineViewState.dayIndex+1}`;
       syncLineViewControls(dayLabels);
+      if(lineDaySummary && !lineDaySummary.hidden){
+        const baseLabel=formatFullDayLabel(lineViewCurrentDayLabel)||lineViewCurrentDayLabel;
+        if(selectionCount>1){
+          lineDaySummary.textContent=`${baseLabel} — ${selectionCount} selected`;
+        }else{
+          lineDaySummary.textContent=baseLabel;
+        }
+      }
+      if(lineWindowHint){
+        lineWindowHint.hidden=false;
+        if(selectionCount>1){
+          lineWindowHint.textContent='Showing selected colleagues. Pinch to zoom the visible hours and drag the timeline to pan.';
+        }else{
+          lineWindowHint.textContent=lineWindowHintDefault;
+        }
+      }
       drawCurrentLineChart();
     }
 
@@ -2139,18 +2394,17 @@
       container.appendChild(header);
 
       const lookup=buildDisplayNameLookup(model);
-      const perDayData=perDay;
+      const selectionRecords=allowIndividual?getSelectionRecords(model):[];
+      const selectedRows=selectionRecords.map(item=>item.row);
+      const selectedCount=selectionRecords.length;
+      const perDayData=selectedCount?filterPerDayEntries(perDay,selectedRows):perDay;
       const hasRows=Array.isArray(model.rows) && model.rows.length>0;
 
-      let selectedPerson=null;
-      let selectedRecord=null;
-      if(allowIndividual && Number.isInteger(currentIndividualIndex) && currentIndividualIndex>=0 && hasRows && currentIndividualIndex<model.rows.length){
-        selectedPerson=model.rows[currentIndividualIndex];
-        selectedRecord=lastIndividuals.find(rec=>rec.index===currentIndividualIndex) || null;
-      }
-
-      if(selectedPerson){
-        const displayName=(selectedRecord && selectedRecord.displayName) || getRowDisplayName(selectedPerson,currentIndividualIndex+1);
+      if(allowIndividual && selectedCount===1){
+        const selectedPerson=selectionRecords[0].row;
+        const selectedRecord=selectionRecords[0].record;
+        const selectedIndex=selectionRecords[0].index;
+        const displayName=(selectedRecord && selectedRecord.displayName) || getRowDisplayName(selectedPerson,selectedIndex+1);
         const focusSection=document.createElement('section');
         focusSection.className='schedule-individual';
         const title=document.createElement('h2');
@@ -2203,11 +2457,8 @@
         clearBtn.className='btn-clear-selection';
         clearBtn.textContent='Show all colleagues';
         clearBtn.addEventListener('click',()=>{
-          const select=document.getElementById('selIndividual');
-          if(select){
-            select.value='all';
-            select.dispatchEvent(new Event('change',{bubbles:true}));
-          }
+          setCurrentIndividualSelection([]);
+          renderViews();
         });
         focusSection.appendChild(clearBtn);
         container.appendChild(focusSection);
@@ -2302,7 +2553,7 @@
         scheduleDays.appendChild(card);
       });
 
-      if(allowIndividual){
+      if(allowIndividual && selectedCount===0){
         const individualSection=document.createElement('section');
         individualSection.className='individual-summary';
         const heading=document.createElement('h2');
@@ -2354,22 +2605,20 @@
       }
       const formattedDates=dayHeaders.map(formatFullDayLabel);
       const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
+      const selectionRecords=allowIndividual?getSelectionRecords(model):[];
+      const selectedRows=selectionRecords.map(item=>item.row);
+      const perDayForPreview=selectedRows.length?filterPerDayEntries(perDay,selectedRows):perDay;
       const totalPages=dayHeaders.length;
-      if(allowIndividual && Number.isInteger(currentIndividualIndex) && currentIndividualIndex>=0 && model.rows && currentIndividualIndex<model.rows.length){
-        const person=model.rows[currentIndividualIndex];
-        const record=lastIndividuals.find(rec=>rec.index===currentIndividualIndex);
-        const displayName=(record && record.displayName) || getRowDisplayName(person,currentIndividualIndex+1);
+      if(allowIndividual && selectionRecords.length===1){
+        const selected=selectionRecords[0];
+        const person=selected.row;
+        const displayName=(selected.record && selected.record.displayName) || getRowDisplayName(person,selected.index+1);
         const dayRows=[];
         dayHeaders.forEach((label,dayIdx)=>{
           const parsed=parseDayHeader(label);
           const dayName=(parsed && parsed.dayName) || formatShortDayLabel(label) || label || `Day ${dayIdx+1}`;
-          const entries=Array.isArray(perDay[dayIdx])?perDay[dayIdx]:[];
-          const match=entries.find(entry=>{
-            if(person.rawName && entry.rawName){
-              return entry.rawName===person.rawName;
-            }
-            return entry.name===person.name;
-          });
+          const entries=Array.isArray(perDayForPreview[dayIdx])?perDayForPreview[dayIdx]:[];
+          const match=entries.find(entry=>entryMatchesSelection(entry,person));
           const range=match && match.range?{...match.range}:null;
           const segments=match && Array.isArray(match.segments)?match.segments.map(seg=>({...seg})):[];
           dayRows.push({name:dayName,rawName:match && match.rawName ? match.rawName : person.rawName || '',range,segments,highlight:!!(match && match.highlight)});
@@ -2388,7 +2637,7 @@
         return;
       }
       dayHeaders.forEach((label,idx)=>{
-        const rows=perDay[idx]||[];
+        const rows=perDayForPreview[idx]||[];
         drawDayCard(sheets,label,rows,{
           dateRangeLabel,
           pageNumber:idx+1,
@@ -2430,27 +2679,37 @@
       if(scopeHint){
         scopeHint.hidden=!hasWeeks;
         scopeHint.setAttribute('aria-hidden',hasWeeks?'false':'true');
+        if(hasWeeks){
+          scopeHint.textContent='Select one or more colleagues to focus every preview and export.';
+        }
       }
       if(!select || !btn){
         lastIndividuals=[];
-        currentIndividualIndex=null;
+        setCurrentIndividualSelection([]);
         return;
       }
-      const desiredSelection=Number.isInteger(currentIndividualIndex)?String(currentIndividualIndex):(select.value||'all');
       lastIndividuals=[];
       if(!hasWeeks){
         select.innerHTML='<option value="all">All colleagues</option>';
+        select.multiple=true;
         select.disabled=true;
         btn.disabled=true;
         btn.textContent='Export PDF';
-        currentIndividualIndex=null;
+        setCurrentIndividualSelection([]);
+        if(selectionActions){
+          selectionActions.hidden=true;
+          selectionActions.setAttribute('aria-hidden','true');
+        }
+        if(btnClearSelection){
+          btnClearSelection.disabled=true;
+        }
+        if(btnManagementShortcut){
+          btnManagementShortcut.disabled=true;
+        }
         return;
       }
       const week=weeks[0];
       const model=week.model;
-      if(scopeHint){
-        scopeHint.textContent='Choose a colleague to focus the preview and export.';
-      }
       const rows=Array.isArray(model.rows)?model.rows:[];
       const options=['<option value="all">All colleagues</option>'];
       rows.forEach((row,idx)=>{
@@ -2459,17 +2718,47 @@
         lastIndividuals.push({index:idx,displayName:display,rawName:row.rawName,name:row.name});
       });
       select.innerHTML=options.join('');
+      select.multiple=true;
       select.disabled=!rows.length;
-      const validValues=new Set(['all',...lastIndividuals.map(rec=>String(rec.index))]);
-      const selectionToApply=validValues.has(desiredSelection)?desiredSelection:'all';
-      select.value=selectionToApply;
-      if(selectionToApply!=='all'){
-        currentIndividualIndex=parseInt(selectionToApply,10);
+      const size=Math.min(8,Math.max(2,rows.length+1));
+      select.size=size;
+      if(!rows.length){
+        setCurrentIndividualSelection([]);
       }else{
-        currentIndividualIndex=null;
+        setCurrentIndividualSelection(currentIndividualSelection.slice(),{maxIndex:rows.length});
       }
-      btn.disabled=false;
-      btn.textContent=selectionToApply!=='all'?'Export colleague PDF':'Export weekly PDF';
+      const selectedSet=new Set(currentIndividualSelection.map(val=>String(val)));
+      Array.from(select.options).forEach(opt=>{
+        if(opt.value==='all'){
+          opt.selected=!selectedSet.size;
+        }else{
+          opt.selected=selectedSet.has(opt.value);
+        }
+      });
+      btn.disabled=!rows.length;
+      let btnLabel='Export weekly PDF';
+      if(currentIndividualSelection.length===1){
+        btnLabel='Export colleague PDF';
+      }else if(currentIndividualSelection.length>1){
+        btnLabel='Export filtered PDF';
+      }
+      btn.textContent=btnLabel;
+      if(selectionActions){
+        const showActions=rows.length>0;
+        selectionActions.hidden=!showActions;
+        selectionActions.setAttribute('aria-hidden',showActions?'false':'true');
+      }
+      if(btnClearSelection){
+        btnClearSelection.disabled=!rows.length || !currentIndividualSelection.length;
+      }
+      if(btnManagementShortcut){
+        const normalizedTargets=MANAGEMENT_SHORTCUT_NAMES;
+        const hasShortcut=rows.length>0 && lastIndividuals.some(rec=>{
+          const value=(rec.displayName||rec.rawName||rec.name||'').toLowerCase();
+          return normalizedTargets.some(name=>value.includes(name));
+        });
+        btnManagementShortcut.disabled=!hasShortcut;
+      }
     }
 
     function renderViews(){
@@ -2532,12 +2821,15 @@
         const model=week.model;
         const perDay=Array.isArray(week.perDay)?week.perDay:[];
         const dayHeaders=Array.isArray(model.dayHeaders)?model.dayHeaders:[];
+        const selectionRecords=getSelectionRecords(model);
+        const selectedRows=selectionRecords.map(item=>item.row);
+        const filteredPerDay=selectedRows.length?filterPerDayEntries(perDay,selectedRows):perDay;
         const totalPages=Math.max(dayHeaders.length,1);
         let pageNumber=1;
         const formattedDates=dayHeaders.map(formatFullDayLabel);
         const dateRangeLabel=resolveDateRangeLabelForWeek(model,week.metadata,layout);
         dayHeaders.forEach((label,idx)=>{
-          const rows=perDay[idx]||[];
+          const rows=filteredPerDay[idx]||[];
           const footerText=formatFooterText(layout.footerTemplate,{
             pageNumber,
             totalPages,
@@ -2581,14 +2873,14 @@
       }
     }
 
-    async function exportIndividualPDF(selection,btn){
+    async function exportIndividualPDF(selectionIndex,btn){
       if(!btn) return;
       const weeks=getActiveWeekData();
       if(weeks.length!==1){
         await exportPDF(btn);
         return;
       }
-      const idx=parseInt(selection,10);
+      const idx=parseInt(selectionIndex,10);
       if(Number.isNaN(idx)){
         await exportPDF(btn);
         return;
@@ -2680,14 +2972,11 @@
     async function exportSelectedPDF(){
       const btn=document.getElementById('btnExport');
       if(!btn || btn.disabled) return;
-      const select=document.getElementById('selIndividual');
-      const selection=select?select.value:'all';
-      const weeks=getActiveWeekData();
-      if(selection && selection!=='all' && weeks.length===1){
-        await exportIndividualPDF(selection,btn);
-      }else{
-        await exportPDF(btn);
+      if(currentIndividualSelection.length===1){
+        await exportIndividualPDF(currentIndividualSelection[0],btn);
+        return;
       }
+      await exportPDF(btn);
     }
 
     function buildPdfSheetPlan(rows,layout,meta={},palette={},options={}){
@@ -3281,13 +3570,7 @@
           if(hiddenInput){ hiddenInput.value=text; }
           fileInput.value='';
           btnUpload.textContent='Replace CSV';
-          const sel=document.getElementById('selIndividual');
-          if(sel){ sel.value='all'; }
-          const exportBtn=document.getElementById('btnExport');
-          if(exportBtn){
-            exportBtn.textContent='Export PDF';
-          }
-          currentIndividualIndex=null;
+          setCurrentIndividualSelection([]);
           if(!text.trim()){
             renderViews();
             addUploadLog('Uploaded CSV was empty after trimming whitespace.','warning');
@@ -3376,23 +3659,36 @@
     const selIndividual=document.getElementById('selIndividual');
     if(selIndividual){
       selIndividual.addEventListener('change',()=>{
-        const value=selIndividual.value;
-        if(value && value!=='all'){
-          const parsed=parseInt(value,10);
-          const weeks=getActiveWeekData();
-          const week=weeks.length===1?weeks[0]:null;
-          if(!Number.isNaN(parsed) && week && week.model && Array.isArray(week.model.rows) && parsed<week.model.rows.length){
-            currentIndividualIndex=parsed;
-          }else{
-            currentIndividualIndex=null;
-          }
+        const selectedValues=Array.from(selIndividual.selectedOptions||[]).map(opt=>opt.value);
+        if(!selectedValues.length || selectedValues.includes('all')){
+          setCurrentIndividualSelection([]);
         }else{
-          currentIndividualIndex=null;
+          const indices=selectedValues.map(val=>parseInt(val,10)).filter(idx=>Number.isInteger(idx));
+          setCurrentIndividualSelection(indices);
         }
-        const btn=document.getElementById('btnExport');
-        if(btn){
-          btn.textContent=value && value!=='all'?'Export colleague PDF':'Export weekly PDF';
+        renderViews();
+      });
+    }
+
+    if(btnClearSelection){
+      btnClearSelection.addEventListener('click',()=>{
+        if(btnClearSelection.disabled) return;
+        setCurrentIndividualSelection([]);
+        renderViews();
+      });
+    }
+
+    if(btnManagementShortcut){
+      btnManagementShortcut.addEventListener('click',()=>{
+        if(btnManagementShortcut.disabled) return;
+        if(!lastIndividuals.length){
+          return;
         }
+        const matches=lastIndividuals.filter(rec=>{
+          const value=(rec.displayName||rec.rawName||rec.name||'').toLowerCase();
+          return MANAGEMENT_SHORTCUT_NAMES.some(name=>value.includes(name));
+        }).map(rec=>rec.index);
+        setCurrentIndividualSelection(matches);
         renderViews();
       });
     }
