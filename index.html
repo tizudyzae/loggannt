@@ -72,6 +72,7 @@
     .side{display:flex;flex-direction:column;gap:12px;min-width:240px}
     .side>.btn{width:100%}
     .panel{border:1px solid var(--border);border-radius:22px;background:var(--surface);box-shadow:0 14px 30px rgba(9,42,58,.08);padding:0;overflow:hidden}
+    .panel.settings-panel{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch}
     .panel[hidden]{display:none !important;margin:0 !important;padding:0 !important;border:0}
     .panel summary{cursor:pointer;list-style:none;font-weight:700;color:var(--ink);padding:18px 24px;font-size:15px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);transition:background .2s ease,color .2s ease}
     .panel summary::-webkit-details-marker{display:none}
