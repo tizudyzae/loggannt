@@ -311,8 +311,8 @@
             </select>
           </label>
           <div class="selection-actions" id="selectionActions" hidden aria-hidden="true">
+            <button class="btn btn-secondary" id="btnManagementShortcut" type="button">Management</button>
             <button class="btn btn-secondary" id="btnClearSelection" type="button">Clear selection</button>
-            <button class="btn btn-secondary" id="btnManagementShortcut" type="button">Select Samantha, Elizabeth, Joshua, Laura &amp; Nathan</button>
           </div>
           <p class="control-hint" id="reportScopeHint" hidden aria-hidden="true">Select one or more colleagues to focus every preview and export.</p>
           <div id="appearanceControls" hidden aria-hidden="true"></div>
@@ -3659,8 +3659,18 @@
     const selIndividual=document.getElementById('selIndividual');
     if(selIndividual){
       selIndividual.addEventListener('change',()=>{
-        const selectedValues=Array.from(selIndividual.selectedOptions||[]).map(opt=>opt.value);
-        if(!selectedValues.length || selectedValues.includes('all')){
+        const options=Array.from(selIndividual.options||[]);
+        let selectedValues=options.filter(opt=>opt.selected).map(opt=>opt.value);
+        const hasAllSelected=selectedValues.includes('all');
+        const filteredValues=selectedValues.filter(val=>val!=='all');
+        if(hasAllSelected && filteredValues.length){
+          const allOption=options.find(opt=>opt.value==='all');
+          if(allOption){
+            allOption.selected=false;
+          }
+          selectedValues=filteredValues;
+        }
+        if(!selectedValues.length){
           setCurrentIndividualSelection([]);
         }else{
           const indices=selectedValues.map(val=>parseInt(val,10)).filter(idx=>Number.isInteger(idx));
