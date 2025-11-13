@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Logile Rota Viewer — HTML Demo</title>
+  <title>CSV Rota Viewer — HTML Demo</title>
   <style>
     :root {
       --page-bg:#f3f6f9;
@@ -273,7 +273,7 @@
   </div>
   <div class="wrap">
     <header class="hero">
-      <h1>Logile rota viewer</h1>
+      <h1>CSV Rota Viewer</h1>
       <p>Upload your weekly export to explore a mobile-friendly schedule and generate printable PDF sheets. Preview every day, focus on individual colleagues, and share polished reports in a few clicks.</p>
     </header>
 
@@ -337,7 +337,7 @@
             <div class="sheets" id="sheets"></div>
           </section>
         </div>
-        <div class="footer">Client‑side only. Uses pdf-lib to turn the SVG output into shareable landscape PDFs.</div>
+        <div class="footer">Client-side only: all rota data stays on your device, is processed locally in the browser (including any cached copies stored via localStorage), and is never sent to a server. Built with pdf-lib to convert the SVG output into shareable landscape PDFs. This workflow is designed to help you meet GDPR obligations because no personal data leaves your device; please ensure you have authority to handle any rota data you load.</div>
       </main>
     </div>
     <textarea id="input" hidden></textarea>
@@ -2322,7 +2322,7 @@
       if(!weeks.length){
         const placeholder=document.createElement('div');
         placeholder.className='empty-state';
-        placeholder.innerHTML='<strong>Upload a rota</strong>Use the controls to load your Logile CSV and explore shifts here.';
+        placeholder.innerHTML='<strong>Upload a rota</strong>Use the controls to load your CSV export and explore shifts here.';
         container.appendChild(placeholder);
         return;
       }
