@@ -41,8 +41,8 @@
     .page-header{border-radius:28px;background:var(--surface);padding:32px 36px;box-shadow:0 16px 40px rgba(6,28,46,.12);display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
     .page-header h1{font-size:clamp(28px,4vw,40px);margin:6px 0 0;color:var(--ink)}
     .page-header p{margin:12px 0 0;color:var(--muted);font-size:16px;max-width:60ch}
-    .layout{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px;align-items:flex-start}
-    .side-panel{display:flex;flex-direction:column;gap:20px;position:sticky;top:20px}
+    .layout{display:flex;flex-direction:column;gap:28px}
+    .side-panel{display:flex;flex-direction:column;gap:20px}
     .main-panel{display:flex;flex-direction:column;gap:24px}
     .controls{display:flex;flex-direction:column;gap:16px;align-items:stretch;border:1px solid rgba(6,28,46,.08);padding:26px 28px;border-radius:28px;background:var(--surface);box-shadow:0 20px 45px rgba(5,22,38,.1);width:100%}
     .control-btn{width:100%}
@@ -93,7 +93,7 @@
     .selection-actions .btn{width:100%}
     .viewer{display:flex;flex-direction:column;gap:20px}
     .viewer-tabs{display:flex;gap:12px;flex-wrap:nowrap;background:var(--surface);padding:12px;border-radius:24px;box-shadow:0 14px 30px rgba(9,42,58,.08);position:sticky;top:0;z-index:10}
-    .viewer-tab{appearance:none;border:1px solid rgba(0,0,0,.04);border-radius:999px;padding:clamp(10px,2vw,14px) clamp(12px,5vw,24px);font-size:clamp(12px,3vw,15px);font-weight:700;background:transparent;color:var(--muted);cursor:pointer;transition:all .2s ease;box-shadow:none;flex:1 1 0;min-width:0;text-align:center}
+    .viewer-tab{appearance:none;border:1px solid rgba(0,0,0,.04);border-radius:999px;padding:clamp(10px,2vw,14px) clamp(12px,5vw,24px);font-size:clamp(12px,3vw,15px);font-weight:700;background:transparent;color:var(--muted);cursor:pointer;transition:all .2s ease;box-shadow:none;flex:1 1 0;min-width:0;text-align:center;white-space:nowrap}
     .viewer-tab:hover{color:var(--accent)}
     .viewer-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 10px 20px rgba(0,123,195,.18)}
     .view-panel{display:none}
@@ -251,6 +251,19 @@
     .barlabel{fill:#fff;font-size:var(--bar-label-size,11px);font-weight:700;dominant-baseline:middle;font-family:"Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif}
     .mobile-hint{display:flex;align-items:center;gap:12px;padding:18px 20px;border-radius:20px;background:rgba(255,255,255,.7);box-shadow:0 12px 28px rgba(4,24,44,.12);font-size:14px;color:var(--muted)}
     .mobile-hint strong{color:var(--ink)}
+    .mobile-hint-text{flex:1;display:flex;gap:8px;align-items:center}
+    .mobile-hint-close{appearance:none;border:none;background:rgba(0,0,0,.06);color:var(--ink);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background .2s ease,color .2s ease}
+    .mobile-hint-close:hover{background:rgba(0,0,0,.12);color:var(--accent)}
+    .mobile-hint-close:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+    .appearance-controls{display:flex;flex-direction:column;gap:12px}
+    .appearance-grid{display:flex;flex-direction:column;gap:10px}
+    .appearance-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid rgba(6,28,46,.1);border-radius:16px;background:var(--surface-soft)}
+    .appearance-label{display:flex;flex-direction:column;font-weight:700;color:var(--ink);gap:2px;font-size:13px}
+    .appearance-label small{font-size:11px;font-weight:600;color:var(--muted)}
+    .appearance-color-input{width:52px;height:36px;border-radius:12px;border:1px solid var(--border);padding:0;background:#fff;cursor:pointer}
+    .appearance-color-input:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+    .appearance-color-input:disabled{opacity:.5;cursor:not-allowed}
+    .appearance-hint{margin-top:4px}
     .footer{margin-top:8px;color:var(--muted);font-size:13px;text-align:center}
     @media (max-width:960px){
       .wrap{padding:24px}
@@ -298,8 +311,12 @@
       </div>
     </header>
 
-    <div class="mobile-hint">
-      <strong>Quick tip:</strong> Add this page to your home screen for an app-like experience. All controls stay within thumb reach and the reports stay untouched.
+    <div class="mobile-hint" id="mobileHint" aria-live="polite">
+      <div class="mobile-hint-text">
+        <strong>Quick tip:</strong>
+        <span>Add this page to your home screen for an app-like experience. All controls stay within thumb reach and the reports stay untouched.</span>
+      </div>
+      <button class="mobile-hint-close" id="btnDismissHint" type="button" aria-label="Dismiss quick tip">×</button>
     </div>
 
     <div class="layout">
@@ -321,7 +338,7 @@
             <button class="btn btn-secondary" id="btnClearSelection" type="button">Clear selection</button>
           </div>
           <p class="control-hint" id="reportScopeHint" hidden aria-hidden="true">Select one or more colleagues to focus every preview and export.</p>
-          <div id="appearanceControls" hidden aria-hidden="true"></div>
+          <div id="appearanceControls" class="appearance-controls" hidden aria-hidden="true" role="group"></div>
         </div>
       </aside>
       <main class="main-panel">
@@ -567,6 +584,8 @@
 
     const STORAGE_KEY='loggannt.rotas.v1';
     const STORAGE_SELECTION_KEY='loggannt.rotas.selection';
+    const STORAGE_COLOR_KEY='loggannt.rotas.colors';
+    const STORAGE_HOME_TIP_KEY='loggannt.rotas.homeTipDismissed';
     const MAX_STORED_WEEKS=4;
 
     function sanitizeModelForStorage(model){
@@ -963,6 +982,147 @@
     }
 
     const storageSupported=storageAvailable();
+
+    function normalizeColorHex(value){
+      if(typeof value!=='string') return null;
+      const match=value.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+      if(!match) return null;
+      let hex=match[1];
+      if(hex.length===3){
+        hex=hex.split('').map(ch=>ch+ch).join('');
+      }
+      return `#${hex.toLowerCase()}`;
+    }
+
+    function normalizeNameKey(value){
+      if(typeof value!=='string') return '';
+      return value.trim().toLowerCase();
+    }
+
+    function loadColorPreferences(){
+      try{
+        if(!storageSupported) return new Map();
+        const raw=window.localStorage.getItem(STORAGE_COLOR_KEY);
+        if(!raw) return new Map();
+        const parsed=JSON.parse(raw);
+        const map=new Map();
+        if(parsed && typeof parsed==='object'){
+          Object.entries(parsed).forEach(([key,val])=>{
+            const normalized=normalizeColorHex(val);
+            if(key && normalized){
+              map.set(key,normalized);
+            }
+          });
+        }
+        return map;
+      }catch(err){
+        console.warn('Failed to read colour preferences:',err);
+        return new Map();
+      }
+    }
+
+    function persistColorPreferences(){
+      if(!storageSupported) return;
+      try{
+        const payload={};
+        colorPreferenceMap.forEach((value,key)=>{
+          payload[key]=value;
+        });
+        window.localStorage.setItem(STORAGE_COLOR_KEY,JSON.stringify(payload));
+      }catch(err){
+        console.warn('Failed to store colour preferences:',err);
+      }
+    }
+
+    const colorPreferenceMap=loadColorPreferences();
+
+    function getColorPreferenceByKey(key){
+      if(!key) return null;
+      return colorPreferenceMap.get(key)||null;
+    }
+
+    function buildColorLookupKeys(entry){
+      const keys=[];
+      if(!entry) return keys;
+      const raw=normalizeNameKey(entry.rawName||'');
+      if(raw) keys.push(`raw:${raw}`);
+      const clean=normalizeNameKey(entry.name||'');
+      if(clean) keys.push(`clean:${clean}`);
+      return keys;
+    }
+
+    function getStoredColorForEntry(entry){
+      const keys=buildColorLookupKeys(entry);
+      for(const key of keys){
+        const value=getColorPreferenceByKey(key);
+        if(value) return value;
+      }
+      return null;
+    }
+
+    function getCustomColorForEntry(entry){
+      if(entry && entry.highlight) return null;
+      return getStoredColorForEntry(entry);
+    }
+
+    let defaultPickerColor=null;
+    function getDefaultPickerColor(){
+      if(defaultPickerColor) return defaultPickerColor;
+      try{
+        const computed=getComputedStyle(document.documentElement);
+        const accent=normalizeColorHex(computed.getPropertyValue('--accent')||'');
+        if(accent){
+          defaultPickerColor=accent;
+          return defaultPickerColor;
+        }
+      }catch(err){
+        console.warn('Failed to resolve accent colour:',err);
+      }
+      defaultPickerColor=normalizeColorHex(DEFAULT_LAYOUT.barColor)||'#4b4b4b';
+      return defaultPickerColor;
+    }
+
+    function refreshReportsForColorChange(){
+      const weeks=getActiveWeekData();
+      renderScheduleView(weeks);
+      renderLineView(weeks);
+      renderPdfPreview(weeks);
+    }
+
+    function handleColorPreferenceChange(key,color){
+      if(!key) return;
+      const normalized=normalizeColorHex(color);
+      if(normalized){
+        colorPreferenceMap.set(key,normalized);
+      }else{
+        colorPreferenceMap.delete(key);
+      }
+      persistColorPreferences();
+      refreshReportsForColorChange();
+    }
+
+    function isHomeTipDismissed(){
+      if(!storageSupported) return false;
+      try{
+        return window.localStorage.getItem(STORAGE_HOME_TIP_KEY)==='1';
+      }catch(err){
+        console.warn('Failed to read quick-tip preference:',err);
+        return false;
+      }
+    }
+
+    function setHomeTipDismissed(state){
+      if(!storageSupported) return;
+      try{
+        if(state){
+          window.localStorage.setItem(STORAGE_HOME_TIP_KEY,'1');
+        }else{
+          window.localStorage.removeItem(STORAGE_HOME_TIP_KEY);
+        }
+      }catch(err){
+        console.warn('Failed to store quick-tip preference:',err);
+      }
+    }
 
     function loadSavedWeekRecords(){
       if(!storageSupported) return [];
@@ -1361,7 +1521,8 @@
 
         if(row.range){
           const labelText=`${fmtHMDisplay(row.range.start)} - ${fmtHMDisplay(row.range.end)}`;
-          const barFill=row.highlight?SPECIAL_NAME_COLOR:(layout.barColor||DEFAULT_LAYOUT.barColor);
+          const storedColor=row.highlight?null:getCustomColorForEntry(row);
+          const barFill=row.highlight?SPECIAL_NAME_COLOR:(storedColor||layout.barColor||DEFAULT_LAYOUT.barColor);
           row.segments.forEach((seg,segIdx)=>{
             const segY=y+4;
             const segHeight=rowH-8;
@@ -1522,6 +1683,7 @@
     const selectionActions=document.getElementById('selectionActions');
     const btnClearSelection=document.getElementById('btnClearSelection');
     const btnManagementShortcut=document.getElementById('btnManagementShortcut');
+    const appearanceControls=document.getElementById('appearanceControls');
 
     if(Array.isArray(linePresetButtonList) && linePresetButtonList.length){
       linePresetButtonList.forEach(btn=>{
@@ -1903,6 +2065,12 @@
             const bar=document.createElement('div');
             bar.className='line-bar';
             if(entry && entry.highlight) bar.classList.add('highlight');
+            if(!bar.classList.contains('highlight')){
+              const customColor=getCustomColorForEntry(entry);
+              if(customColor){
+                bar.style.backgroundColor=customColor;
+              }
+            }
             const left=((segment.visibleStart-start)/window)*100;
             const width=((segment.visibleEnd-segment.visibleStart)/window)*100;
             bar.style.left=`${left}%`;
@@ -2171,6 +2339,12 @@
             const bar=document.createElement('div');
             bar.className='line-week-bar';
             if(match && match.highlight) bar.classList.add('highlight');
+            if(!bar.classList.contains('highlight')){
+              const customColor=getCustomColorForEntry(match);
+              if(customColor){
+                bar.style.backgroundColor=customColor;
+              }
+            }
             const startPercent=Math.max(0,Math.min(100,(seg.start/1440)*100));
             const widthPercent=Math.max(0,Math.min(100,((seg.end-seg.start)/1440)*100));
             bar.style.left=`${startPercent}%`;
@@ -2767,10 +2941,85 @@
       }
     }
 
+    function syncAppearanceControls(weeks){
+      if(!appearanceControls) return;
+      appearanceControls.innerHTML='';
+      const week=Array.isArray(weeks) && weeks.length?weeks[0]:null;
+      const model=week && week.model;
+      const rows=Array.isArray(model && model.rows)?model.rows:[];
+      if(!rows.length){
+        appearanceControls.hidden=true;
+        appearanceControls.setAttribute('aria-hidden','true');
+        return;
+      }
+      const seenKeys=new Set();
+      const entries=[];
+      rows.forEach((row,index)=>{
+        const keys=buildColorLookupKeys(row);
+        const primary=keys[0];
+        if(!primary || seenKeys.has(primary)) return;
+        seenKeys.add(primary);
+        entries.push({
+          key:primary,
+          row,
+          index,
+          label:getRowDisplayName(row,index+1),
+          locked:isNathanName(row.rawName||row.name),
+        });
+      });
+      if(!entries.length){
+        appearanceControls.hidden=true;
+        appearanceControls.setAttribute('aria-hidden','true');
+        return;
+      }
+      entries.sort((a,b)=>a.label.localeCompare(b.label,undefined,{sensitivity:'base'}));
+      const hint=document.createElement('p');
+      hint.className='control-hint appearance-hint';
+      hint.textContent='Adjust colleague bar colours across every report. Nathan\'s colour stays locked for quick identification.';
+      appearanceControls.appendChild(hint);
+      const grid=document.createElement('div');
+      grid.className='appearance-grid';
+      entries.forEach((entry,idx)=>{
+        const item=document.createElement('div');
+        item.className='appearance-item';
+        const inputId=`appearanceColor-${idx}`;
+        const label=document.createElement('label');
+        label.className='appearance-label';
+        label.setAttribute('for',inputId);
+        label.textContent=entry.label;
+        if(entry.locked){
+          const lock=document.createElement('small');
+          lock.textContent='Locked';
+          label.appendChild(lock);
+        }
+        const input=document.createElement('input');
+        input.type='color';
+        input.id=inputId;
+        input.className='appearance-color-input';
+        const stored=getColorPreferenceByKey(entry.key);
+        const lockedColor=normalizeColorHex(SPECIAL_NAME_COLOR);
+        const defaultColor=entry.locked?(lockedColor||getDefaultPickerColor()):getDefaultPickerColor();
+        input.value=stored||defaultColor||'#4b4b4b';
+        input.disabled=entry.locked;
+        if(!entry.locked){
+          input.addEventListener('input',event=>{
+            handleColorPreferenceChange(entry.key,event.target.value);
+          });
+        }
+        item.appendChild(label);
+        item.appendChild(input);
+        grid.appendChild(item);
+      });
+      appearanceControls.appendChild(grid);
+      appearanceControls.hidden=false;
+      appearanceControls.setAttribute('aria-hidden','false');
+    }
+
     function renderViews(){
       const weeks=getActiveWeekData();
       setViewerTabsVisibility(weeks.length>0);
       updateIndividualControls(weeks);
+      syncAppearanceControls(weeks);
       if(!weeks.length && activeView!=='schedule'){
         switchView('schedule');
       }
@@ -2924,7 +3173,7 @@
         });
         const range=match && match.range?{...match.range}:null;
         const segments=match && Array.isArray(match.segments)?match.segments.map(seg=>({...seg})):[];
-        dayRows.push({name:dayName,range,segments,highlight:!!(match && match.highlight)});
+        dayRows.push({name:dayName,rawName:(match && match.rawName) || person.rawName || '',range,segments,highlight:!!(match && match.highlight)});
       });
       const footerText=formatFooterText(layout.footerTemplate,{
         pageNumber:1,
@@ -3049,15 +3298,19 @@
           const ends=sanitizedSegments.map(seg=>seg.end);
           sanitizedRange={start:Math.min(...starts),end:Math.max(...ends)};
         }
-        return {name,range:sanitizedRange,segments:sanitizedSegments,highlight};
+        const customColor=getCustomColorForEntry(row);
+        const parsedColor=customColor?parseCssColor(customColor):null;
+        return {name,range:sanitizedRange,segments:sanitizedSegments,highlight,rawName:row.rawName||'',color:parsedColor};
       }).filter(Boolean):[];
 
       const visibleRows=preserveEmptyRows?sourceRows:sourceRows.filter(row=>row.range);
-      const bodyRows=(visibleRows.length?visibleRows:[{name:placeholderLabel,range:null,segments:[],highlight:false}]).map(row=>({
+      const bodyRows=(visibleRows.length?visibleRows:[{name:placeholderLabel,range:null,segments:[],highlight:false,rawName:'',color:null}]).map(row=>({
         name:row.name,
         range:row.range,
         segments:row.segments,
         highlight:!!row.highlight,
+        rawName:row.rawName||'',
+        color:row.color||null,
       }));
 
       const inkColor=(palette && palette.ink)?palette.ink:{r:0,g:0,b:0};
@@ -3289,7 +3542,8 @@
         });
         if(row.range){
           const labelText=`${fmtHMDisplay(row.range.start)} - ${fmtHMDisplay(row.range.end)}`;
-          const barColor=row.highlight && palette.specialBar?palette.specialBar:palette.bar;
+          const customColor=row.color && row.color.r!==undefined?row.color:null;
+          const barColor=row.highlight && palette.specialBar?palette.specialBar:(customColor||palette.bar);
           row.segments.forEach((seg,segIdx)=>{
             const segY=rowTop+4;
             const segHeight=rowH-8;
@@ -3411,6 +3665,8 @@
 
     // ---------- Sample & Wire-up ----------
     const hiddenInput=document.getElementById('input');
+    const mobileHint=document.getElementById('mobileHint');
+    const btnDismissHint=document.getElementById('btnDismissHint');
     const fileInput=document.getElementById('fileInput');
     const btnUpload=document.getElementById('btnUpload');
     const btnClearWeeks=document.getElementById('btnClearWeeks');
@@ -3418,6 +3674,33 @@
     const uploadLogContainer=document.getElementById('uploadLog');
     const btnClearLog=document.getElementById('btnClearLog');
     const uploadLogEntries=[];
+
+    function hideMobileHint(){
+      if(!mobileHint) return;
+      mobileHint.hidden=true;
+      mobileHint.setAttribute('aria-hidden','true');
+    }
+
+    function showMobileHint(){
+      if(!mobileHint) return;
+      mobileHint.hidden=false;
+      mobileHint.setAttribute('aria-hidden','false');
+    }
+
+    function initMobileHint(){
+      if(!mobileHint) return;
+      if(isHomeTipDismissed()){
+        hideMobileHint();
+      }else{
+        showMobileHint();
+      }
+      if(btnDismissHint){
+        btnDismissHint.addEventListener('click',()=>{
+          hideMobileHint();
+          setHomeTipDismissed(true);
+        });
+      }
+    }
 
     function formatFileSize(bytes){
       if(typeof bytes!=='number' || !Number.isFinite(bytes) || bytes<0){ return ''; }
@@ -3515,6 +3798,7 @@
       }
     }
 
+    initMobileHint();
     renderUploadLog();
     if(btnClearLog){
       btnClearLog.addEventListener('click',()=>{
