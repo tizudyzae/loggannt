@@ -94,6 +94,21 @@
     .panel-body{padding:0 24px 24px;display:grid;gap:16px;background:var(--surface-soft)}
     .panel.panel-static{padding:24px 28px;display:grid;gap:16px}
     .panel.panel-static .btn{width:100%}
+    .upload-log{border:1px solid var(--border);border-radius:18px;padding:16px;max-height:280px;overflow:auto;display:flex;flex-direction:column;gap:12px;background:var(--surface-soft)}
+    .upload-log-panel.has-entries .upload-log{border-color:#d6e1ea}
+    .log-entry{border-left:4px solid var(--accent);padding-left:12px;display:flex;flex-direction:column;gap:4px}
+    .log-entry[data-level="success"]{border-left-color:#16a34a}
+    .log-entry[data-level="warning"]{border-left-color:#d97706}
+    .log-entry[data-level="error"]{border-left-color:#dc2626}
+    .log-entry-message{font-weight:600;color:var(--ink)}
+    .log-entry-details{font-size:12px;color:var(--muted);white-space:pre-wrap;background:rgba(6,22,38,.04);padding:8px;border-radius:12px;margin:0}
+    .log-entry-meta{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+    .log-empty{margin:0;color:var(--muted);font-size:13px;text-align:center}
+    .upload-log-actions{display:flex;justify-content:flex-end}
+    .pdf-debug{display:flex;flex-direction:column;gap:10px}
+    .pdf-debug textarea{width:100%;min-height:140px;border:1px solid var(--border);border-radius:14px;padding:12px;font-family:'IBM Plex Mono','SFMono-Regular',Menlo,Monaco,Consolas,'Liberation Mono',monospace;font-size:12px;resize:vertical;background:var(--surface);color:var(--ink)}
+    .pdf-debug textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,123,195,.18)}
+    .pdf-debug-meta{font-size:12px;color:var(--muted)}
     .ctrl-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
     .ctrl{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
     .ctrl input,.ctrl select{padding:9px 11px;border:1px solid var(--border);border-radius:12px;font:14px/1.5 "Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;transition:border-color .2s ease,box-shadow .2s ease}
@@ -358,6 +373,19 @@
           </div>
           <p class="control-hint" id="reportScopeHint" hidden aria-hidden="true">Select one or more colleagues to focus every preview and export.</p>
         </div>
+        <section class="panel panel-static upload-log-panel" id="uploadLogPanel" aria-live="polite">
+          <h2 class="panel-title">Upload log</h2>
+          <p class="control-hint">Detailed activity never leaves your device—use this log to troubleshoot uploads.</p>
+          <div class="upload-log" id="uploadLog"></div>
+          <div class="upload-log-actions">
+            <button class="btn btn-secondary" id="btnClearLog" type="button">Clear log</button>
+          </div>
+          <div class="pdf-debug" id="pdfDebugPanel" hidden aria-hidden="true">
+            <div class="pdf-debug-meta" id="pdfDebugMeta" hidden></div>
+            <textarea id="pdfDebugOutput" readonly spellcheck="false" aria-label="Extracted PDF preview"></textarea>
+            <button class="btn btn-secondary" id="btnCopyPdfDebug" type="button">Copy preview</button>
+          </div>
+        </section>
       </aside>
       <main class="main-panel">
         <div class="viewer" id="viewerContainer" hidden aria-hidden="true">
@@ -3893,6 +3921,10 @@
     const uploadLogPanel=document.getElementById('uploadLogPanel');
     const uploadLogContainer=document.getElementById('uploadLog');
     const btnClearLog=document.getElementById('btnClearLog');
+    const pdfDebugPanelEl=document.getElementById('pdfDebugPanel');
+    const pdfDebugMeta=document.getElementById('pdfDebugMeta');
+    const pdfDebugOutput=document.getElementById('pdfDebugOutput');
+    const btnCopyPdfDebug=document.getElementById('btnCopyPdfDebug');
     const uploadLogEntries=[];
 
     function ingestCsvTextPayload(text,{button,defaultLabel,sourceLabel}={}){
@@ -4043,6 +4075,32 @@
         }else{
           console[consoleMethod](`[upload] ${entry.message}`);
         }
+      }
+    }
+
+    function setPdfDebugPreview(info){
+      if(!pdfDebugPanelEl) return;
+      const hasPreview=info && Array.isArray(info.previewLines) && info.previewLines.length>0;
+      pdfDebugPanelEl.hidden=!hasPreview;
+      pdfDebugPanelEl.setAttribute('aria-hidden',hasPreview?'false':'true');
+      if(!hasPreview){
+        if(pdfDebugOutput){ pdfDebugOutput.value=''; }
+        if(pdfDebugMeta){
+          pdfDebugMeta.textContent='';
+          pdfDebugMeta.hidden=true;
+        }
+        return;
+      }
+      if(pdfDebugOutput){
+        pdfDebugOutput.value=info.previewLines.join('\n');
+      }
+      if(pdfDebugMeta){
+        const parts=[];
+        if(Number.isFinite(info.rowCount)){ parts.push(`${info.rowCount} ${info.rowCount===1?'row':'rows'}`); }
+        if(Number.isFinite(info.columnCount)){ parts.push(`${info.columnCount} ${info.columnCount===1?'column':'columns'}`); }
+        if(Number.isFinite(info.pageCount)){ parts.push(`${info.pageCount} ${info.pageCount===1?'page':'pages'}`); }
+        pdfDebugMeta.textContent=parts.join(' · ');
+        pdfDebugMeta.hidden=!parts.length;
       }
     }
 
