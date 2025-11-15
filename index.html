@@ -947,6 +947,7 @@
     function groupPdfItemsIntoRows(items){
       const rows=[];
       const tolerance=2.5;
+      const charJoinThreshold=1.5;
       if(!Array.isArray(items)) return rows;
       items.forEach(item=>{
         if(!item) return;
@@ -963,22 +964,83 @@
         }
         row.items.push({text,x,width});
       });
-      rows.forEach(row=>{ row.items.sort((a,b)=>a.x-b.x); });
+      rows.forEach(row=>{
+        if(!row || !Array.isArray(row.items) || !row.items.length) return;
+        row.items.sort((a,b)=>a.x-b.x);
+        const merged=[];
+        row.items.forEach(item=>{
+          if(!item || !item.text){
+            return;
+          }
+          if(!merged.length){
+            merged.push({text:item.text,x:item.x,width:item.width});
+            return;
+          }
+          const prev=merged[merged.length-1];
+          const prevRight=(prev.x||0)+(prev.width||0);
+          const gap=item.x-prevRight;
+          if(gap<=charJoinThreshold){
+            prev.text=`${prev.text||''}${item.text||''}`;
+            const itemRight=item.x+(item.width||0);
+            const newWidth=Math.max(prev.width||0,itemRight-prev.x);
+            prev.width=newWidth>0?newWidth:prev.width;
+          }else{
+            merged.push({text:item.text,x:item.x,width:item.width});
+          }
+        });
+        row.items=merged;
+      });
       rows.sort((a,b)=>b.y-a.y);
       return rows;
     }
 
-    function findPdfHeaderRowIndex(rows){
+    function findPdfHeaderRow(rows,columnCount){
       const dayTokens=['sun','mon','tue','wed','thu','fri','sat'];
+      const minDayHits=Math.min(dayTokens.length,Math.max(3,Math.ceil(columnCount/2)));
+      const maxLookahead=4;
+      const normalizeRowText=row=>{
+        if(!row || !Array.isArray(row.items)) return '';
+        return row.items.map(item=>String(item.text||'').toLowerCase()).join(' ');
+      };
+      const mergeRowItems=(start,count)=>{
+        const merged={y:rows[start] && rows[start].y||0,items:[]};
+        for(let offset=0;offset<count;offset++){
+          const target=rows[start+offset];
+          if(!target || !Array.isArray(target.items)) continue;
+          target.items.forEach(item=>{
+            merged.items.push({text:item.text,x:item.x,width:item.width});
+          });
+        }
+        merged.items.sort((a,b)=>a.x-b.x);
+        return merged;
+      };
+      const countDayHits=(text,lettersOnly)=>{
+        const lower=text||'';
+        const compactLetters=lettersOnly!==undefined?lettersOnly:lower.replace(/[^a-z]/g,'');
+        let hits=0;
+        dayTokens.forEach(token=>{
+          if(lower.includes(token) || compactLetters.includes(token)) hits++;
+        });
+        return hits;
+      };
       for(let i=0;i<rows.length;i++){
-        const row=rows[i];
-        if(!row || !Array.isArray(row.items)) continue;
-        const joined=row.items.map(item=>String(item.text||'').toLowerCase()).join(' ');
-        if(!joined.includes('employee')) continue;
-        const hits=dayTokens.filter(token=>joined.includes(token));
-        if(hits.length>=3) return i;
+        const baseRow=rows[i];
+        if(!baseRow) continue;
+        for(let span=1;span<=maxLookahead && i+span<=rows.length;span++){
+          const mergedRow=mergeRowItems(i,span);
+          const combinedText=normalizeRowText(mergedRow);
+          const lettersOnly=combinedText.replace(/[^a-z]/g,'');
+          const hasEmployee=combinedText.includes('employee') || lettersOnly.includes('employee');
+          const dayHits=countDayHits(combinedText,lettersOnly);
+          if((hasEmployee && dayHits>=minDayHits) || dayHits>=5){
+            return {index:i,row:mergedRow};
+          }
+          if(!hasEmployee && dayHits===0){
+            break;
+          }
+        }
       }
-      return -1;
+      return null;
     }
 
     function derivePdfColumnBounds(row,columnCount){
@@ -1088,12 +1150,12 @@
         if(!collectedRows.length){
           throw new Error('No readable text was found in the PDF file.');
         }
-        const headerIndex=findPdfHeaderRowIndex(collectedRows);
-        if(headerIndex===-1){
+        const headerInfo=findPdfHeaderRow(collectedRows,PDF_EXPECTED_COLUMNS);
+        if(!headerInfo){
           throw new Error('Unable to locate the rota table header in the PDF file.');
         }
-        const tableRows=collectedRows.slice(headerIndex);
-        const columnBounds=derivePdfColumnBounds(tableRows[0],PDF_EXPECTED_COLUMNS);
+        const tableRows=collectedRows.slice(headerInfo.index);
+        const columnBounds=derivePdfColumnBounds(headerInfo.row||tableRows[0],PDF_EXPECTED_COLUMNS);
         const csvRows=tableRows.map(row=>mapPdfRowToCells(row,columnBounds,PDF_EXPECTED_COLUMNS));
         const filteredRows=csvRows.filter(row=>row.some(cell=>cell && cell.trim()));
         if(!filteredRows.length){
