@@ -1,6 +1,6 @@
 # CSV Rota Viewer
 
-This repository contains a single-page web application for previewing rota CSV exports, exploring line and schedule views, and exporting share-ready landscape PDFs with [pdf-lib](https://github.com/Hopding/pdf-lib). Upload a CSV file to your browser and the interface renders interactive summaries plus a PDF preview without relying on any backend services.
+This repository contains a single-page web application for previewing rota CSV exports, exploring line and schedule views, and exporting share-ready landscape PDFs with [pdf-lib](https://github.com/Hopding/pdf-lib). Upload a CSV file (or the PDF table export from the Logile mobile app) to your browser and the interface renders interactive summaries plus a PDF preview without relying on any backend services.
 
 ## Privacy and GDPR compliance
 
