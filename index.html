@@ -94,6 +94,21 @@
     .panel-body{padding:0 24px 24px;display:grid;gap:16px;background:var(--surface-soft)}
     .panel.panel-static{padding:24px 28px;display:grid;gap:16px}
     .panel.panel-static .btn{width:100%}
+    .upload-log{border:1px solid var(--border);border-radius:18px;padding:16px;max-height:280px;overflow:auto;display:flex;flex-direction:column;gap:12px;background:var(--surface-soft)}
+    .upload-log-panel.has-entries .upload-log{border-color:#d6e1ea}
+    .log-entry{border-left:4px solid var(--accent);padding-left:12px;display:flex;flex-direction:column;gap:4px}
+    .log-entry[data-level="success"]{border-left-color:#16a34a}
+    .log-entry[data-level="warning"]{border-left-color:#d97706}
+    .log-entry[data-level="error"]{border-left-color:#dc2626}
+    .log-entry-message{font-weight:600;color:var(--ink)}
+    .log-entry-details{font-size:12px;color:var(--muted);white-space:pre-wrap;background:rgba(6,22,38,.04);padding:8px;border-radius:12px;margin:0}
+    .log-entry-meta{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+    .log-empty{margin:0;color:var(--muted);font-size:13px;text-align:center}
+    .upload-log-actions{display:flex;justify-content:flex-end}
+    .pdf-debug{display:flex;flex-direction:column;gap:10px}
+    .pdf-debug textarea{width:100%;min-height:140px;border:1px solid var(--border);border-radius:14px;padding:12px;font-family:'IBM Plex Mono','SFMono-Regular',Menlo,Monaco,Consolas,'Liberation Mono',monospace;font-size:12px;resize:vertical;background:var(--surface);color:var(--ink)}
+    .pdf-debug textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,123,195,.18)}
+    .pdf-debug-meta{font-size:12px;color:var(--muted)}
     .ctrl-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
     .ctrl{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
     .ctrl input,.ctrl select{padding:9px 11px;border:1px solid var(--border);border-radius:12px;font:14px/1.5 "Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;transition:border-color .2s ease,box-shadow .2s ease}
@@ -309,8 +324,12 @@
     <h2 class="panel-title">Saved weeks</h2>
     <p class="control-hint">Upload new schedules and manage the saved weeks stored on this device.</p>
     <input type="file" id="fileInput" accept=".csv,text/csv" class="visually-hidden">
+    <input type="file" id="pdfInput" accept="application/pdf" class="visually-hidden">
     <div class="saved-week-actions">
       <button class="btn btn-secondary" id="btnUpload" type="button">Upload CSV</button>
+    </div>
+    <div class="saved-week-actions">
+      <button class="btn btn-secondary" id="btnUploadPdf" type="button">Upload PDF</button>
     </div>
     <div class="saved-week-actions">
       <button class="btn btn-secondary" id="btnForgetWeek" type="button">Forget selected week</button>
@@ -322,7 +341,7 @@
     <header class="page-header">
       <div>
         <h1>CSV Rota Viewer</h1>
-        <p>Load an exported rota CSV to review weekly coverage, timelines, and printable PDFs—all processed locally in your browser. Start by uploading your latest file with the controls on the left.</p>
+        <p>Load an exported rota CSV (or the Logile PDF table export) to review weekly coverage, timelines, and printable PDFs—all processed locally in your browser. Start by uploading your latest file with the controls on the left.</p>
       </div>
     </header>
 
@@ -354,6 +373,19 @@
           </div>
           <p class="control-hint" id="reportScopeHint" hidden aria-hidden="true">Select one or more colleagues to focus every preview and export.</p>
         </div>
+        <section class="panel panel-static upload-log-panel" id="uploadLogPanel" aria-live="polite">
+          <h2 class="panel-title">Upload log</h2>
+          <p class="control-hint">Detailed activity never leaves your device—use this log to troubleshoot uploads.</p>
+          <div class="upload-log" id="uploadLog"></div>
+          <div class="upload-log-actions">
+            <button class="btn btn-secondary" id="btnClearLog" type="button">Clear log</button>
+          </div>
+          <div class="pdf-debug" id="pdfDebugPanel" hidden aria-hidden="true">
+            <div class="pdf-debug-meta" id="pdfDebugMeta" hidden></div>
+            <textarea id="pdfDebugOutput" readonly spellcheck="false" aria-label="Extracted PDF preview"></textarea>
+            <button class="btn btn-secondary" id="btnCopyPdfDebug" type="button">Copy preview</button>
+          </div>
+        </section>
       </aside>
       <main class="main-panel">
         <div class="viewer" id="viewerContainer" hidden aria-hidden="true">
@@ -404,6 +436,19 @@
     <textarea id="input" hidden></textarea>
   </div>
 
+  <script type="module">
+    window.pdfjsLibReady = import('./pdf.min.mjs')
+      .then(pdfjsLib => {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.min.mjs';
+        window.pdfjsLib = pdfjsLib;
+        return pdfjsLib;
+      })
+      .catch(err => {
+        console.error('Failed to load PDF.js library.', err);
+        window.pdfjsLib = null;
+        throw err;
+      });
+  </script>
   <script src="pdf-lib.min.js"></script>
   <script>
     // ---------- Utilities ----------
@@ -877,6 +922,240 @@
         rows.push({name,rawName,days});
       }
       return {title,sub,dayHeaders,rows};
+    }
+
+    const PDF_EXPECTED_COLUMNS=8;
+    const PDF_ROW_MERGE_TOLERANCE=3.5;
+    const PDF_HEADER_KEYWORDS=['employee','team member','teammember','colleague','associate','name'];
+
+    function ensurePdfJsLib(){
+      if(typeof window==='undefined'){
+        return Promise.reject(new Error('PDF.js is not available in this environment.'));
+      }
+      if(window.pdfjsLibReady && typeof window.pdfjsLibReady.then==='function'){
+        return window.pdfjsLibReady;
+      }
+      if(window.pdfjsLib){
+        return Promise.resolve(window.pdfjsLib);
+      }
+      return Promise.reject(new Error('PDF.js library has not finished loading.'));
+    }
+
+    function sanitizePdfCellText(text){
+      if(!text) return '';
+      return String(text).replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+    }
+
+    function groupPdfItemsIntoRows(items){
+      const rows=[];
+      if(!Array.isArray(items)) return rows;
+      items.forEach(item=>{
+        if(!item) return;
+        const text=sanitizePdfCellText(item.str||'');
+        if(!text) return;
+        const transform=Array.isArray(item.transform)?item.transform:[1,0,0,1,0,0];
+        const x=Number.isFinite(transform[4])?transform[4]:0;
+        const y=Number.isFinite(transform[5])?transform[5]:0;
+        const width=Number.isFinite(item.width)?item.width:Math.abs(transform[0]||0)||0;
+        let row=rows.find(entry=>Math.abs(entry.y-y)<=PDF_ROW_MERGE_TOLERANCE);
+        if(!row){
+          row={y,items:[]};
+          rows.push(row);
+        }
+        row.items.push({text,x,width});
+      });
+      rows.forEach(row=>{ row.items.sort((a,b)=>a.x-b.x); });
+      rows.sort((a,b)=>b.y-a.y);
+      return rows;
+    }
+
+    function pdfRowDayHitCount(row){
+      const dayTokens=['sun','mon','tue','wed','thu','fri','sat'];
+      if(!row || !Array.isArray(row.items)) return 0;
+      const joined=row.items.map(item=>String(item.text||'').toLowerCase()).join(' ');
+      return dayTokens.reduce((count,token)=>count+(joined.includes(token)?1:0),0);
+    }
+
+    function pdfRowHasHeaderKeyword(row){
+      if(!row || !Array.isArray(row.items)) return false;
+      const joined=row.items.map(item=>String(item.text||'').toLowerCase()).join(' ');
+      return PDF_HEADER_KEYWORDS.some(keyword=>joined.includes(keyword));
+    }
+
+    function findPdfHeaderRowIndex(rows){
+      if(!Array.isArray(rows)) return -1;
+      for(let i=0;i<rows.length;i++){
+        const row=rows[i];
+        const dayHits=pdfRowDayHitCount(row);
+        const hasKeyword=pdfRowHasHeaderKeyword(row);
+        const columnEstimate=row && Array.isArray(row.items)?row.items.length:0;
+        if(dayHits>=5 && (hasKeyword || columnEstimate>=PDF_EXPECTED_COLUMNS)){
+          return i;
+        }
+        if(dayHits>=4 && hasKeyword){
+          return i;
+        }
+        if(hasKeyword && dayHits<4){
+          const nextHits=pdfRowDayHitCount(rows[i+1]);
+          if(nextHits>=4){
+            return i+1;
+          }
+        }
+        if(dayHits>=4){
+          const prevHas=pdfRowHasHeaderKeyword(rows[i-1]);
+          const nextHas=pdfRowHasHeaderKeyword(rows[i+1]);
+          if(prevHas || nextHas){
+            return i;
+          }
+        }
+      }
+      return -1;
+    }
+
+    function derivePdfColumnBounds(row,columnCount){
+      const gapThreshold=8;
+      const sorted=row && Array.isArray(row.items)?row.items.slice().sort((a,b)=>a.x-b.x):[];
+      if(!sorted.length){
+        return Array.from({length:columnCount},(_,idx)=>({start:idx*100,end:(idx+1)*100}));
+      }
+      const groups=[];
+      let current=[];
+      let lastRight=null;
+      sorted.forEach(item=>{
+        const start=item.x;
+        const width=item.width||0;
+        const right=start+width;
+        if(current.length && lastRight!==null && start-lastRight>gapThreshold && groups.length<columnCount){
+          groups.push(current);
+          current=[item];
+        }else{
+          current.push(item);
+        }
+        lastRight=lastRight===null?right:Math.max(lastRight,right);
+      });
+      if(current.length) groups.push(current);
+      while(groups.length>columnCount){
+        const overflow=groups.pop();
+        if(groups.length){
+          groups[groups.length-1]=groups[groups.length-1].concat(overflow);
+        }
+      }
+      if(!groups.length){
+        return Array.from({length:columnCount},(_,idx)=>({start:idx*100,end:(idx+1)*100}));
+      }
+      if(groups.length<columnCount){
+        const minX=Math.min(...sorted.map(item=>item.x));
+        const maxRight=Math.max(...sorted.map(item=>item.x+(item.width||0)));
+        const span=Math.max(20,maxRight-minX);
+        const segment=span/columnCount;
+        return Array.from({length:columnCount},(_,idx)=>({
+          start:minX+idx*segment-1,
+          end:idx===columnCount-1?maxRight+1:minX+(idx+1)*segment-1,
+        }));
+      }
+      return groups.map(group=>{
+        const xs=group.map(item=>item.x);
+        const rights=group.map(item=>item.x+(item.width||0));
+        return {
+          start:Math.min(...xs)-1,
+          end:Math.max(...rights)+1,
+        };
+      });
+    }
+
+    function mapPdfRowToCells(row,bounds,columnCount){
+      const cells=Array.from({length:columnCount},()=>[]);
+      if(!row || !Array.isArray(row.items)){
+        return Array.from({length:columnCount},()=> '');
+      }
+      row.items.forEach(item=>{
+        if(!item) return;
+        const text=sanitizePdfCellText(item.text||'');
+        if(!text) return;
+        const x=item.x;
+        let index=bounds.findIndex(bound=>x>=bound.start && x<bound.end);
+        if(index===-1){
+          index=x<bounds[0].start?0:columnCount-1;
+        }
+        cells[index].push(text);
+      });
+      return cells.map(parts=>parts.join(' ').replace(/\s+/g,' ').trim());
+    }
+
+    function csvEscapeValue(value){
+      if(value===undefined || value===null) return '';
+      const str=String(value);
+      if(/[",\n]/.test(str)){
+        return '"'+str.replace(/"/g,'""')+'"';
+      }
+      return str;
+    }
+
+    async function convertPdfArrayBufferToCsvText(arrayBuffer,{capturePreview=false}={}){
+      if(!(arrayBuffer instanceof ArrayBuffer)){
+        throw new Error('PDF data was not provided correctly.');
+      }
+      const pdfjs=await ensurePdfJsLib();
+      const loadingTask=pdfjs.getDocument({data:arrayBuffer});
+      let pdfDoc=null;
+      try{
+        pdfDoc=await loadingTask.promise;
+      }catch(err){
+        await loadingTask.destroy();
+        throw err;
+      }
+      try{
+        const collectedRows=[];
+        const totalPages=pdfDoc.numPages||0;
+        for(let pageNumber=1;pageNumber<=totalPages;pageNumber++){
+          const page=await pdfDoc.getPage(pageNumber);
+          const content=await page.getTextContent();
+          const rows=groupPdfItemsIntoRows(content.items||[]);
+          rows.forEach(row=>collectedRows.push(row));
+          if(typeof page.cleanup==='function'){
+            page.cleanup();
+          }
+        }
+        if(!collectedRows.length){
+          throw new Error('No readable text was found in the PDF file.');
+        }
+        const headerIndex=findPdfHeaderRowIndex(collectedRows);
+        if(headerIndex===-1){
+          throw new Error('Unable to locate the rota table header in the PDF file. Export the full table (with the Employee column and day headings) from Logile and try again.');
+        }
+        const tableRows=collectedRows.slice(headerIndex);
+        if(!tableRows.length){
+          throw new Error('The rota table header was detected but there were no rows to process.');
+        }
+        const columnBounds=derivePdfColumnBounds(tableRows[0],PDF_EXPECTED_COLUMNS);
+        if(!Array.isArray(columnBounds) || !columnBounds.length){
+          throw new Error('Unable to determine the PDF column layout. Try exporting the schedule at 100% zoom.');
+        }
+        const csvRows=tableRows.map(row=>mapPdfRowToCells(row,columnBounds,columnBounds.length));
+        const filteredRows=csvRows.filter(row=>row.some(cell=>cell && cell.trim()));
+        if(!filteredRows.length){
+          throw new Error('The rota table in the PDF did not contain any usable rows.');
+        }
+        const csvLines=filteredRows.map(row=>row.map(csvEscapeValue).join(','));
+        const prefixLines=[
+          'PDF Import',
+          'Converted from uploaded PDF rota',
+        ];
+        const csvText=prefixLines.concat(csvLines).join('\n');
+        let debugInfo=null;
+        if(capturePreview){
+          const previewLimit=12;
+          debugInfo={
+            previewLines:csvLines.slice(0,previewLimit),
+            rowCount:filteredRows.length,
+            columnCount:columnBounds.length,
+            pageCount:totalPages,
+          };
+        }
+        return {csvText,debugInfo};
+      }finally{
+        await loadingTask.destroy();
+      }
     }
 
     function pickRange(cell,{fallbackSCH}){
@@ -3690,7 +3969,39 @@
     const uploadLogPanel=document.getElementById('uploadLogPanel');
     const uploadLogContainer=document.getElementById('uploadLog');
     const btnClearLog=document.getElementById('btnClearLog');
+    const pdfDebugPanelEl=document.getElementById('pdfDebugPanel');
+    const pdfDebugMeta=document.getElementById('pdfDebugMeta');
+    const pdfDebugOutput=document.getElementById('pdfDebugOutput');
+    const btnCopyPdfDebug=document.getElementById('btnCopyPdfDebug');
     const uploadLogEntries=[];
+
+    function ingestCsvTextPayload(text,{button,defaultLabel,sourceLabel}={}){
+      const label=sourceLabel||'CSV';
+      const normalized=typeof text==='string'?text:'';
+      setCurrentIndividualSelection([]);
+      if(hiddenInput){ hiddenInput.value=normalized; }
+      if(!normalized.trim()){
+        renderViews();
+        addUploadLog(`${label} data was empty after trimming whitespace.`,'warning');
+        if(button && defaultLabel){ button.textContent=defaultLabel; }
+        return;
+      }
+      try{
+        addUploadLog(`Parsing ${label} data…`,'info');
+        const layout=getLayoutSettings();
+        applyLayoutToDocument(layout);
+        currentLayout=layout;
+        const model=parseExport(normalized);
+        addOrUpdateWeekRecord(model);
+        addUploadLog(`${label} data parsed and stored successfully.`,'success',`Saved weeks: ${savedWeekRecords.length}`);
+        if(button){ button.textContent=`Replace ${label}`; }
+      }catch(err){
+        if(button && defaultLabel){ button.textContent=defaultLabel; }
+        console.error(err);
+        addUploadLog(`Failed to parse uploaded ${label.toLowerCase()} data.`,'error',err && err.message?err.message:err);
+        throw err;
+      }
+    }
 
     function hideMobileHint(){
       if(!mobileHint) return;
@@ -3815,6 +4126,32 @@
       }
     }
 
+    function setPdfDebugPreview(info){
+      if(!pdfDebugPanelEl) return;
+      const hasPreview=info && Array.isArray(info.previewLines) && info.previewLines.length>0;
+      pdfDebugPanelEl.hidden=!hasPreview;
+      pdfDebugPanelEl.setAttribute('aria-hidden',hasPreview?'false':'true');
+      if(!hasPreview){
+        if(pdfDebugOutput){ pdfDebugOutput.value=''; }
+        if(pdfDebugMeta){
+          pdfDebugMeta.textContent='';
+          pdfDebugMeta.hidden=true;
+        }
+        return;
+      }
+      if(pdfDebugOutput){
+        pdfDebugOutput.value=info.previewLines.join('\n');
+      }
+      if(pdfDebugMeta){
+        const parts=[];
+        if(Number.isFinite(info.rowCount)){ parts.push(`${info.rowCount} ${info.rowCount===1?'row':'rows'}`); }
+        if(Number.isFinite(info.columnCount)){ parts.push(`${info.columnCount} ${info.columnCount===1?'column':'columns'}`); }
+        if(Number.isFinite(info.pageCount)){ parts.push(`${info.pageCount} ${info.pageCount===1?'page':'pages'}`); }
+        pdfDebugMeta.textContent=parts.join(' · ');
+        pdfDebugMeta.hidden=!parts.length;
+      }
+    }
+
     initMobileHint();
     renderUploadLog();
     if(btnClearLog){
@@ -3823,6 +4160,42 @@
         addUploadLog('Upload log cleared.','info');
       });
     }
+
+    if(btnCopyPdfDebug && pdfDebugOutput){
+      btnCopyPdfDebug.addEventListener('click',async()=>{
+        const text=pdfDebugOutput.value||'';
+        if(!text.trim()){
+          addUploadLog('No PDF preview is available to copy yet.','warning');
+          return;
+        }
+        let copied=false;
+        if(typeof navigator!=='undefined' && navigator.clipboard && navigator.clipboard.writeText){
+          try{
+            await navigator.clipboard.writeText(text);
+            copied=true;
+          }catch(err){
+            console.warn('Clipboard write failed:',err);
+          }
+        }
+        if(!copied && typeof document!=='undefined' && typeof document.execCommand==='function'){
+          pdfDebugOutput.focus();
+          pdfDebugOutput.select();
+          try{
+            copied=document.execCommand('copy');
+          }catch(err){
+            console.warn('Fallback clipboard copy failed:',err);
+          }
+        }
+        if(copied){
+          addUploadLog('Copied the extracted PDF preview to your clipboard.','success');
+        }else{
+          addUploadLog('Unable to copy automatically—select the preview text manually.','warning');
+        }
+      });
+    }
+
+    const pdfInput=document.getElementById('pdfInput');
+    const btnUploadPdf=document.getElementById('btnUploadPdf');
 
     if(btnUpload && fileInput){
       const defaultUploadLabel=btnUpload.textContent||'Upload CSV';
@@ -3874,29 +4247,12 @@
           const text=typeof reader.result==='string'?reader.result:'';
           addUploadLog(`Finished reading ${name} (${text.length} characters).`,'success');
           console.info('[upload-debug] FileReader load event completed.',{ characters:text.length });
-          if(hiddenInput){ hiddenInput.value=text; }
           fileInput.value='';
-          btnUpload.textContent='Replace CSV';
-          setCurrentIndividualSelection([]);
-          if(!text.trim()){
-            renderViews();
-            addUploadLog('Uploaded CSV was empty after trimming whitespace.','warning');
-            return;
-          }
           try{
-            addUploadLog('Parsing CSV data…','info');
-            const layout=getLayoutSettings();
-            applyLayoutToDocument(layout);
-            currentLayout=layout;
-            const model=parseExport(text);
-            addOrUpdateWeekRecord(model);
-            addUploadLog('CSV parsed and stored successfully.','success',`Saved weeks: ${savedWeekRecords.length}`);
+            ingestCsvTextPayload(text,{button:btnUpload,defaultLabel:defaultUploadLabel,sourceLabel:'CSV'});
           }catch(err){
-            console.error(err);
-            alert(err && err.message?err.message:'Failed to parse the provided CSV file.');
-            btnUpload.textContent=defaultUploadLabel;
-            addUploadLog('Failed to parse uploaded CSV.','error',err && err.message?err.message:err);
             console.error('[upload-debug] Error while parsing uploaded CSV.',err);
+            alert(err && err.message?err.message:'Failed to parse the provided CSV file.');
           }
         });
         reader.addEventListener('error',()=>{
@@ -3912,6 +4268,90 @@
         addUploadLog(`Reading ${name}${sizeLabel?` (${sizeLabel})`:''}…`,'info');
         console.info('[upload-debug] Began reading file contents with FileReader.');
         reader.readAsText(file);
+      });
+    }
+
+    if(btnUploadPdf && pdfInput){
+      const defaultPdfLabel=btnUploadPdf.textContent||'Upload PDF';
+      btnUploadPdf.addEventListener('click',()=>{
+        if(!pdfInput){
+          addUploadLog('File input element missing when attempting to upload a PDF.','error');
+          return;
+        }
+        try{
+          pdfInput.click();
+        }catch(err){
+          console.error('[upload-debug] Failed to trigger PDF file input click.',err);
+          addUploadLog('Could not open the PDF file chooser.','error',err && err.message?err.message:err);
+        }
+      });
+      pdfInput.addEventListener('click',()=>{
+        console.info('[upload-debug] PDF file input received a click event.');
+      });
+      pdfInput.addEventListener('change',()=>{
+        const files=pdfInput.files;
+        const file=files && files.length?files[0]:null;
+        if(!file){
+          pdfInput.value='';
+          btnUploadPdf.textContent=defaultPdfLabel;
+          addUploadLog('PDF selection cancelled or no file chosen.','info');
+          return;
+        }
+        const name=file.name||'file.pdf';
+        const isPdf=name.toLowerCase().endsWith('.pdf') || (file.type && file.type.toLowerCase().includes('pdf'));
+        if(!isPdf){
+          alert('Please choose a PDF file.');
+          pdfInput.value='';
+          btnUploadPdf.textContent=defaultPdfLabel;
+          addUploadLog('Rejected non-PDF file.','warning',{name,type:file.type||'unknown'});
+          return;
+        }
+        const sizeLabel=formatFileSize(file.size);
+        addUploadLog(`Selected ${name}${sizeLabel?` (${sizeLabel})`:''}.`,'info',{type:file.type||'application/pdf'});
+        const reader=new FileReader();
+        reader.addEventListener('load',()=>{
+          const buffer=reader.result instanceof ArrayBuffer?reader.result:null;
+          const length=buffer?buffer.byteLength:0;
+          addUploadLog(`Finished reading ${name} (${length} bytes).`,'success');
+          if(!buffer){
+            pdfInput.value='';
+            btnUploadPdf.textContent=defaultPdfLabel;
+            alert(`Failed to read ${name}.`);
+            addUploadLog(`Uploaded PDF ${name} did not contain readable data.`,'error');
+            return;
+          }
+          (async()=>{
+            try{
+              addUploadLog('Extracting rota table from PDF…','info');
+              setPdfDebugPreview(null);
+              const {csvText,debugInfo}=await convertPdfArrayBufferToCsvText(buffer,{capturePreview:true});
+              if(debugInfo){
+                setPdfDebugPreview(debugInfo);
+                addUploadLog(`Previewed ${debugInfo.rowCount||0} row${debugInfo.rowCount===1?'':'s'} from the PDF table.`,'info');
+              }
+              addUploadLog('PDF converted to CSV-like text.','success');
+              ingestCsvTextPayload(csvText,{button:btnUploadPdf,defaultLabel:defaultPdfLabel,sourceLabel:'PDF'});
+            }catch(err){
+              console.error('[upload-debug] Error while parsing uploaded PDF.',err);
+              alert(err && err.message?err.message:'Failed to parse the provided PDF file.');
+              btnUploadPdf.textContent=defaultPdfLabel;
+              addUploadLog('Failed to parse uploaded PDF.','error',err && err.message?err.message:err);
+              setPdfDebugPreview(null);
+            }finally{
+              pdfInput.value='';
+            }
+          })();
+        });
+        reader.addEventListener('error',()=>{
+          const errDetail=reader.error && reader.error.message?reader.error.message:'Unknown error';
+          console.error(reader.error||new Error('Failed to read file'));
+          alert(`Failed to read ${name}: ${errDetail}`);
+          pdfInput.value='';
+          btnUploadPdf.textContent=defaultPdfLabel;
+          addUploadLog(`FileReader error while reading ${name}.`,'error',errDetail);
+        });
+        addUploadLog(`Reading ${name}${sizeLabel?` (${sizeLabel})`:''}…`,'info');
+        reader.readAsArrayBuffer(file);
       });
     }
 
@@ -4270,7 +4710,8 @@
     document.addEventListener('DOMContentLoaded',()=>{
       if(hiddenInput){ hiddenInput.value=''; }
       if(btnUpload){ btnUpload.textContent='Upload CSV'; }
-      addUploadLog('Ready to upload CSV files.','info');
+      setPdfDebugPreview(null);
+      addUploadLog('Ready to upload CSV or PDF files.','info');
       const layout=getLayoutSettings();
       applyLayoutToDocument(layout);
       currentLayout=layout;
