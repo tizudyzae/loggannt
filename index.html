@@ -328,9 +328,20 @@
     <div class="saved-week-actions">
       <button class="btn btn-secondary" id="btnUpload" type="button">Upload CSV</button>
     </div>
-    <div class="saved-week-actions">
-      <button class="btn btn-secondary" id="btnUploadPdf" type="button">Upload PDF</button>
-    </div>
+    <details class="panel" id="testingPanel">
+      <summary>Testing</summary>
+      <div class="panel-body">
+        <div class="saved-week-actions">
+          <button class="btn btn-secondary" id="btnUploadPdf" type="button">Upload PDF</button>
+        </div>
+        <p class="control-hint">Upload a PDF rota to test parsing improvements. Debug output stays on this device.</p>
+        <div class="pdf-debug" id="pdfDebugPanel" hidden aria-hidden="true">
+          <div class="pdf-debug-meta" id="pdfDebugMeta" hidden></div>
+          <textarea id="pdfDebugOutput" readonly spellcheck="false" aria-label="Extracted PDF preview"></textarea>
+          <button class="btn btn-secondary" id="btnCopyPdfDebug" type="button">Copy preview</button>
+        </div>
+      </div>
+    </details>
     <div class="saved-week-actions">
       <button class="btn btn-secondary" id="btnForgetWeek" type="button">Forget selected week</button>
       <button class="btn btn-secondary" id="btnClearWeeks" type="button">Clear saved weeks</button>
@@ -376,17 +387,12 @@
         <section class="panel panel-static upload-log-panel" id="uploadLogPanel" aria-live="polite">
           <h2 class="panel-title">Upload log</h2>
           <p class="control-hint">Detailed activity never leaves your device—use this log to troubleshoot uploads.</p>
-          <div class="upload-log" id="uploadLog"></div>
-          <div class="upload-log-actions">
-            <button class="btn btn-secondary" id="btnClearLog" type="button">Clear log</button>
-          </div>
-          <div class="pdf-debug" id="pdfDebugPanel" hidden aria-hidden="true">
-            <div class="pdf-debug-meta" id="pdfDebugMeta" hidden></div>
-            <textarea id="pdfDebugOutput" readonly spellcheck="false" aria-label="Extracted PDF preview"></textarea>
-            <button class="btn btn-secondary" id="btnCopyPdfDebug" type="button">Copy preview</button>
-          </div>
-        </section>
-      </aside>
+        <div class="upload-log" id="uploadLog"></div>
+        <div class="upload-log-actions">
+          <button class="btn btn-secondary" id="btnClearLog" type="button">Clear log</button>
+        </div>
+      </section>
+    </aside>
       <main class="main-panel">
         <div class="viewer" id="viewerContainer" hidden aria-hidden="true">
           <div class="viewer-tabs" role="tablist" aria-label="Preview modes" hidden aria-hidden="true">
@@ -997,7 +1003,7 @@
     function findPdfHeaderRow(rows,columnCount){
       const dayTokens=['sun','mon','tue','wed','thu','fri','sat'];
       const minDayHits=Math.min(dayTokens.length,Math.max(3,Math.ceil(columnCount/2)));
-      const maxLookahead=4;
+      const maxLookahead=8;
       const normalizeRowText=row=>{
         if(!row || !Array.isArray(row.items)) return '';
         return row.items.map(item=>String(item.text||'').toLowerCase()).join(' ');
@@ -1023,6 +1029,7 @@
         });
         return hits;
       };
+      let bestCandidate=null;
       for(let i=0;i<rows.length;i++){
         const baseRow=rows[i];
         if(!baseRow) continue;
@@ -1032,13 +1039,19 @@
           const lettersOnly=combinedText.replace(/[^a-z]/g,'');
           const hasEmployee=combinedText.includes('employee') || lettersOnly.includes('employee');
           const dayHits=countDayHits(combinedText,lettersOnly);
+          const score=(dayHits*10)+(hasEmployee?5:0)-(span>1?span:0);
           if((hasEmployee && dayHits>=minDayHits) || dayHits>=5){
             return {index:i,row:mergedRow};
           }
-          if(!hasEmployee && dayHits===0){
-            break;
+          if(dayHits>0 || hasEmployee){
+            if(!bestCandidate || score>bestCandidate.score){
+              bestCandidate={index:i,row:mergedRow,score,dayHits,span};
+            }
           }
         }
+      }
+      if(bestCandidate && bestCandidate.dayHits>=2){
+        return {index:bestCandidate.index,row:bestCandidate.row};
       }
       return null;
     }
