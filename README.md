@@ -12,3 +12,9 @@ This repository contains a single-page web application for previewing rota CSV e
 ## Development
 
 Open `index.html` in any modern browser to use or modify the viewer. The bundled `pdf-lib.min.js` dependency is included for offline development.
+
+## Choosing between CSV and PDF inputs
+
+* **CSV remains the source of truth.** The viewer is designed around the CSV export, which preserves structured rows and columns without guesswork.
+* **PDF parsing is best-effort.** The PDF test harness can help iterate on improvements, but PDFs are inherently harder to interpret (fonts, layout shifts, extraction differences). Treat the PDF preview and interpreted CSV export as debugging tools rather than production inputs.
+* **Recommendation.** For reliable downstream results, upload CSV files whenever possible and use PDFs only when you need to diagnose how a particular table is being read.
