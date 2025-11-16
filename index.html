@@ -328,6 +328,11 @@
     <div class="saved-week-actions">
       <button class="btn btn-secondary" id="btnUpload" type="button">Upload CSV</button>
     </div>
+    <div class="saved-week-actions">
+      <button class="btn btn-secondary" id="btnForgetWeek" type="button">Forget selected week</button>
+      <button class="btn btn-secondary" id="btnClearWeeks" type="button">Clear saved weeks</button>
+    </div>
+    <div id="appearanceControls" class="appearance-controls" hidden aria-hidden="true" role="group"></div>
     <details class="panel" id="testingPanel">
       <summary>Testing</summary>
       <div class="panel-body">
@@ -340,13 +345,16 @@
           <textarea id="pdfDebugOutput" readonly spellcheck="false" aria-label="Extracted PDF preview"></textarea>
           <button class="btn btn-secondary" id="btnCopyPdfDebug" type="button">Copy preview</button>
         </div>
+        <section class="panel panel-static upload-log-panel" id="uploadLogPanel" aria-live="polite">
+          <h3 class="panel-title">Upload log</h3>
+          <p class="control-hint">Detailed activity never leaves your device—use this log to troubleshoot uploads.</p>
+          <div class="upload-log" id="uploadLog"></div>
+          <div class="upload-log-actions">
+            <button class="btn btn-secondary" id="btnClearLog" type="button">Clear log</button>
+          </div>
+        </section>
       </div>
     </details>
-    <div class="saved-week-actions">
-      <button class="btn btn-secondary" id="btnForgetWeek" type="button">Forget selected week</button>
-      <button class="btn btn-secondary" id="btnClearWeeks" type="button">Clear saved weeks</button>
-    </div>
-    <div id="appearanceControls" class="appearance-controls" hidden aria-hidden="true" role="group"></div>
   </div>
   <div class="wrap">
     <header class="page-header">
@@ -378,20 +386,12 @@
               <option value="all">All colleagues</option>
             </select>
           </label>
-          <div class="selection-actions" id="selectionActions" hidden aria-hidden="true">
-            <button class="btn btn-secondary" id="btnManagementShortcut" type="button">Management</button>
-            <button class="btn btn-secondary" id="btnClearSelection" type="button">Clear selection</button>
-          </div>
-          <p class="control-hint" id="reportScopeHint" hidden aria-hidden="true">Select one or more colleagues to focus every preview and export.</p>
-        </div>
-        <section class="panel panel-static upload-log-panel" id="uploadLogPanel" aria-live="polite">
-          <h2 class="panel-title">Upload log</h2>
-          <p class="control-hint">Detailed activity never leaves your device—use this log to troubleshoot uploads.</p>
-        <div class="upload-log" id="uploadLog"></div>
-        <div class="upload-log-actions">
-          <button class="btn btn-secondary" id="btnClearLog" type="button">Clear log</button>
-        </div>
-      </section>
+      <div class="selection-actions" id="selectionActions" hidden aria-hidden="true">
+        <button class="btn btn-secondary" id="btnManagementShortcut" type="button">Management</button>
+        <button class="btn btn-secondary" id="btnClearSelection" type="button">Clear selection</button>
+      </div>
+      <p class="control-hint" id="reportScopeHint" hidden aria-hidden="true">Select one or more colleagues to focus every preview and export.</p>
+    </div>
     </aside>
       <main class="main-panel">
         <div class="viewer" id="viewerContainer" hidden aria-hidden="true">
