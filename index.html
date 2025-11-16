@@ -342,6 +342,14 @@
           <button class="btn btn-secondary" id="btnUploadPdf" type="button">Upload PDF</button>
         </div>
         <p class="control-hint">Upload a PDF rota to test parsing improvements. Debug output stays on this device, and CSV uploads remain the most reliable option.</p>
+        <label class="ctrl" for="pdfParseMode">
+          <span>PDF interpretation</span>
+          <select id="pdfParseMode">
+            <option value="balanced">Balanced (default)</option>
+            <option value="fuzzy">Fuzzy rescue</option>
+          </select>
+          <small>Try fuzzy rescue when the PDF table looks misaligned or cells land in the wrong columns.</small>
+        </label>
         <div class="pdf-debug" id="pdfDebugPanel" hidden aria-hidden="true">
           <div class="pdf-debug-meta" id="pdfDebugMeta" hidden></div>
           <textarea id="pdfDebugOutput" readonly spellcheck="false" aria-label="Extracted PDF preview"></textarea>
@@ -940,11 +948,49 @@
     const PDF_MAX_COLUMNS=12;
     const PDF_DAY_TOKENS=['sun','mon','tue','wed','thu','fri','sat'];
 
+    const PDF_PARSE_PRESETS={
+      balanced:{
+        label:'Balanced',
+        description:'Balanced reading for clean tables',
+        rowTolerance:2.5,
+        charJoinThreshold:1.5,
+        columnGap:8,
+        headerLookahead:8,
+        minDayHitsOffset:0,
+      },
+      fuzzy:{
+        label:'Fuzzy rescue',
+        description:'Wider grouping to rescue misaligned text',
+        rowTolerance:4.5,
+        charJoinThreshold:3,
+        columnGap:6,
+        headerLookahead:12,
+        minDayHitsOffset:-1,
+      },
+    };
+
+    let pdfParseMode='balanced';
+
+    function getPdfParsingOptions(){
+      return PDF_PARSE_PRESETS[pdfParseMode]||PDF_PARSE_PRESETS.balanced;
+    }
+
+    function getPdfParseModeLabel(value){
+      const preset=PDF_PARSE_PRESETS[value||pdfParseMode];
+      return preset && preset.label ? preset.label : PDF_PARSE_PRESETS.balanced.label;
+    }
+
+    function getPdfParseModeDescription(value){
+      const preset=PDF_PARSE_PRESETS[value||pdfParseMode];
+      return preset && preset.description ? preset.description : PDF_PARSE_PRESETS.balanced.description;
+    }
+
     function estimatePdfColumnCount(row){
       if(!row || !Array.isArray(row.items) || !row.items.length){
         return PDF_DEFAULT_COLUMNS;
       }
-      const gapThreshold=8;
+      const {columnGap}=getPdfParsingOptions();
+      const gapThreshold=Number.isFinite(columnGap)?columnGap:8;
       const sorted=row.items.slice().sort((a,b)=>a.x-b.x);
       const groups=[];
       let current=[];
@@ -988,9 +1034,10 @@
     }
 
     function groupPdfItemsIntoRows(items){
+      const {rowTolerance,charJoinThreshold}=getPdfParsingOptions();
       const rows=[];
-      const tolerance=2.5;
-      const charJoinThreshold=1.5;
+      const tolerance=Number.isFinite(rowTolerance)?rowTolerance:2.5;
+      const charThreshold=Number.isFinite(charJoinThreshold)?charJoinThreshold:1.5;
       if(!Array.isArray(items)) return rows;
       items.forEach(item=>{
         if(!item) return;
@@ -1022,7 +1069,7 @@
           const prev=merged[merged.length-1];
           const prevRight=(prev.x||0)+(prev.width||0);
           const gap=item.x-prevRight;
-          if(gap<=charJoinThreshold){
+          if(gap<=charThreshold){
             const needsSpace=gap>0.2 && !/\s$/.test(prev.text||'') && !/^\s/.test(item.text||'');
             prev.text=`${prev.text||''}${needsSpace?' ':''}${item.text||''}`;
             const itemRight=item.x+(item.width||0);
@@ -1039,8 +1086,9 @@
     }
 
     function findPdfHeaderRow(rows,columnCount){
-      const minDayHits=Math.min(PDF_DAY_TOKENS.length,Math.max(3,Math.ceil(columnCount/2)));
-      const maxLookahead=8;
+      const {headerLookahead,minDayHitsOffset}=getPdfParsingOptions();
+      const minDayHits=Math.min(PDF_DAY_TOKENS.length,Math.max(3,Math.ceil(columnCount/2)+(Number.isFinite(minDayHitsOffset)?minDayHitsOffset:0)));
+      const maxLookahead=Math.max(3,Number.isFinite(headerLookahead)?headerLookahead:8);
       const normalizeRowText=row=>{
         if(!row || !Array.isArray(row.items)) return '';
         return row.items.map(item=>String(item.text||'').toLowerCase()).join(' ');
@@ -1094,7 +1142,8 @@
     }
 
     function derivePdfColumnBounds(row,columnCount){
-      const gapThreshold=8;
+      const {columnGap}=getPdfParsingOptions();
+      const gapThreshold=Number.isFinite(columnGap)?columnGap:8;
       const sorted=row && Array.isArray(row.items)?row.items.slice().sort((a,b)=>a.x-b.x):[];
       if(!sorted.length){
         return Array.from({length:columnCount},(_,idx)=>({start:idx*100,end:(idx+1)*100}));
@@ -1241,6 +1290,9 @@
           rowCount:filteredRows.length,
           columnCount,
           pageCount:totalPages,
+          parseMode:pdfParseMode,
+          parseModeLabel:getPdfParseModeLabel(),
+          parseModeDescription:getPdfParseModeDescription(),
         };
       }finally{
         await loadingTask.destroy();
@@ -4058,6 +4110,7 @@
     const uploadLogPanel=document.getElementById('uploadLogPanel');
     const uploadLogContainer=document.getElementById('uploadLog');
     const btnClearLog=document.getElementById('btnClearLog');
+    const pdfParseModeSelect=document.getElementById('pdfParseMode');
     const pdfDebugPanelEl=document.getElementById('pdfDebugPanel');
     const pdfDebugMeta=document.getElementById('pdfDebugMeta');
     const pdfDebugOutput=document.getElementById('pdfDebugOutput');
@@ -4236,6 +4289,7 @@
       }
       if(pdfDebugMeta){
         const parts=[];
+        if(info.parseModeLabel){ parts.push(info.parseModeLabel); }
         if(Number.isFinite(info.rowCount)){ parts.push(`${info.rowCount} ${info.rowCount===1?'row':'rows'}`); }
         if(Number.isFinite(info.columnCount)){ parts.push(`${info.columnCount} ${info.columnCount===1?'column':'columns'}`); }
         if(Number.isFinite(info.pageCount)){ parts.push(`${info.pageCount} ${info.pageCount===1?'page':'pages'}`); }
@@ -4312,6 +4366,18 @@
     if(btnExportPdfCsv){
       btnExportPdfCsv.addEventListener('click',()=>{
         exportPdfDebugCsv();
+      });
+    }
+
+    if(pdfParseModeSelect){
+      pdfParseModeSelect.value=pdfParseMode;
+      pdfParseModeSelect.addEventListener('change',()=>{
+        const value=pdfParseModeSelect.value;
+        pdfParseMode=PDF_PARSE_PRESETS[value]?value:'balanced';
+        addUploadLog(`PDF interpretation set to ${getPdfParseModeLabel(pdfParseMode)}.`,'info');
+        if(lastPdfDebugInfo){
+          setPdfDebugPreview({...lastPdfDebugInfo,parseMode:pdfParseMode,parseModeLabel:getPdfParseModeLabel(pdfParseMode),parseModeDescription:getPdfParseModeDescription(pdfParseMode)});
+        }
       });
     }
 
