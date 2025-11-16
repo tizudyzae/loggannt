@@ -938,6 +938,7 @@
     const PDF_DEFAULT_COLUMNS=10; // Employee + 7 days + totals
     const PDF_MIN_COLUMNS=8;
     const PDF_MAX_COLUMNS=12;
+    const PDF_DAY_TOKENS=['sun','mon','tue','wed','thu','fri','sat'];
 
     function estimatePdfColumnCount(row){
       if(!row || !Array.isArray(row.items) || !row.items.length){
@@ -1022,7 +1023,8 @@
           const prevRight=(prev.x||0)+(prev.width||0);
           const gap=item.x-prevRight;
           if(gap<=charJoinThreshold){
-            prev.text=`${prev.text||''}${item.text||''}`;
+            const needsSpace=gap>0.2 && !/\s$/.test(prev.text||'') && !/^\s/.test(item.text||'');
+            prev.text=`${prev.text||''}${needsSpace?' ':''}${item.text||''}`;
             const itemRight=item.x+(item.width||0);
             const newWidth=Math.max(prev.width||0,itemRight-prev.x);
             prev.width=newWidth>0?newWidth:prev.width;
@@ -1037,8 +1039,7 @@
     }
 
     function findPdfHeaderRow(rows,columnCount){
-      const dayTokens=['sun','mon','tue','wed','thu','fri','sat'];
-      const minDayHits=Math.min(dayTokens.length,Math.max(3,Math.ceil(columnCount/2)));
+      const minDayHits=Math.min(PDF_DAY_TOKENS.length,Math.max(3,Math.ceil(columnCount/2)));
       const maxLookahead=8;
       const normalizeRowText=row=>{
         if(!row || !Array.isArray(row.items)) return '';
@@ -1060,7 +1061,7 @@
         const lower=text||'';
         const compactLetters=lettersOnly!==undefined?lettersOnly:lower.replace(/[^a-z]/g,'');
         let hits=0;
-        dayTokens.forEach(token=>{
+        PDF_DAY_TOKENS.forEach(token=>{
           if(lower.includes(token) || compactLetters.includes(token)) hits++;
         });
         return hits;
@@ -1208,7 +1209,23 @@
         const columnCount=Math.min(Math.max(derivedColumnCount,PDF_MIN_COLUMNS),PDF_MAX_COLUMNS);
         const columnBounds=derivePdfColumnBounds(headerInfo.row||tableRows[0],columnCount);
         const csvRows=tableRows.map(row=>mapPdfRowToCells(row,columnBounds,columnCount));
-        const filteredRows=csvRows.filter(row=>row.some(cell=>cell && cell.trim()));
+        let headerSeen=false;
+        const filteredRows=csvRows.filter(row=>{
+          if(!Array.isArray(row) || !row.length) return false;
+          const joined=row.join(' ').trim();
+          if(!joined) return false;
+          if(row.some(cell=>/\bpage\s*\d+/i.test(cell||''))){
+            return false;
+          }
+          const lowerJoined=joined.toLowerCase();
+          const isHeader=lowerJoined.includes('employee') && PDF_DAY_TOKENS.every(token=>lowerJoined.includes(token));
+          if(isHeader){
+            if(headerSeen) return false;
+            headerSeen=true;
+            return true;
+          }
+          return true;
+        });
         if(!filteredRows.length){
           throw new Error('The rota table in the PDF did not contain any usable rows.');
         }
