@@ -341,7 +341,7 @@
         <div class="saved-week-actions">
           <button class="btn btn-secondary" id="btnUploadPdf" type="button">Upload PDF</button>
         </div>
-        <p class="control-hint">Upload a PDF rota to test parsing improvements. Debug output stays on this device.</p>
+        <p class="control-hint">Upload a PDF rota to test parsing improvements. Debug output stays on this device, and CSV uploads remain the most reliable option.</p>
         <div class="pdf-debug" id="pdfDebugPanel" hidden aria-hidden="true">
           <div class="pdf-debug-meta" id="pdfDebugMeta" hidden></div>
           <textarea id="pdfDebugOutput" readonly spellcheck="false" aria-label="Extracted PDF preview"></textarea>
@@ -935,7 +935,38 @@
       return {title,sub,dayHeaders,rows};
     }
 
-    const PDF_EXPECTED_COLUMNS=8;
+    const PDF_DEFAULT_COLUMNS=10; // Employee + 7 days + totals
+    const PDF_MIN_COLUMNS=8;
+    const PDF_MAX_COLUMNS=12;
+
+    function estimatePdfColumnCount(row){
+      if(!row || !Array.isArray(row.items) || !row.items.length){
+        return PDF_DEFAULT_COLUMNS;
+      }
+      const gapThreshold=8;
+      const sorted=row.items.slice().sort((a,b)=>a.x-b.x);
+      const groups=[];
+      let current=[];
+      let lastRight=null;
+      sorted.forEach(item=>{
+        const start=item.x;
+        const width=item.width||0;
+        const right=start+width;
+        if(current.length && lastRight!==null && start-lastRight>gapThreshold){
+          groups.push(current);
+          current=[item];
+        }else{
+          current.push(item);
+        }
+        lastRight=lastRight===null?right:Math.max(lastRight,right);
+      });
+      if(current.length) groups.push(current);
+      const headerText=sorted.map(it=>String(it.text||'')).join(' ').toLowerCase();
+      const hasTotalsHint=headerText.includes('total') || headerText.includes('min');
+      const baseTarget=hasTotalsHint?PDF_DEFAULT_COLUMNS:Math.max(PDF_MIN_COLUMNS,groups.length||PDF_MIN_COLUMNS);
+      const columnCount=Math.max(baseTarget,groups.length||0,PDF_MIN_COLUMNS);
+      return Math.min(Math.max(columnCount,PDF_MIN_COLUMNS),PDF_MAX_COLUMNS);
+    }
 
     function ensurePdfJsLib(){
       if(typeof window==='undefined'){
@@ -1168,13 +1199,15 @@
         if(!collectedRows.length){
           throw new Error('No readable text was found in the PDF file.');
         }
-        const headerInfo=findPdfHeaderRow(collectedRows,PDF_EXPECTED_COLUMNS);
+        const headerInfo=findPdfHeaderRow(collectedRows,PDF_DEFAULT_COLUMNS);
         if(!headerInfo){
           throw new Error('Unable to locate the rota table header in the PDF file.');
         }
         const tableRows=collectedRows.slice(headerInfo.index);
-        const columnBounds=derivePdfColumnBounds(headerInfo.row||tableRows[0],PDF_EXPECTED_COLUMNS);
-        const csvRows=tableRows.map(row=>mapPdfRowToCells(row,columnBounds,PDF_EXPECTED_COLUMNS));
+        const derivedColumnCount=estimatePdfColumnCount(headerInfo.row);
+        const columnCount=Math.min(Math.max(derivedColumnCount,PDF_MIN_COLUMNS),PDF_MAX_COLUMNS);
+        const columnBounds=derivePdfColumnBounds(headerInfo.row||tableRows[0],columnCount);
+        const csvRows=tableRows.map(row=>mapPdfRowToCells(row,columnBounds,columnCount));
         const filteredRows=csvRows.filter(row=>row.some(cell=>cell && cell.trim()));
         if(!filteredRows.length){
           throw new Error('The rota table in the PDF did not contain any usable rows.');
@@ -1189,7 +1222,7 @@
           csvText:combinedLines.join('\n'),
           previewLines:combinedLines.slice(0,200),
           rowCount:filteredRows.length,
-          columnCount:PDF_EXPECTED_COLUMNS,
+          columnCount,
           pageCount:totalPages,
         };
       }finally{
