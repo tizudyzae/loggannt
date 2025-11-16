@@ -109,6 +109,8 @@
     .pdf-debug textarea{width:100%;min-height:140px;border:1px solid var(--border);border-radius:14px;padding:12px;font-family:'IBM Plex Mono','SFMono-Regular',Menlo,Monaco,Consolas,'Liberation Mono',monospace;font-size:12px;resize:vertical;background:var(--surface);color:var(--ink)}
     .pdf-debug textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,123,195,.18)}
     .pdf-debug-meta{font-size:12px;color:var(--muted)}
+    .pdf-debug-actions{display:flex;flex-wrap:wrap;gap:10px}
+    .pdf-debug-actions .btn{flex:1 1 160px}
     .ctrl-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
     .ctrl{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
     .ctrl input,.ctrl select{padding:9px 11px;border:1px solid var(--border);border-radius:12px;font:14px/1.5 "Averta Std","Nunito Sans","Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;transition:border-color .2s ease,box-shadow .2s ease}
@@ -343,7 +345,10 @@
         <div class="pdf-debug" id="pdfDebugPanel" hidden aria-hidden="true">
           <div class="pdf-debug-meta" id="pdfDebugMeta" hidden></div>
           <textarea id="pdfDebugOutput" readonly spellcheck="false" aria-label="Extracted PDF preview"></textarea>
-          <button class="btn btn-secondary" id="btnCopyPdfDebug" type="button">Copy preview</button>
+          <div class="pdf-debug-actions">
+            <button class="btn btn-secondary" id="btnExportPdfCsv" type="button">Export interpreted CSV</button>
+            <button class="btn btn-secondary" id="btnCopyPdfDebug" type="button">Copy preview</button>
+          </div>
         </div>
         <section class="panel panel-static upload-log-panel" id="uploadLogPanel" aria-live="polite">
           <h3 class="panel-title">Upload log</h3>
@@ -1179,7 +1184,14 @@
           'PDF Import',
           'Converted from uploaded PDF rota',
         ];
-        return prefixLines.concat(csvLines).join('\n');
+        const combinedLines=prefixLines.concat(csvLines);
+        return {
+          csvText:combinedLines.join('\n'),
+          previewLines:combinedLines.slice(0,200),
+          rowCount:filteredRows.length,
+          columnCount:PDF_EXPECTED_COLUMNS,
+          pageCount:totalPages,
+        };
       }finally{
         await loadingTask.destroy();
       }
@@ -4000,7 +4012,9 @@
     const pdfDebugMeta=document.getElementById('pdfDebugMeta');
     const pdfDebugOutput=document.getElementById('pdfDebugOutput');
     const btnCopyPdfDebug=document.getElementById('btnCopyPdfDebug');
+    const btnExportPdfCsv=document.getElementById('btnExportPdfCsv');
     const uploadLogEntries=[];
+    let lastPdfDebugInfo=null;
 
     function ingestCsvTextPayload(text,{button,defaultLabel,sourceLabel}={}){
       const label=sourceLabel||'CSV';
@@ -4156,6 +4170,7 @@
     function setPdfDebugPreview(info){
       if(!pdfDebugPanelEl) return;
       const hasPreview=info && Array.isArray(info.previewLines) && info.previewLines.length>0;
+      lastPdfDebugInfo=hasPreview?info:null;
       pdfDebugPanelEl.hidden=!hasPreview;
       pdfDebugPanelEl.setAttribute('aria-hidden',hasPreview?'false':'true');
       if(!hasPreview){
@@ -4179,12 +4194,74 @@
       }
     }
 
+    function downloadTextFile(content,filename,mimeType='text/plain'){
+      if(!content){ return; }
+      const blob=new Blob([content],{type:mimeType});
+      const url=URL.createObjectURL(blob);
+      const link=document.createElement('a');
+      link.href=url;
+      link.download=filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),3000);
+    }
+
+    async function copyPdfDebugPreview(){
+      if(!pdfDebugOutput) return;
+      const text=pdfDebugOutput.value||'';
+      if(!text.trim()){
+        addUploadLog('No PDF preview available to copy.','warning');
+        alert('Upload a PDF first to generate preview text to copy.');
+        return;
+      }
+      try{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          await navigator.clipboard.writeText(text);
+        }else{
+          pdfDebugOutput.focus();
+          pdfDebugOutput.select();
+          document.execCommand('copy');
+        }
+        addUploadLog('Copied PDF preview to clipboard.','success');
+      }catch(err){
+        console.error('[upload-debug] Failed to copy PDF preview.',err);
+        addUploadLog('Failed to copy PDF preview.','error',err && err.message?err.message:err);
+        alert('Unable to copy the PDF preview automatically. Please select the text and copy manually.');
+      }
+    }
+
+    function exportPdfDebugCsv(){
+      const csvText=lastPdfDebugInfo && typeof lastPdfDebugInfo.csvText==='string'
+        ? lastPdfDebugInfo.csvText
+        : '';
+      if(!csvText.trim()){
+        addUploadLog('No PDF interpretation available to export.','warning');
+        alert('Upload a PDF first to export its interpreted CSV.');
+        return;
+      }
+      downloadTextFile(csvText,'pdf_interpretation.csv','text/csv');
+      addUploadLog('Exported interpreted PDF data as CSV.','success');
+    }
+
     initMobileHint();
     renderUploadLog();
     if(btnClearLog){
       btnClearLog.addEventListener('click',()=>{
         uploadLogEntries.length=0;
         addUploadLog('Upload log cleared.','info');
+      });
+    }
+
+    if(btnCopyPdfDebug){
+      btnCopyPdfDebug.addEventListener('click',()=>{
+        copyPdfDebugPreview();
+      });
+    }
+
+    if(btnExportPdfCsv){
+      btnExportPdfCsv.addEventListener('click',()=>{
+        exportPdfDebugCsv();
       });
     }
 
@@ -4302,6 +4379,7 @@
         }
         const sizeLabel=formatFileSize(file.size);
         addUploadLog(`Selected ${name}${sizeLabel?` (${sizeLabel})`:''}.`,'info',{type:file.type||'application/pdf'});
+        setPdfDebugPreview(null);
         const reader=new FileReader();
         reader.addEventListener('load',()=>{
           const buffer=reader.result instanceof ArrayBuffer?reader.result:null;
@@ -4317,9 +4395,10 @@
           (async()=>{
             try{
               addUploadLog('Extracting rota table from PDF…','info');
-              const csvText=await convertPdfArrayBufferToCsvText(buffer);
+              const debugResult=await convertPdfArrayBufferToCsvText(buffer);
               addUploadLog('PDF converted to CSV-like text.','success');
-              ingestCsvTextPayload(csvText,{button:btnUploadPdf,defaultLabel:defaultPdfLabel,sourceLabel:'PDF'});
+              setPdfDebugPreview(debugResult);
+              ingestCsvTextPayload(debugResult && debugResult.csvText ? debugResult.csvText : '',{button:btnUploadPdf,defaultLabel:defaultPdfLabel,sourceLabel:'PDF'});
             }catch(err){
               console.error('[upload-debug] Error while parsing uploaded PDF.',err);
               alert(err && err.message?err.message:'Failed to parse the provided PDF file.');
