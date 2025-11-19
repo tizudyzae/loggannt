@@ -170,6 +170,13 @@
     .line-bar-time.start.bumped{transform:translate(calc(-100% + var(--line-time-shift,0px)),-50%)}
     .line-bar-time.end.bumped{transform:translate(calc(100% - var(--line-time-shift,0px)),-50%)}
     .line-chart-empty{border:1px dashed var(--border);border-radius:18px;padding:18px;color:var(--muted);font-size:14px;text-align:center;background:var(--surface-soft)}
+    .line-chart-warnings{display:flex;flex-direction:column;gap:12px;color:#b91c1c}
+    .line-chart-warnings[hidden]{display:none !important}
+    .line-chart-warning{display:flex;gap:12px;align-items:flex-start;border:1px solid #fecaca;background:#fff5f5;padding:12px 16px;border-radius:18px;box-shadow:0 10px 24px rgba(220,38,38,.12)}
+    .line-warning-icons{display:flex;gap:6px;flex-shrink:0}
+    .line-warning-icon{width:28px;height:28px;border-radius:50%;background:#fee2e2;border:2px solid #dc2626;color:#b91c1c;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center}
+    .line-warning-text{font-weight:600;font-size:14px}
+    .line-warning-detail{margin-top:2px;font-weight:500;font-size:13px;color:#991b1b}
     .line-view-placeholder{border:1px dashed var(--border);border-radius:24px;padding:28px;text-align:center;color:var(--muted);background:var(--surface);font-size:15px;box-shadow:0 18px 36px rgba(7,45,65,.08)}
     .line-week-individual{border:1px solid var(--border);border-radius:24px;background:var(--surface);box-shadow:0 18px 36px rgba(7,45,65,.08);padding:24px;display:flex;flex-direction:column;gap:16px}
     .line-week-individual-title{margin:0;font-size:20px;font-weight:700;color:var(--ink)}
@@ -436,6 +443,7 @@
                 <div class="line-chart-axis" id="lineChartAxis"></div>
                 <div class="line-chart-rows" id="lineChartRows"></div>
               </div>
+              <div class="line-chart-warnings" id="lineChartWarnings" role="status" aria-live="polite" hidden></div>
               <div class="line-view-placeholder" id="lineViewEmpty" hidden>
                 <strong>Upload a rota</strong>Load a CSV to explore a condensed timeline of each colleague&#39;s shifts.
               </div>
@@ -2113,6 +2121,7 @@
     const lineChartShell=document.getElementById('lineChartShell');
     const lineChartAxis=document.getElementById('lineChartAxis');
     const lineChartRows=document.getElementById('lineChartRows');
+    const lineChartWarnings=document.getElementById('lineChartWarnings');
     const lineViewEmpty=document.getElementById('lineViewEmpty');
     const linePresetButtons=document.getElementById('linePresetButtons');
     const linePresetButtonList=linePresetButtons?Array.from(linePresetButtons.querySelectorAll('button[data-start][data-end]')):[];
@@ -2261,26 +2270,131 @@
       }
     }
 
-    function computeLineViewDefaults(entries){
-      const defaults={startMinute:LINE_VIEW_DEFAULT_STATE.startMinute,windowMinutes:LINE_VIEW_DEFAULT_STATE.windowMinutes};
-      if(!Array.isArray(entries) || !entries.length) return defaults;
+    function normalizeEntrySegment(segment){
+      if(!segment) return null;
+      const start=Number.isFinite(segment.start)?Math.max(0,Math.min(1440,segment.start)):null;
+      const end=Number.isFinite(segment.end)?Math.max(0,Math.min(1440,segment.end)):null;
+      if(start===null || end===null || end<=start) return null;
+      return {start,end};
+    }
+
+    function extractSegmentsFromEntries(entries){
       const segments=[];
+      if(!Array.isArray(entries)) return segments;
       entries.forEach(entry=>{
-        if(entry && Array.isArray(entry.segments)){
+        if(!entry) return;
+        if(Array.isArray(entry.segments) && entry.segments.length){
           entry.segments.forEach(seg=>{
-            if(!seg) return;
-            if(Number.isFinite(seg.start) && Number.isFinite(seg.end) && seg.end>seg.start){
-              const start=Math.max(0,Math.min(1440,seg.start));
-              const end=Math.max(0,Math.min(1440,seg.end));
-              if(end>start) segments.push({start,end});
-            }
+            const normalized=normalizeEntrySegment(seg);
+            if(normalized) segments.push(normalized);
           });
-        }else if(entry && entry.range && Number.isFinite(entry.range.start) && Number.isFinite(entry.range.end)){
-          const start=Math.max(0,Math.min(1440,entry.range.start));
-          const end=Math.max(0,Math.min(1440,entry.range.end));
-          if(end>start) segments.push({start,end});
+        }else if(entry.range){
+          const normalized=normalizeEntrySegment(entry.range);
+          if(normalized) segments.push(normalized);
         }
       });
+      return segments;
+    }
+
+    function buildCoverageTimeline(entries){
+      const segments=extractSegmentsFromEntries(entries);
+      if(!segments.length) return [];
+      const events=[];
+      segments.forEach(seg=>{
+        events.push({time:seg.start,type:1});
+        events.push({time:seg.end,type:-1});
+      });
+      events.sort((a,b)=>{
+        if(a.time!==b.time) return a.time-b.time;
+        return b.type-a.type;
+      });
+      let active=0;
+      let prevTime=null;
+      const intervals=[];
+      events.forEach(ev=>{
+        const time=ev.time;
+        if(prevTime!==null && time>prevTime && active>0){
+          intervals.push({start:prevTime,end:time,count:active});
+        }
+        if(ev.type===1){
+          active+=1;
+        }else{
+          active=Math.max(0,active-1);
+        }
+        prevTime=time;
+      });
+      return intervals;
+    }
+
+    function buildCoverageWarnings(entries){
+      const timeline=buildCoverageTimeline(entries);
+      if(!timeline.length) return [];
+      const filtered=timeline.filter(segment=>segment.count>0 && segment.count<=2);
+      if(!filtered.length) return [];
+      const merged=[];
+      filtered.forEach(segment=>{
+        const last=merged[merged.length-1];
+        if(last && last.count===segment.count && Math.abs(last.end-segment.start)<0.001){
+          last.end=segment.end;
+        }else{
+          merged.push({...segment});
+        }
+      });
+      return merged;
+    }
+
+    function resetLineCoverageWarnings(){
+      if(!lineChartWarnings) return;
+      lineChartWarnings.innerHTML='';
+      lineChartWarnings.hidden=true;
+      lineChartWarnings.setAttribute('aria-hidden','true');
+    }
+
+    function renderLineCoverageWarnings(entries,dayLabel=''){ 
+      if(!lineChartWarnings) return;
+      const warnings=buildCoverageWarnings(entries);
+      if(!warnings.length){
+        resetLineCoverageWarnings();
+        return;
+      }
+      lineChartWarnings.innerHTML='';
+      warnings.forEach(segment=>{
+        const item=document.createElement('div');
+        item.className='line-chart-warning';
+        const icons=document.createElement('div');
+        icons.className='line-warning-icons';
+        const iconCount=segment.count===1?2:1;
+        for(let i=0;i<iconCount;i+=1){
+          const icon=document.createElement('span');
+          icon.className='line-warning-icon';
+          icon.setAttribute('aria-hidden','true');
+          icon.textContent='!';
+          icons.appendChild(icon);
+        }
+        item.appendChild(icons);
+        const textWrapper=document.createElement('div');
+        textWrapper.className='line-warning-text';
+        const rangeLabel=`${fmtHMDisplay(segment.start)} – ${fmtHMDisplay(segment.end)}`;
+        const message=document.createElement('div');
+        const labelBase=segment.count===1?'one colleague':'two colleagues';
+        message.textContent=`Only ${labelBase} scheduled between ${rangeLabel}.`;
+        textWrapper.appendChild(message);
+        if(dayLabel){
+          const detail=document.createElement('div');
+          detail.className='line-warning-detail';
+          detail.textContent=dayLabel;
+          textWrapper.appendChild(detail);
+        }
+        item.appendChild(textWrapper);
+        lineChartWarnings.appendChild(item);
+      });
+      lineChartWarnings.hidden=false;
+      lineChartWarnings.setAttribute('aria-hidden','false');
+    }
+
+    function computeLineViewDefaults(entries){
+      const defaults={startMinute:LINE_VIEW_DEFAULT_STATE.startMinute,windowMinutes:LINE_VIEW_DEFAULT_STATE.windowMinutes};
+      const segments=extractSegmentsFromEntries(entries);
       if(!segments.length) return defaults;
       const earliest=Math.min(...segments.map(seg=>seg.start));
       const latest=Math.max(...segments.map(seg=>seg.end));
@@ -2420,6 +2534,7 @@
       if(!lineChartAxis || !lineChartRows){
         return;
       }
+      renderLineCoverageWarnings(entries,dayLabel||'');
       const start=lineViewState.startMinute;
       const window=lineViewState.windowMinutes;
       const end=start+window;
@@ -2830,6 +2945,7 @@
     function renderLineView(weeks=getActiveWeekData()){
       if(!lineViewContainer) return;
       if(!Array.isArray(weeks) || !weeks.length){
+        resetLineCoverageWarnings();
         hideLineIndividualWeek();
         if(lineControls){
           lineControls.hidden=true;
@@ -2886,6 +3002,7 @@
           lineViewEmpty.hidden=true;
         }
         renderLineIndividualWeekView(selectionRecords[0],filteredPerDay,dayHeaders,dateRangeLabel);
+        resetLineCoverageWarnings();
         lineViewCurrentEntries=[];
         lineViewCurrentLookup=new Map();
         lineViewCurrentDayLabel='';
@@ -2897,6 +3014,7 @@
       if(!perDay.length){
         syncLineViewControls([]);
         lineViewBaseMinutesPerPixel=null;
+        resetLineCoverageWarnings();
         if(lineWindowHint){
           lineWindowHint.hidden=false;
           lineWindowHint.textContent=lineWindowHintDefault;
