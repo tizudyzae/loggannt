@@ -497,8 +497,9 @@
       if(typeof raw!=='string') return '';
       const trimmed=raw.trim();
       if(!trimmed) return '';
-      const noId=trimmed.replace(/\s*\([^)]*\)\s*/g,' ').trim();
-      if(!noId) return trimmed;
+      const withoutTels=trimmed.replace(/\b(?:home|mob(?:ile)?|work)?\s*tel\b.*$/i,'').trim();
+      const noId=withoutTels.replace(/\s*\([^)]*\)\s*/g,' ').trim();
+      if(!noId) return withoutTels||trimmed;
       const parts=noId.split(/\s+/);
       return parts.length?parts[parts.length-1]:trimmed;
     }
